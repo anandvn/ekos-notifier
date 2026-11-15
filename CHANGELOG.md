@@ -14,3 +14,6 @@ Semantic Versioning.
   service runs where KStars runs, finds the session bus, and reads INDI host/port from the Ekos
   profile. Flatpak findings from the dev VM recorded in `docs/open-questions.md`.
 - Test fixtures: Ekos/INDI D-Bus introspection from KStars 3.8.5 (Flatpak) with Ekos running.
+- Developer tools: `tools/record_night.py` (records D-Bus, PHD2 and INDI streams as a replay
+  file), `tools/sim_night.py` (drives a simulated night through Ekos), `tools/scrub_replay.py`
+  (removes site coordinates and hostnames before a recording is committed).
