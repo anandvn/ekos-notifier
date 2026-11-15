@@ -374,6 +374,21 @@ Because outputs only read from the store, a dead notifier, network or sync targe
 
 - **Language and runtime:** Python 3.10+, asyncio; `dbus-fast` for Ekos, raw sockets for PHD2, a light INDI XML client. Nothing that must compile at install time (dbus-fast's optional speed-ups fall back to pure Python).
 - **Platforms:** StellarMate OS (including the Arch/Flatpak release), Astroberry, any Linux with KStars; x86-64 mini PCs and Raspberry Pi (ARM64).
+- **Runs where KStars runs.** Ekos is observed over the local session D-Bus, so Town Crier must run on the computer running KStars/Ekos. That computer doesn't have to host the INDI server. The INDI host and port come from the active Ekos profile. A Linux laptop running KStars against a remote INDI Pi works if Town Crier is on the laptop. KStars on Windows or macOS is out of scope.
+- **Session bus discovery:** `DBUS_SESSION_BUS_ADDRESS`, then `/run/user/<uid>/bus`, then the address in the running `kstars` process's environment. `doctor` reports which one worked.
+- **Start at boot:** `install-service` enables lingering for the user so the service runs without a desktop login.
+
+| Platform | Base / Python | KStars | Notes |
+| --- | --- | --- | --- |
+| StellarMate OS 2.3+ | Arch, rolling (3.14 on dev VM) | Flatpak (3.8.5 on dev VM) | Data in `~/.var/app/org.kde.kstars/data/kstars`; PHD2/INDI native on dev VM |
+| StellarMate OS ≤ 2.2 | Debian-based | native (3.8.3 in 2.2.0) | Native paths |
+| Astroberry OS v3 | Raspberry Pi OS / Debian 13, 64-bit (3.13) | native (3.8.2 in v3.1) | Session-bus discovery to verify |
+| Astroberry Server (≤ 2.x) | Raspberry Pi OS Buster, 32-bit (3.7) | 3.5–3.6 | **Unsupported:** Python too old, project retired |
+| Raspberry Pi OS Bookworm/Trixie | Debian 12/13 (3.11/3.13) | PPA/source/distro | Supported |
+| Ubuntu 22.04 / 24.04 | 3.10 / 3.12 | Mutlaq PPA | Supported |
+| AstroArch | Arch ARM, rolling | native, latest | Supported |
+| Debian 11 and older | 3.9 or older | — | Unsupported (Python < 3.10) |
+| KStars snap | any | snap | Unverified |
 - **Install:** `pipx install ekos-towncrier` then `town-crier install-service` (systemd user unit) and the wizard opens in the browser.
 - **Footprint target:** < 100 MB RAM, < 2 % CPU on a Pi 4 during a session.
 - **Quality:** simulation-replay test suite in CI (GitHub Actions), semver releases, CHANGELOG, MIT LICENSE, CONTRIBUTING and issue templates from day one.

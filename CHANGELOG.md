@@ -10,3 +10,6 @@ Semantic Versioning.
 - Stub commands exit with code 3 (not 2, which is argparse's usage-error code).
 - Design: the GUI uses Starlette (not FastAPI) and the Ekos adapter uses `dbus-fast` (not the
   unmaintained `dbus-next`).
+- Design: platform matrix (StellarMate, Astroberry OS, Raspberry Pi OS, Ubuntu, AstroArch); the
+  service runs where KStars runs, finds the session bus, and reads INDI host/port from the Ekos
+  profile. Flatpak findings from the dev VM recorded in `docs/open-questions.md`.
