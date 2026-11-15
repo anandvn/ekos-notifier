@@ -29,8 +29,13 @@ and `CLAUDE.md` if a decision changes.
       an empty `logs/` also exists on the VM, so "directory exists" isn't enough: prefer the path
       matching the running KStars (Flatpak vs native), then the most recently written.
 - [ ] Are PHD2 (TCP 4400) and the INDI server (TCP 7624) reachable on localhost when they run as Flatpaks?
-      Moot on this VM (both native, see below); still open for StellarMate images that ship INDI
-      as a Flatpak, as the 2.3.0 changelog says.
+      Still open for StellarMate images that ship INDI as a Flatpak, as the 2.3.0 changelog says.
+      **Native case verified (VM, 2026-11-15):** `indiserver` with the five simulators answers
+      `getProperties` on 7624 (84 vectors, 5 devices); PHD2 2.6.14 on 4400 sends `Version`
+      (MsgVersion 1) and `AppState` on connect and answers `get_app_state`, even with no
+      equipment profile. Both listen on `0.0.0.0` with no authentication, so they're open to the
+      LAN. Town Crier's clients should connect to localhost, and the docs shouldn't suggest
+      opening these ports further.
 - [x] Are PHD2 and INDI Flatpaks too, or native packages? Record versions.
       **Native on the VM:** `libindi 2.2.5` (`/usr/bin/indiserver`), `phd2 2.6.14`. Only KStars is
       a Flatpak. Native ports need no sandbox crossing.
@@ -60,7 +65,18 @@ and `CLAUDE.md` if a decision changes.
 
 - [ ] INDI property names for each power box preset, starting with Anand's own power box
       (needs `indi-dump` output from the real rig).
-- [ ] Which INDI weather simulator properties exist, to build the "weather station only" fixture.
+- [x] Which INDI weather simulator properties exist, to build the "weather station only" fixture.
+      **Only after the device is connected.** Before that, every device shows just CONNECTION,
+      DRIVER_INFO and housekeeping, so Town Crier (observe-only) sees no metrics until Ekos connects
+      the equipment. Capability detection must re-run when devices connect, not once at startup.
+      Connected, the readings are `WEATHER_PARAMETERS` with elements `WEATHER_FORECAST`,
+      `WEATHER_TEMPERATURE`, `WEATHER_HUMIDITY`, `WEATHER_WIND_SPEED`, `WEATHER_WIND_GUST`,
+      `WEATHER_RAIN_HOUR`. No dew point, so `env.dewpoint` is derived (Magnus), as designed.
+      **Heuristic trap:** the vectors named `WEATHER_TEMPERATURE` and `WEATHER_HUMIDITY` hold
+      *thresholds* (`MIN_OK`, `MAX_OK`, `PERC_WARN`, `ALERT_TYPE`), not readings, and
+      `WEATHER_CONTROL` (simulator knobs: Temperature, Humidity, …) also matches by name.
+      Detection must match element names within value vectors, skip threshold/limit vectors, and
+      prefer presets. These three vectors should be negative cases in the detection tests.
 
 ## Defaults and packaging
 
