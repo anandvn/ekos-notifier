@@ -6,11 +6,25 @@ and `CLAUDE.md` if a decision changes.
 
 ## Ekos / KStars
 
-- [ ] Does Ekos expose the polar alignment result over D-Bus, or must it be read from the KStars log?
-- [ ] Verify exact Ekos D-Bus object paths, signal names and payloads against the installed KStars
+- [x] Does Ekos expose the polar alignment result over D-Bus, or must it be read from the KStars log?
+      **Not exposed (KStars 3.8.5).** No Ekos or INDI interface mentions polar alignment; Align
+      offers only plate-solve results (`newSolution`, `getSolutionResult`). Read it from the KStars
+      log or the `.analyze` file.
+- [x] Verify exact Ekos D-Bus object paths, signal names and payloads against the installed KStars
       (3.8.x): Capture, Guide, Focus, Align, Mount, Scheduler. Save `busctl --user introspect`
       output to `tests/fixtures/dbus/` for the record.
-- [ ] How does Ekos report scheduler start/stop and job transitions (needed for automatic session start)?
+      **Saved to `tests/fixtures/dbus/kstars-3.8.5-flatpak/`** with Ekos running against the
+      simulators. The objects are created when Ekos starts: `/KStars/Ekos/{Align,Capture,Focus,
+      Guide,Mount,Observatory,OpticalTrain,Scheduler}` and `/KStars/INDI/{GenericDevice,Weather}/N`.
+      Interfaces are `org.kde.kstars.Ekos.<Module>`. Useful signals: Capture `captureComplete`,
+      `meridianFlipStarted`, `newStatus`; Guide `newAxisSigma`, `newAxisDelta`; Focus `newHFR`;
+      Align `newSolution`; Mount `pierSideChanged`, `newParkStatus`, `newMeridianFlipSetup`.
+      Mount exposes `altitudeLimits`, `hourAngleLimit`, `hourAngle`, `pierSide`, `parkStatus` as
+      properties (enough for the mount-near-limit rule). **Focus has no properties**: state comes
+      only from getter methods and signals. Payload contents still need a recorded night.
+- [x] How does Ekos report scheduler start/stop and job transitions (needed for automatic session start)?
+      Scheduler has a `status` property (+ `newStatus` signal), `currentJobName`, `currentJobJson`
+      and `jsonJobs`. Mapping the status integers to states needs a recorded scheduler run.
 
 ## Flatpak (StellarMate Arch-based release)
 
@@ -28,8 +42,13 @@ and `CLAUDE.md` if a decision changes.
       config in `~/.var/app/org.kde.kstars/config/kstars`. A stale `~/.local/share/kstars/` with
       an empty `logs/` also exists on the VM, so "directory exists" isn't enough: prefer the path
       matching the running KStars (Flatpak vs native), then the most recently written.
-- [ ] Are PHD2 (TCP 4400) and the INDI server (TCP 7624) reachable on localhost when they run as Flatpaks?
-      Still open for StellarMate images that ship INDI as a Flatpak, as the 2.3.0 changelog says.
+- [x] Are PHD2 (TCP 4400) and the INDI server (TCP 7624) reachable on localhost when they run as Flatpaks?
+      **INDI: yes.** In local mode, Ekos starts the INDI server *bundled in the KStars Flatpak*
+      (`/app/bin/indiserver`, libindi 2.2.5), not the host's native libindi, and it listens on
+      host port 7624. The Flatpak has `shared=network` and `sockets=session-bus`, which is why
+      both D-Bus and the port work from the host. `doctor` should check these permissions, since
+      a future Flatpak that tightens them would break Town Crier. PHD2 is native here, so its
+      Flatpak case is untested.
       **Native case verified (VM, 2026-11-15):** `indiserver` with the five simulators answers
       `getProperties` on 7624 (84 vectors, 5 devices); PHD2 2.6.14 on 4400 sends `Version`
       (MsgVersion 1) and `AppState` on connect and answers `get_app_state`, even with no
@@ -37,8 +56,8 @@ and `CLAUDE.md` if a decision changes.
       LAN. Town Crier's clients should connect to localhost, and the docs shouldn't suggest
       opening these ports further.
 - [x] Are PHD2 and INDI Flatpaks too, or native packages? Record versions.
-      **Native on the VM:** `libindi 2.2.5` (`/usr/bin/indiserver`), `phd2 2.6.14`. Only KStars is
-      a Flatpak. Native ports need no sandbox crossing.
+      **On the VM:** PHD2 2.6.14 is native. A native `libindi 2.2.5` is installed, but Ekos uses
+      the copy bundled in the KStars Flatpak (also 2.2.5) — see above.
 - [ ] Confirm Town Crier installs and runs on the host via pipx (Arch Python version, `dbus-fast` works).
       Host Python is 3.14.7; an editable install, tests and the CLI work. pipx + `dbus-fast` not yet tried.
 

@@ -13,3 +13,4 @@ Semantic Versioning.
 - Design: platform matrix (StellarMate, Astroberry OS, Raspberry Pi OS, Ubuntu, AstroArch); the
   service runs where KStars runs, finds the session bus, and reads INDI host/port from the Ekos
   profile. Flatpak findings from the dev VM recorded in `docs/open-questions.md`.
+- Test fixtures: Ekos/INDI D-Bus introspection from KStars 3.8.5 (Flatpak) with Ekos running.

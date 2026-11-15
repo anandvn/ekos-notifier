@@ -1,0 +1,79 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="org.kde.kstars.Ekos.Scheduler">
+    <property access="readwrite" type="s" name="profile"/>
+    <property access="read" type="s" name="currentJobName"/>
+    <property access="read" type="s" name="currentJobJson"/>
+    <property access="read" type="s" name="jsonJobs"/>
+    <property access="read" type="as" name="logText"/>
+    <property access="read" type="i" name="status">
+      <annotation value="Ekos::SchedulerState" name="org.qtproject.QtDBus.QtTypeName"/>
+    </property>
+    <method name="start">
+      <annotation value="true" name="org.freedesktop.DBus.Method.NoReply"/>
+    </method>
+    <method name="stop">
+      <annotation value="true" name="org.freedesktop.DBus.Method.NoReply"/>
+    </method>
+    <method name="removeAllJobs">
+      <annotation value="true" name="org.freedesktop.DBus.Method.NoReply"/>
+    </method>
+    <method name="loadScheduler">
+      <arg direction="in" type="s" name="fileURL"/>
+      <arg direction="out" type="b"/>
+      <annotation value="QUrl" name="org.qtproject.QtDBus.QtTypeName.In0"/>
+    </method>
+    <method name="setSequence">
+      <annotation value="true" name="org.freedesktop.DBus.Method.NoReply"/>
+      <arg direction="in" type="s" name="sequenceFileURL"/>
+      <annotation value="QUrl" name="org.qtproject.QtDBus.QtTypeName.In0"/>
+    </method>
+    <method name="resetAllJobs">
+      <annotation value="true" name="org.freedesktop.DBus.Method.NoReply"/>
+    </method>
+    <signal name="newStatus">
+      <arg direction="out" type="(i)" name="status"/>
+      <annotation value="Ekos::SchedulerState" name="org.qtproject.QtDBus.QtTypeName.In0"/>
+      <annotation value="Ekos::SchedulerState" name="org.qtproject.QtDBus.QtTypeName.Out0"/>
+    </signal>
+    <signal name="newLog">
+      <arg direction="out" type="s" name="text"/>
+    </signal>
+  </interface>
+  <interface name="org.freedesktop.DBus.Properties">
+    <method name="Get">
+      <arg name="interface_name" type="s" direction="in"/>
+      <arg name="property_name" type="s" direction="in"/>
+      <arg name="value" type="v" direction="out"/>
+    </method>
+    <method name="Set">
+      <arg name="interface_name" type="s" direction="in"/>
+      <arg name="property_name" type="s" direction="in"/>
+      <arg name="value" type="v" direction="in"/>
+    </method>
+    <method name="GetAll">
+      <arg name="interface_name" type="s" direction="in"/>
+      <arg name="values" type="a{sv}" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+    </method>
+    <signal name="PropertiesChanged">
+      <arg name="interface_name" type="s" direction="out"/>
+      <arg name="changed_properties" type="a{sv}" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap"/>
+      <arg name="invalidated_properties" type="as" direction="out"/>
+    </signal>
+  </interface>
+  <interface name="org.freedesktop.DBus.Introspectable">
+    <method name="Introspect">
+      <arg name="xml_data" type="s" direction="out"/>
+    </method>
+  </interface>
+  <interface name="org.freedesktop.DBus.Peer">
+    <method name="Ping"/>
+    <method name="GetMachineId">
+      <arg name="machine_uuid" type="s" direction="out"/>
+    </method>
+  </interface>
+</node>
+
