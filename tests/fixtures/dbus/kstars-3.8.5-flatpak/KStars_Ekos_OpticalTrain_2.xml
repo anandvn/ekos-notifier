@@ -1,0 +1,101 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="org.kde.kstars.Ekos.OpticalTrain">
+    <property access="read" type="s" name="name"/>
+    <property access="read" type="i" name="id"/>
+    <property access="read" type="s" name="mount"/>
+    <property access="read" type="s" name="camera"/>
+    <property access="read" type="s" name="focuser"/>
+    <property access="read" type="s" name="filterWheel"/>
+    <property access="read" type="s" name="rotator"/>
+    <property access="read" type="s" name="dustCap"/>
+    <property access="read" type="s" name="lightBox"/>
+    <property access="read" type="s" name="scope"/>
+    <property access="read" type="d" name="reducer"/>
+    <property access="read" type="s" name="guider"/>
+    <method name="setMount">
+      <arg direction="in" type="s" name="name"/>
+      <arg direction="out" type="b"/>
+    </method>
+    <method name="setCamera">
+      <arg direction="in" type="s" name="name"/>
+      <arg direction="out" type="b"/>
+    </method>
+    <method name="setFocuser">
+      <arg direction="in" type="s" name="name"/>
+      <arg direction="out" type="b"/>
+    </method>
+    <method name="setFilterWheel">
+      <arg direction="in" type="s" name="name"/>
+      <arg direction="out" type="b"/>
+    </method>
+    <method name="setRotator">
+      <arg direction="in" type="s" name="name"/>
+      <arg direction="out" type="b"/>
+    </method>
+    <method name="setDustCap">
+      <arg direction="in" type="s" name="name"/>
+      <arg direction="out" type="b"/>
+    </method>
+    <method name="setLightBox">
+      <arg direction="in" type="s" name="name"/>
+      <arg direction="out" type="b"/>
+    </method>
+    <method name="setScope">
+      <arg direction="in" type="s" name="name"/>
+      <arg direction="out" type="b"/>
+    </method>
+    <method name="setReducer">
+      <arg direction="in" type="d" name="value"/>
+      <arg direction="out" type="b"/>
+    </method>
+    <method name="setGuider">
+      <arg direction="in" type="s" name="name"/>
+      <arg direction="out" type="b"/>
+    </method>
+    <method name="remove">
+      <arg direction="out" type="b"/>
+    </method>
+    <method name="cleanup">
+      <arg direction="out" type="i"/>
+    </method>
+    <signal name="updated"/>
+    <signal name="removed"/>
+  </interface>
+  <interface name="org.freedesktop.DBus.Properties">
+    <method name="Get">
+      <arg name="interface_name" type="s" direction="in"/>
+      <arg name="property_name" type="s" direction="in"/>
+      <arg name="value" type="v" direction="out"/>
+    </method>
+    <method name="Set">
+      <arg name="interface_name" type="s" direction="in"/>
+      <arg name="property_name" type="s" direction="in"/>
+      <arg name="value" type="v" direction="in"/>
+    </method>
+    <method name="GetAll">
+      <arg name="interface_name" type="s" direction="in"/>
+      <arg name="values" type="a{sv}" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+    </method>
+    <signal name="PropertiesChanged">
+      <arg name="interface_name" type="s" direction="out"/>
+      <arg name="changed_properties" type="a{sv}" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap"/>
+      <arg name="invalidated_properties" type="as" direction="out"/>
+    </signal>
+  </interface>
+  <interface name="org.freedesktop.DBus.Introspectable">
+    <method name="Introspect">
+      <arg name="xml_data" type="s" direction="out"/>
+    </method>
+  </interface>
+  <interface name="org.freedesktop.DBus.Peer">
+    <method name="Ping"/>
+    <method name="GetMachineId">
+      <arg name="machine_uuid" type="s" direction="out"/>
+    </method>
+  </interface>
+</node>
+

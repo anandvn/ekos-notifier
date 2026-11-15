@@ -36,7 +36,7 @@ A session starts automatically when the Ekos Scheduler starts (or the first Ligh
 
 | Item | Source | Default green threshold |
 | --- | --- | --- |
-| Polar alignment error (az, alt, total) | Ekos D-Bus, or KStars log if not exposed (to verify) | < 1′ total |
+| Polar alignment error (az, alt, total) | KStars log / `.analyze` file (not exposed over D-Bus, verified on 3.8.5) | < 1′ total |
 | Focus runs: position, HFR, filter, temperature | Ekos Focus D-Bus | — |
 | Guide calibration: RA/Dec rates, orthogonality, camera, binning | PHD2 `get_calibration_data`, or Ekos internal guider | orthogonality within 5° |
 | Trial guiding RMS (last few minutes) | PHD2 events / Ekos Guide | < 0.8″ |
