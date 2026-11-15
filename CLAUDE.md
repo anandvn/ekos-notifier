@@ -34,16 +34,18 @@ mostly at dark sites with intermittent internet.
   town-crier digest except time-critical ones (target low, twilight, sequence complete).
 - **Message styles:** Plain (default), Terse, **Olde English**. Jinja templates in `styles/<name>/`.
   Emergency messages always end with a plain-English line, whatever the style.
-- **GUI:** FastAPI + server-rendered HTML + htmx + uPlot, all assets vendored (no CDN),
-  red night mode, LAN only, password set in first-run wizard. Read-only toward Ekos.
+- **GUI:** Starlette (not FastAPI: pydantic-core is compiled) + server-rendered HTML + htmx +
+  uPlot, all assets vendored (no CDN), red night mode, LAN only, password set in first-run wizard. Read-only toward Ekos.
 - **Export:** each closed session → immutable folder (`session.json`, `events.ndjson`,
   `frames.csv`, `samples.csv`, sequence file, logs). Versioned JSON Schema.
 - **Out of scope for v1:** N.I.N.A./Windows, equipment control, image processing, remote GUI access.
 
 ## Tech conventions
 
-- Python **3.10+**, asyncio, no compiled dependencies. Package source in `src/town_crier/`.
-- Ekos via D-Bus (`dbus-next`), PHD2 via its JSON event server (TCP 4400), INDI via a light XML
+- Python **3.10+**, asyncio, nothing that must compile at install time (optional compiled
+  speed-ups with a pure-Python fallback, like `dbus-fast`'s, are fine).
+  Package source in `src/town_crier/`.
+- Ekos via D-Bus (`dbus-fast`), PHD2 via its JSON event server (TCP 4400), INDI via a light XML
   client (TCP 7624).
 - Tests: `pytest`. The **simulation replay** (recorded nights) drives both tests and the user-facing
   "simulate a night" feature. Lint/format with `ruff`.

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ekos-towncrier"
-version = "0.0.1"
+dynamic = ["version"]
 description = "Alerts, hourly digests and session records for KStars/Ekos astrophotography rigs"
 readme = "README.md"
 license = "MIT"
@@ -29,6 +29,9 @@ town-crier = "town_crier.cli:main"
 [project.urls]
 Homepage = "https://github.com/anandvn/town-crier"
 Issues = "https://github.com/anandvn/town-crier/issues"
+
+[tool.hatch.version]
+path = "src/town_crier/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/town_crier"]
