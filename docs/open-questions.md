@@ -106,3 +106,44 @@ and `CLAUDE.md` if a decision changes.
 
 - [ ] One full simulated night (setup → scheduler session → flip → park) recorded as a replay
       fixture for CI and for "simulate a night".
+      **Not yet (2026-11-15).** `tools/record_night.py` (recorder) and `tools/sim_night.py`
+      (scenario) work. Six attempts reached setup (autofocus OK, PHD2 calibration and guiding OK)
+      but never captured a frame under the Scheduler. The blocker in the last run: after an Ekos
+      restart, the Ekos Guide module silently ignores `guide()`, both from D-Bus and from the
+      Scheduler's Guide step (status stays 0, nothing logged), even after
+      `disconnectGuider`/`connectGuider`. Next try: restart KStars itself before recording, or drop
+      the Guide step from the job and let the scenario run guiding itself. Partial recordings are
+      kept off-repo for reference.
+
+## Ekos behaviour found while recording (KStars 3.8.5)
+
+These change how the Ekos adapter and alert rules must work.
+
+- [x] **Focus signals carry the optical train.** `newStatus` payload is `[[state], "Primary"]`;
+      `newHFR` is `[hfr, position, ?, "Primary"]` with `hfr = -1` meaning no stars found. States
+      seen: 5 = running, 1 = complete, 3 = failed. Focus methods (`start`, `status`, `abort`)
+      all take the train name.
+- [x] **Ekos retries a failed autofocus by itself** ("Restarting autofocus process…"), emitting
+      status 3 for each attempt. The "autofocus failed: 2 consecutive failures" rule must count
+      Ekos's retry loop as one attempt, or it will fire on the first real failure.
+- [x] **`Scheduler.loadScheduler` needs a plain local path.** A `file://` URL returns false even
+      though the argument is annotated as a QUrl.
+- [x] **The Scheduler's startup/shutdown procedures are global settings**, not per file. They can
+      reference devices absent from the current profile (here a Dust Cover Simulator from another
+      profile), and then the job aborts before it starts. `doctor` could flag this.
+- [x] **When the Scheduler finishes or aborts by itself, it stops Ekos and disconnects INDI**,
+      even with the shutdown procedure disabled and the mount unparked. A manual `Scheduler.stop()`
+      does not. On a real rig that leaves the mount tracking with nothing watching it, and Town
+      Crier loses the mount's properties. **Proposed Emergency rule: "Ekos stopped while the mount
+      was unparked"** (needs a decision before it goes into `design.md`).
+- [ ] **Scheduler guiding-stage timeout fired 1 s after the stage began**, ~300 s after a previous
+      (stopped) job's guiding stage. Possibly a timer not reset on `stop()`. Unconfirmed.
+
+## Simulator setup for development
+
+- PHD2 needs its **own** camera: add `Guide Simulator` as the guider in the Ekos profile and pick
+  it in PHD2. Sharing `CCD Simulator` with Ekos makes exposures collide (focus loses its stars,
+  PHD2 times out). The CCD Simulator's secondary guide chip rendered no stars.
+- Set simulated seeing to 8″ (`CCD Simulator.SIM_FOCUSING.SIM_SEEING` and
+  `Focuser Simulator.SEEING_SETTINGS`). At the default 3.5″, in-focus stars are about 1 px on this
+  train (3.1″/px) and Ekos rejects them, so autofocus fails near best focus.
