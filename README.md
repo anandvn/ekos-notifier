@@ -1,2 +1,37 @@
-# town-crier
-Push notification service for Ekos/KStars
+# Town Crier
+
+**Hear ye, hear ye — your imaging night, reported.**
+
+Town Crier is a companion service for KStars/Ekos astrophotography rigs. It runs on your imaging
+computer, watches the night, and:
+
+- **Alerts you when it matters**: guiding lost, sequence aborted, dew coming, battery low, mount
+  heading for the pier. Not every lost star.
+- **Sends an hourly digest** ("23:00 — All's well"), in plain English, terse, or Olde English.
+- **Records every night as a session**: the plan, setup quality, conditions, every frame and event.
+- **Works offline at a dark site.** Internet is a bonus, never a requirement.
+- **Brings the data home** with one button, to a NAS, a USB drive or the cloud.
+
+It works with the notification service you already use (Pushover, ntfy, Telegram, Discord, email
+and 100+ more via Apprise) and degrades gracefully: no power box, no weather station, no internet —
+no problem.
+
+> **Status: pre-alpha.** The design is done; code is starting. See [the design](docs/design.md)
+> and [the roadmap](docs/design.md#roadmap). Nothing here is installable yet.
+
+## Planned install
+
+```bash
+pipx install ekos-town-crier
+town-crier install-service
+# the first-run wizard opens in your browser
+```
+
+## Contributing
+
+Device presets, message styles and docs are the easiest ways in. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+MIT — see [LICENSE](LICENSE).

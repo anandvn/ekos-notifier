@@ -1,0 +1,60 @@
+# Town Crier configuration — example
+# Copy to ~/.config/town-crier/config.yaml. Every key is optional; defaults are shown.
+# The first-run wizard writes this file for you, so most people never edit it by hand.
+# PRE-ALPHA: keys may change before 1.0.
+
+# Where to send alerts. Any Apprise URL works: https://github.com/caronc/apprise/wiki
+# Leave empty for record-only mode.
+notify: []
+#  - "pover://USER_KEY@APP_TOKEN"      # Pushover
+#  - "ntfy://ntfy.sh/my-rig-topic"     # ntfy
+
+# Wording of messages: plain | terse | olde
+style: plain
+
+# Hourly status digest while a session is running.
+crier:
+  enabled: true
+  interval_minutes: 60
+  align_to_clock: true     # on the hour, rather than N minutes from session start
+
+# Optional dead-man's switch: a URL pinged every minute during a session.
+# If pings stop, the service (e.g. Healthchecks.io) alerts you. Leave empty to disable.
+heartbeat:
+  url: ""
+  grace_minutes: 30
+
+# Power. preset: auto | none | mains | <preset name from presets/>
+power:
+  preset: auto
+  battery: lifepo4_12v     # lifepo4_12v | agm_12v | custom
+  low_volts: 12.0
+  critical_volts: 11.5
+
+# Alert thresholds.
+alerts:
+  dew_margin_c: 2.0
+  guiding_recovery_minutes: 5
+  cooler_tolerance_c: 2.0
+  disk_low_gb: 10
+  twilight_warning_minutes: 45
+  target_low_warning_minutes: 30
+
+# Carry data home with rclone. dest is any rclone remote:path or a local path (USB drive).
+sync:
+  dest: ""                 # e.g. "nas:astro/sessions" or "/run/media/me/USB/astro"
+  include_fits: false
+  auto_when_reachable: true
+
+# Local web dashboard (LAN only).
+gui:
+  port: 8765
+  night_mode: auto
+
+units:
+  temperature: C           # C | F
+  guide_error: arcsec      # arcsec | px
+  clock: 24h               # 24h | 12h
+
+privacy:
+  round_site_coordinates: false

@@ -1,0 +1,27 @@
+name: Bug report
+description: Something didn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `town-crier doctor`
+      render: text
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "StellarMate OS 2.x (Arch/Flatpak), Astroberry, Ubuntu 24.04 + KStars 3.8.3…"
+    validations:
+      required: true
+  - type: input
+    id: guider
+    attributes:
+      label: Guider
+      placeholder: "PHD2 2.6.x or Ekos internal"

@@ -1,0 +1,21 @@
+name: Device support request
+description: Ask for a power box, weather station or sensor preset
+labels: [device-support]
+body:
+  - type: input
+    id: device
+    attributes:
+      label: Device make and model
+      placeholder: "Pegasus Pocket Powerbox Advance Gen2"
+    validations:
+      required: true
+  - type: input
+    id: driver
+    attributes:
+      label: INDI driver name
+  - type: textarea
+    id: dump
+    attributes:
+      label: Output of `town-crier indi-dump`
+      description: Attach the file it writes, or paste it here.
+      render: text

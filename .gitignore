@@ -218,3 +218,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Town Crier ---
+# Local runtime data
+*.db
+*.db-wal
+*.db-shm
+/sessions/
+# Real configs hold notifier keys; commit config.example.yaml instead
+config.yaml
+# Imaging data never belongs in git
+*.fits
+*.fit
+*.xisf

@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ekos-town-crier"
+version = "0.0.1"
+description = "Alerts, hourly digests and session records for KStars/Ekos astrophotography rigs"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Anand Narwani" }]
+keywords = ["astrophotography", "kstars", "ekos", "indi", "phd2", "notifications"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "mkdocs-material>=9"]
+
+[project.scripts]
+town-crier = "town_crier.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/anandvn/town-crier"
+Issues = "https://github.com/anandvn/town-crier/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/town_crier"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
