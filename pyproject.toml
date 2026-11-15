@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ekos-town-crier"
+name = "ekos-towncrier"
 version = "0.0.1"
 description = "Alerts, hourly digests and session records for KStars/Ekos astrophotography rigs"
 readme = "README.md"

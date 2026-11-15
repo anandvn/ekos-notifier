@@ -22,7 +22,7 @@ no problem.
 ## Planned install
 
 ```bash
-pipx install ekos-town-crier
+pipx install ekos-towncrier
 town-crier install-service
 # the first-run wizard opens in your browser
 ```

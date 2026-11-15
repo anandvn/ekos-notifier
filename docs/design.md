@@ -374,7 +374,7 @@ Because outputs only read from the store, a dead notifier, network or sync targe
 
 - **Language and runtime:** Python 3.10+, asyncio; `dbus-next` for Ekos, raw sockets for PHD2, a light INDI XML client. No compiled dependencies.
 - **Platforms:** StellarMate OS (including the Arch/Flatpak release), Astroberry, any Linux with KStars; x86-64 mini PCs and Raspberry Pi (ARM64).
-- **Install:** `pipx install ekos-town-crier` then `town-crier install-service` (systemd user unit) and the wizard opens in the browser.
+- **Install:** `pipx install ekos-towncrier` then `town-crier install-service` (systemd user unit) and the wizard opens in the browser.
 - **Footprint target:** < 100 MB RAM, < 2 % CPU on a Pi 4 during a session.
 - **Quality:** simulation-replay test suite in CI (GitHub Actions), semver releases, CHANGELOG, MIT LICENSE, CONTRIBUTING and issue templates from day one.
 

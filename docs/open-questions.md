@@ -32,7 +32,7 @@ and `CLAUDE.md` if a decision changes.
 ## Defaults and packaging
 
 - [ ] Default dew margin for humid sites (2 °C vs wider).
-- [ ] PyPI name: `ekos-town-crier` proposed (`town-crier` likely too similar to `towncrier`). Confirm.
+- [x] PyPI name: `ekos-towncrier` (confirmed). CLI command stays `town-crier`.
 
 ## Fixtures to record
 

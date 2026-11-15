@@ -68,6 +68,5 @@ work through `docs/open-questions.md` and record findings there and in `docs/des
 
 ## Package name
 
-PyPI distribution name is **`ekos-town-crier`** (the CLI command stays `town-crier`).
-`town-crier` is free on PyPI but likely rejected as too similar to the existing `towncrier`
-changelog tool. Confirm with Anand before first upload.
+PyPI distribution name is **`ekos-towncrier`** (confirmed by Anand; free on PyPI as of Nov 2026).
+The CLI command stays `town-crier`.
