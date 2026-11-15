@@ -244,7 +244,7 @@ A phone-first web page served by the service on the rig's local network, read-on
 | Sync | Unsynced count, destination reachable?, last flush, Flush button with progress, FITS checkbox |
 | Settings | Notifier test, thresholds, crier interval, message style, heartbeat, sync destination, units |
 
-- **Stack:** FastAPI, server-rendered HTML, htmx for live updates, uPlot for charts; all assets vendored, no CDN.
+- **Stack:** Starlette, server-rendered HTML, htmx for live updates, uPlot for charts; all assets vendored, no CDN.
 - **Never slows capture:** the GUI only reads SQLite (WAL), and all work runs at low priority.
 - **Access:** local network only; password set during first run; configurable port that avoids StellarMate's own services.
 - **Remote viewing:** out of scope; docs point to Tailscale for users who want it.
@@ -372,7 +372,7 @@ One Python process on the imaging computer: adapters feed events in, SQLite stor
 
 Because outputs only read from the store, a dead notifier, network or sync target can never lose data or block capture.
 
-- **Language and runtime:** Python 3.10+, asyncio; `dbus-next` for Ekos, raw sockets for PHD2, a light INDI XML client. No compiled dependencies.
+- **Language and runtime:** Python 3.10+, asyncio; `dbus-fast` for Ekos, raw sockets for PHD2, a light INDI XML client. Nothing that must compile at install time (dbus-fast's optional speed-ups fall back to pure Python).
 - **Platforms:** StellarMate OS (including the Arch/Flatpak release), Astroberry, any Linux with KStars; x86-64 mini PCs and Raspberry Pi (ARM64).
 - **Install:** `pipx install ekos-towncrier` then `town-crier install-service` (systemd user unit) and the wizard opens in the browser.
 - **Footprint target:** < 100 MB RAM, < 2 % CPU on a Pi 4 during a session.

@@ -21,7 +21,7 @@ and `CLAUDE.md` if a decision changes.
       `doctor` must report which it found.
 - [ ] Are PHD2 (TCP 4400) and the INDI server (TCP 7624) reachable on localhost when they run as Flatpaks?
 - [ ] Are PHD2 and INDI Flatpaks too, or native packages? Record versions.
-- [ ] Confirm Town Crier installs and runs on the host via pipx (Arch Python version, `dbus-next` works).
+- [ ] Confirm Town Crier installs and runs on the host via pipx (Arch Python version, `dbus-fast` works).
 
 ## Devices and presets
 
