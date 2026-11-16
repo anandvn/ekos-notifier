@@ -11,7 +11,7 @@ Thanks for helping. The easiest ways in don't need much Python:
 ## Development setup
 
 ```bash
-git clone https://github.com/anandvn/town-crier && cd town-crier
+git clone https://github.com/anandvn/ekos-towncrier && cd ekos-towncrier
 python -m venv .venv && . .venv/bin/activate
 pip install -e ".[dev]"
 pytest
