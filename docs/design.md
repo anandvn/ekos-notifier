@@ -30,7 +30,7 @@ A session starts automatically when the Ekos Scheduler starts (or the first Ligh
 1. **Standby** — service started at boot by systemd. Nothing is sent except the critical-battery Emergency.
 2. **Setup** — entered when Ekos connects the equipment profile. A setup log records in the background while the user focuses, polar aligns and calibrates. The GUI shows it as a live checklist.
 3. **Active** — entered on Scheduler start (or first manual Light frame, or GUI Start). Snapshot, pre-flight checks, then alerting, town crier and heartbeat begin.
-4. **Closed** — on Scheduler finish + park, GUI End, or Ekos disconnect. Summary sent, heartbeat and crier stopped, session exported for sync.
+4. **Closed** — on Scheduler finish + park, GUI End, or Ekos disconnect. Summary sent, heartbeat and crier stopped, session exported for sync. If Ekos went away while the mount was unparked, the "Ekos stopped with the mount unparked" Emergency is sent too, whatever the state.
 
 ### Setup log (recorded during Setup)
 
@@ -82,6 +82,7 @@ Priorities map onto each notifier's native levels where it has them (Pushover �
 | Mount nearing a limit with nothing capturing | Tracking within 15 min of meridian/pier limit or horizon after sequence end |
 | Meridian flip failed | Flip error, or past hour-angle limit without flipping |
 | Battery critical | < 11.5 V (12 V LiFePO4/AGM preset) |
+| Ekos stopped with the mount unparked | Ekos stops or disconnects INDI (Scheduler finish/abort, crash, or user) while the last known mount state was unparked, and Ekos hasn't reconnected within 2 min. Uses the last known `parkStatus`, since the mount's properties vanish with Ekos. Clears when the mount is seen parked again. |
 | Rig or uplink silent | External heartbeat missed past grace period (sent by the heartbeat service, not the rig) |
 
 ### High
@@ -300,7 +301,7 @@ When several devices report the same metric, a configurable priority order picks
 ### Isolation and stale data
 
 - Each adapter runs as its own supervised task; a crash or disconnect restarts it with backoff and never stops the service.
-- A metric not updated within N minutes is stale; rules never fire on stale inputs. One "sensor lost" Normal notice is sent instead.
+- A metric not updated within N minutes is stale; rules never fire on stale inputs. One "sensor lost" Normal notice is sent instead. Exception: "Ekos stopped with the mount unparked" deliberately fires on the last known park state, because losing that state is the event.
 
 ### Software versions
 
