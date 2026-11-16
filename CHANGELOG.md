@@ -17,3 +17,5 @@ Semantic Versioning.
 - Developer tools: `tools/record_night.py` (records D-Bus, PHD2 and INDI streams as a replay
   file), `tools/sim_night.py` (drives a simulated night through Ekos), `tools/scrub_replay.py`
   (removes site coordinates and hostnames before a recording is committed).
+- Design: new Emergency alert "Ekos stopped with the mount unparked", because the Ekos Scheduler
+  stops Ekos and disconnects INDI when a job finishes or aborts, even with the mount tracking.

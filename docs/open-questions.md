@@ -134,8 +134,8 @@ These change how the Ekos adapter and alert rules must work.
 - [x] **When the Scheduler finishes or aborts by itself, it stops Ekos and disconnects INDI**,
       even with the shutdown procedure disabled and the mount unparked. A manual `Scheduler.stop()`
       does not. On a real rig that leaves the mount tracking with nothing watching it, and Town
-      Crier loses the mount's properties. **Proposed Emergency rule: "Ekos stopped while the mount
-      was unparked"** (needs a decision before it goes into `design.md`).
+      Crier loses the mount's properties. **Emergency rule "Ekos stopped with the mount unparked"
+      adopted (2026-11-16)** and added to `design.md`.
 - [ ] **Scheduler guiding-stage timeout fired 1 s after the stage began**, ~300 s after a previous
       (stopped) job's guiding stage. Possibly a timer not reset on `stop()`. Unconfirmed.
 
