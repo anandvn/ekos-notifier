@@ -1,6 +1,6 @@
 site_name: Town Crier
 site_description: Alerts, hourly digests and session records for KStars/Ekos rigs
-repo_url: https://github.com/anandvn/town-crier
+repo_url: https://github.com/anandvn/ekos-towncrier
 theme:
   name: material
   palette:
