@@ -20,7 +20,9 @@ no problem.
 > and [the roadmap](docs/design.md#roadmap). Not released yet.
 >
 > What works today: `town-crier run` follows Ekos over D-Bus and records the night (sessions,
-> frames, guiding, every Ekos state change) in a local SQLite database. It sends no alerts yet.
+> frames, guiding, every Ekos state change) in a local SQLite database, and sends the first
+> alerts (session start and summary, and the "mount left unparked" Emergency) to any
+> [Apprise](https://github.com/caronc/apprise/wiki) notifier, such as Pushover.
 > To try it from a checkout, on the computer running KStars:
 >
 > ```bash

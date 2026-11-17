@@ -25,6 +25,19 @@ Semantic Versioning.
   clock tick for time-based session rules; SIGINT/SIGTERM stop it cleanly and everything queued
   is written. `--db`, `-v`.
 - Fixed: stopping the writer mid-batch or before its database was open dropped queued events.
+- Notifications. Rules (`town_crier.rules`) turn events into alerts stored as events: "Starting
+  session" and the session summary (Normal, sent at once), and the "Ekos stopped with the mount
+  unparked" Emergency (2 minutes after Ekos stops, with an all-clear when the mount parks). The
+  notifier (`town_crier.notify`) sends them through Apprise from an outbox, retrying with backoff
+  while offline; Pushover Emergencies repeat every 60 s until acknowledged (up to an hour), ntfy
+  gets matching priorities, other services get the priority in the title. Schema 3: `outbox`,
+  `consumers`. New dependencies: `apprise`, `PyYAML`.
+- Config file (`~/.config/town-crier/config.yaml`, `notify:` so far); `town-crier run --config`.
+- `town-crier config check` validates the config and every notifier URL (keys hidden).
+- `town-crier test-notify [--emergency]` sends a test message to every notifier.
+- Replay ticks the clock in recorded time (`pipeline.simulate`), so timers fire when they would
+  have on the night. The service ticks every 10 s.
+- Fixed: the writer waited its gathering window before every batch even with a backlog queued.
 - Project skeleton: design spec, briefing for contributors, CLI stub, CI, docs site scaffold.
 - Planned `town-crier config check` subcommand added to the CLI stub.
 - Stub commands exit with code 3 (not 2, which is argparse's usage-error code).
