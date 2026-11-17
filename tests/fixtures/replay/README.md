@@ -26,8 +26,11 @@ Version 0 means unstable: the format may change until the replay engine exists.
 
 ## Privacy
 
-Recordings are scrubbed before they're committed: site coordinates are replaced with a fixed
-public location and hostnames with `rig`. Check new recordings the same way.
+Recordings are scrubbed with `tools/scrub_replay.py` before they're committed: site coordinates
+(decimal and degrees-minutes forms) are replaced with a fixed public location, and hostnames with
+`rig`. It also drops noise: D-Bus traffic that doesn't involve KStars (desktop services, some with
+file paths) and INDI driver debug messages. Check new recordings the same way: search the output
+for the real coordinates, hostname and username before committing.
 
 ## Fixtures
 
