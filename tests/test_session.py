@@ -130,7 +130,7 @@ def test_ekos_gone_past_grace_closes_at_the_time_it_went():
     closed = out[-1]
     assert (closed.kind, closed.data["reason"], closed.data["ended_at"]) == (
         "session.closed",
-        "ekos_stopped",
+        "ekos_lost",  # no shutdown logged: a crash
         EVENING + 100,
     )
 
@@ -139,7 +139,7 @@ def test_setup_without_imaging_is_abandoned():
     m = manager(grace=60)
     out = feed(m, ev(0, "indi.state", state="success"), ev(10, "indi.state", state="idle"))
     out += m.tick(EVENING + 100)
-    assert lifecycle(out)[-1] == ("session.closed", "s1", "ekos_stopped", "abandoned")
+    assert lifecycle(out)[-1] == ("session.closed", "s1", "ekos_lost", "abandoned")
 
 
 def test_calibration_after_close_goes_to_last_imaging_session():
@@ -221,4 +221,55 @@ def test_m31_session_row_in_the_store(tmp_path, m31):
     assert row["night"] == "2026-11-16"
     assert len(list(store.frames(row["id"]))) == 140
     assert store.open_session() is None
+    store.close()
+
+
+def test_your_own_ekos_stop_closes_quietly_and_a_crash_does_not():
+    # Seen live: Stop in Ekos logs "Disconnecting INDI devices..." before INDI and Ekos go idle.
+    m = manager(grace=600)
+    out = feed(
+        m,
+        ev(0, "capture.frame", type="light"),
+        ev(100, "ekos.log", module="Ekos", text="Disconnecting INDI devices..."),
+        ev(100, "indi.state", state="idle"),
+        ev(102, "ekos.state", state="idle"),
+    )
+    out += m.tick(EVENING + 700)
+    assert lifecycle(out)[-1] == ("session.closed", "s1", "ekos_stopped", "closed")
+    assert out[-1].data["ended_at"] == EVENING + 100
+
+    m = manager(grace=600)
+    out = feed(m, ev(0, "capture.frame", type="light"), ev(100, "kstars.vanished"))
+    out += m.tick(EVENING + 700)
+    assert lifecycle(out)[-1] == ("session.closed", "s1", "ekos_lost", "closed")
+
+
+def test_a_shutdown_logged_long_before_doesnt_make_a_crash_orderly():
+    m = manager(grace=600)
+    out = feed(
+        m,
+        ev(0, "ekos.log", module="Ekos", text="Disconnecting INDI devices..."),
+        ev(10, "ekos.state", state="success"),
+        ev(20, "capture.frame", type="light"),
+        ev(5000, "ekos.state", state="idle"),
+    )
+    out += m.tick(EVENING + 5700)
+    assert lifecycle(out)[-1][2] == "ekos_lost"
+
+
+def test_resume_keeps_when_and_how_ekos_went(tmp_path):
+    store = Store(tmp_path / "tc.db")
+    m = manager()
+    store.append(
+        feed(
+            m,
+            ev(0, "capture.frame", type="light", filter="Ha", exposure=300.0),
+            ev(100, "ekos.log", module="Ekos", text="Disconnecting INDI devices..."),
+            ev(100, "indi.state", state="idle"),
+        )
+    )
+    m2 = SessionManager.resume(store)  # the service restarted at 100 + something
+    out = m2.tick(EVENING + 700)
+    assert lifecycle(out) == [("session.closed", "s1", "ekos_stopped", "closed")]
+    assert out[0].data["ended_at"] == EVENING + 100  # not the restart time
     store.close()

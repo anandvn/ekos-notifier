@@ -5,6 +5,12 @@ Semantic Versioning.
 
 ## Unreleased
 
+- No session summary when you stop Ekos yourself (Ekos logs "Disconnecting INDI devices…"
+  first): the session closes quietly as `ekos_stopped`. A crash (KStars vanishing, an error, Ekos
+  idle with no shutdown logged) closes as `ekos_lost` with a summary. The "mount unparked"
+  Emergency is sent either way. After a service restart, a session keeps the time and kind of
+  the Ekos stop before it and its summary counts the session's frames (it said "No light
+  frames", and the restart time as the end).
 - `ekos-notifier install-service`: a systemd user service (`ExecStart=<this Python> -m
   ekos_notifier run`, restart on failure, wanted by `default.target`), enabled and started;
   `--no-start`, `--uninstall`, `--config`. One Ekos Notifier per database: a second copy refuses

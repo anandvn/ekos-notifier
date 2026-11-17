@@ -49,11 +49,15 @@ START_REASONS = {
     "light_frame": "the first light frame was saved",
     "user": "you pressed Start",
 }
+# Session ends that send no summary: you stopped Ekos yourself (seen live: a summary 10 min after
+# your own Stop was noise). A crash ("ekos_lost") still gets one.
+QUIET_ENDS = {"ekos_stopped"}
 END_REASONS = {
     "scheduler_finished": "the Scheduler finished",
     "scheduler_aborted": "the Scheduler stopped (aborted)",
     "sequence_complete": "the capture sequence completed",
-    "ekos_stopped": "Ekos stopped",
+    "ekos_stopped": "you stopped Ekos",
+    "ekos_lost": "Ekos stopped unexpectedly (a crash, or KStars closed)",
     "night_ended": "the night ended",
     "user": "you pressed End",
 }
@@ -101,10 +105,23 @@ class Rules:
     # -- events ------------------------------------------------------------------------------
 
     def resume(
-        self, session_id: str, alerts: Iterable[Event] = (), started_at: float | None = None
+        self,
+        session_id: str,
+        alerts: Iterable[Event] = (),
+        started_at: float | None = None,
+        frames: Iterable[Any] = (),
     ) -> None:
         """The service restarted during an active session; ``alerts`` are the ones it already
-        raised, so they aren't raised again; ``started_at`` is when the session started."""
+        raised, so they aren't raised again; ``started_at`` is when the session started and
+        ``frames`` (rows with type, filter, exposure) the frames it has, for the summary."""
+        if started_at is not None:
+            self._started[session_id] = started_at
+        for f in frames:
+            if f["type"] == "light":
+                key = (f["filter"] or "no filter", f["exposure"] or 0.0)
+                self._lights[session_id][key] += 1
+            elif f["type"]:
+                self._calibration[session_id][f["type"]] += 1
         sent = [
             a.data.get("message") or a.data.get("body", "").split("\n")[0]
             for a in alerts
@@ -174,7 +191,13 @@ class Rules:
                 )
             )
         elif kind == "session.closed" and d.get("state") == "closed":
-            out.append(self._summary(event, sid))
+            if d.get("reason") in QUIET_ENDS:
+                # You stopped Ekos yourself: you're at the rig and know. Forget the counts.
+                self._started.pop(sid, None)
+                self._lights.pop(sid, None)
+                self._calibration.pop(sid, None)
+            else:
+                out.append(self._summary(event, sid))
         return out
 
     def _tick(self, now: float) -> list[Event]:
