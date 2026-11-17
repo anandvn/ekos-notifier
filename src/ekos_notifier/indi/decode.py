@@ -18,6 +18,9 @@ Kinds:
   formula) for a device that has temperature and humidity but no dew point of its own.
 - ``indi.capabilities``: ``metrics`` = {metric: [devices]}, whenever that set changes (devices
   connecting and disconnecting during the night), for "not available on this rig".
+- ``mount.coords`` (``ra`` hours, ``dec`` degrees, JNow, from a mount's EQUATORIAL_EOD_COORD) on a
+  move of more than ~3' or once a minute; ``site.location`` (``latitude``, ``longitude`` east,
+  ``elevation``, ``via`` "indi") from its GEOGRAPHIC_COORD when it changes.
 
 Driver debug and other ``message`` elements, BLOBs and everything unmapped are ignored.
 """
@@ -105,6 +108,8 @@ class IndiDecoder:
         self.devices: dict[str, Device] = {}
         self._last: dict[tuple[str, str], tuple[float, float]] = {}  # (device, metric) -> ts, v
         self._capabilities: dict[str, list[str]] = {}
+        self._pointing: dict[str, tuple[float, float, float]] = {}  # device -> ts, ra, dec
+        self._site: dict[str, tuple[float, float, float | None]] = {}
 
     def lost(self, ts: float) -> list[Event]:
         """The server went away: every metric is gone with it."""
@@ -146,6 +151,8 @@ class IndiDecoder:
                 {k: v for k, v in values.items() if v is not None}
             )
             out += self._metrics(ts, dev, prop)
+            if dev.interfaces & INTERFACES["telescope"]:
+                out += self._mount(ts, dev, prop)
             if tag.startswith("def"):
                 out += self._capabilities_changed(ts)
         return out
@@ -234,6 +241,27 @@ class IndiDecoder:
                     if first:
                         out += self._capabilities_changed(ts)
         return out
+
+    def _mount(self, ts: float, dev: Device, prop: str) -> list[Event]:
+        """A mount's pointing (EQUATORIAL_EOD_COORD) and site (GEOGRAPHIC_COORD)."""
+        values = dev.numbers.get(prop, {})
+        if prop == "EQUATORIAL_EOD_COORD" and "RA" in values and "DEC" in values:
+            ra, dec = values["RA"], values["DEC"]
+            last = self._pointing.get(dev.name)
+            # Tracking jitter isn't news: only a move of more than ~3' (or a minute's heartbeat).
+            if last is not None and ts - last[0] < HEARTBEAT:
+                if abs(dec - last[2]) < 0.05 and abs((ra - last[1] + 12) % 24 - 12) * 15 < 0.05:
+                    return []
+            self._pointing[dev.name] = (ts, ra, dec)
+            return [Event(ts, "mount.coords", {"ra": ra, "dec": dec, "device": dev.name}, SOURCE)]
+        if prop == "GEOGRAPHIC_COORD" and "LAT" in values and "LONG" in values:
+            site = (values["LAT"], (values["LONG"] + 180.0) % 360.0 - 180.0, values.get("ELEV"))
+            if self._site.get(dev.name) == site:
+                return []
+            self._site[dev.name] = site
+            data = {"latitude": site[0], "longitude": site[1], "elevation": site[2], "via": "indi"}
+            return [Event(ts, "site.location", data, SOURCE)]
+        return []
 
     def _emit(self, ts: float, device: str, metric: str, value: float, via: str) -> list[Event]:
         last = self._last.get((device, metric))

@@ -117,8 +117,8 @@ Priorities map onto each notifier's native levels where it has them (Pushover �
 
 | Event | Default trigger | Timing |
 | --- | --- | --- |
-| Target low | 30 min before altitude/horizon limit | Immediate |
-| Twilight coming | 45 min before astronomical dawn | Immediate |
+| Target low | 30 min (`alerts.target_low_warning_minutes`) before the target the mount is tracking sinks below Ekos's altitude limit: the mount limit if enabled (`[Mount] MinimumAltLimit`), else the Scheduler's constraint (`[Scheduler] SchedulerAltitudeValue`), else 10°. Once per target | Immediate |
+| Twilight coming | 45 min (`alerts.twilight_warning_minutes`) before astronomical dawn (Sun rising through −18°), once per session | Immediate |
 | Sequence complete | Sequence ends; starts the parking escalation if mount still tracking | Immediate |
 | Flats reminder | Lights done for the night | Digest |
 | Darks reminder (optional, off by default) | Dark sequence started | Digest |
@@ -131,7 +131,9 @@ Starting session (with pre-flight results) · first sub saved (thumbnail) · mer
 
 ### Quiet
 
-Meridian flip in 15 min.
+Meridian flip in 15 min: only when Ekos is set to flip (`[Mount] ExecuteMeridianFlip`), at its flip hour angle (`MeridianFlipOffsetDegrees`); held for the digest's "Since last".
+
+**Implemented** (`ekos_notifier.ephemeris`, `ekos_notifier.sky`): pure-Python sidereal time and Sun position (Meeus, low precision; checked against his worked examples, good to about a minute). The site is KStars's `location()` over D-Bus (JSON: latitude, longitude, elevation, time zone), falling back to the mount's INDI `GEOGRAPHIC_COORD`; the target is the mount's INDI `EQUATORIAL_EOD_COORD` (sent on a move of more than ~3′). Ekos's Mount D-Bus properties (`equatorialCoords`, `hourAngle`) would do too, but INDI's are already in the recordings. The digest adds "Flip in 1 h 40 min · M 31 below 10° in 3 h 54 min · Dawn in 6 h 05 min".
 
 ### Smart-alert rules
 

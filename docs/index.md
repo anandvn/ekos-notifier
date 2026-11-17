@@ -67,6 +67,11 @@ sequence enforces the limit, the time Ekos has been holding exposures), **Captur
 Ekos's reason; your own Stop isn't reported), **Scheduler aborted**, **Capture stalled** (no
 progress for twice the exposure plus download), and **Autofocus failed** (two runs in a row).
 
+Timing alerts (Normal, sent at once): **Twilight coming** 45 minutes before astronomical dawn,
+and **Target low** 30 minutes before the target sinks below Ekos's altitude limit (the mount's,
+or the Scheduler's constraint). If Ekos flips, "Meridian flip soon" goes into the digest. The
+site comes from KStars's location.
+
 Every hour on the hour during a session, an **hourly digest**: "23:00 — All's well" (sent
 silently) or "23:00 — Attention: Guiding poor", with the target, filter and job progress, lights
 and integration this hour and tonight, median guide RMS, failed dithers and everything that

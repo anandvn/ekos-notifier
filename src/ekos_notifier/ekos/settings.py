@@ -98,10 +98,12 @@ def userdb_file(k: KStarsProcess) -> Path:
     return _inside(k.root, data) / "kstars" / "userdb.sqlite"
 
 
-def read_kstarsrc(k: KStarsProcess) -> dict[str, dict[str, str]] | None:
-    """The merged ``Ekos`` and ``Guide`` groups, or None if the user file can't be read."""
+def read_kstarsrc(
+    k: KStarsProcess, groups: tuple[str, ...] = ("Ekos", "Guide")
+) -> dict[str, dict[str, str]] | None:
+    """The merged ``groups``, or None if the user file can't be read."""
     system, user = config_files(k)
-    merged: dict[str, dict[str, str]] = {"Ekos": {}, "Guide": {}}
+    merged: dict[str, dict[str, str]] = {g: {} for g in groups}
 
     def merge(path: Path) -> None:
         groups = parse_kconfig(path.read_text(errors="replace"))
@@ -222,4 +224,38 @@ def indi_server(proc: Path = Path("/proc"), uid: int | None = None) -> tuple[str
         if row is None:
             return None
         found.add((row[0] or INDI_HOST, int(row[1] or INDI_PORT)))
+    return found.pop() if len(found) == 1 else None
+
+
+@dataclass(frozen=True)
+class ObservingLimits:
+    """Ekos's own limits, from kstarsrc (defaults per kstars.kcfg)."""
+
+    flip_enabled: bool = False  # [Mount] ExecuteMeridianFlip
+    flip_offset_degrees: float = 5.0  # [Mount] MeridianFlipOffsetDegrees: hour angle of the flip
+    min_altitude: float | None = None  # mount limit if enabled, else the Scheduler's constraint
+
+
+def observing_limits(proc: Path = Path("/proc"), uid: int | None = None) -> ObservingLimits | None:
+    found = set()
+    for k in kstars_processes(proc, uid):
+        rc = read_kstarsrc(k, ("Mount", "Scheduler"))
+        if rc is None:
+            return None
+        mount, sched = rc["Mount"], rc["Scheduler"]
+        try:
+            min_alt = None
+            if mount.get("EnableAltitudeLimits", "false").lower() == "true":
+                min_alt = float(mount.get("MinimumAltLimit", 0.0))
+            if not min_alt and float(sched.get("SchedulerAltitudeValue", 0.0)) > 0:
+                min_alt = float(sched["SchedulerAltitudeValue"])
+            found.add(
+                ObservingLimits(
+                    flip_enabled=mount.get("ExecuteMeridianFlip", "false").lower() == "true",
+                    flip_offset_degrees=float(mount.get("MeridianFlipOffsetDegrees", 5.0)),
+                    min_altitude=min_alt,
+                )
+            )
+        except ValueError:
+            return None
     return found.pop() if len(found) == 1 else None

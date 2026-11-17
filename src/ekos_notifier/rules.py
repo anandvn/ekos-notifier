@@ -19,6 +19,8 @@ Rules so far:
 - **Capture aborted**, **Scheduler aborted** and **Capture stalled** (High): see
   ``ekos_notifier.capture``.
 - **Autofocus failed** (High, two failed runs in a row): see ``ekos_notifier.focus``.
+- **Twilight coming**, **Target low** (Normal) and **Meridian flip soon** (Quiet): see
+  ``ekos_notifier.sky``.
 - **Hourly digest** (Quiet, or Normal with "Attention"), which also sees every other rule's
   alerts: see ``ekos_notifier.digest``.
 - **Ekos stopped with the mount unparked** (Emergency): Ekos or INDI stops, or KStars vanishes,
@@ -40,6 +42,7 @@ from ekos_notifier.digest import DigestRule
 from ekos_notifier.events import Event
 from ekos_notifier.focus import AutofocusRule
 from ekos_notifier.guiding import RECOVERY, GuidingRule, PoorGuidingRule
+from ekos_notifier.sky import SkyRule
 
 UNPARKED_GRACE = 120.0
 MOVING = {"tracking", "slewing", "moving"}
@@ -81,11 +84,15 @@ class Rules:
         guiding_poor_window: float = 600.0,
         deviation_limit: Callable[[], float | None] = lambda: None,
         digest: DigestRule | None = None,
+        sky: SkyRule | None = None,
     ) -> None:
         self.unparked_grace = unparked_grace
         self.guiding = GuidingRule(guiding_recovery)
         self.digest = digest or DigestRule()
+        self.sky = sky or SkyRule()
+        self.digest.outlook = self.sky.outlook
         self.session_rules: list[SessionRule] = [
+            self.sky,
             CaptureRule(),
             AutofocusRule(),
             PoorGuidingRule(guiding_poor_window, deviation_limit),

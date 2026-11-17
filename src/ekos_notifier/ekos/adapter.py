@@ -15,6 +15,7 @@ method that changes anything.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 from collections.abc import Callable, Iterable
@@ -203,6 +204,28 @@ class EkosAdapter:
             code = int(plain(reply.body[0]))
             self._send(kind, {"state": states.name(table, code), "code": code, "snapshot": True})
         await self.read_strings(bus, modules)
+        if modules is None:
+            await self.read_location(bus)
+
+    async def read_location(self, bus: Any) -> None:
+        """KStars's site (``location()``: JSON with latitude, longitude, elevation, tz)."""
+        reply = await self._call(bus, KSTARS_NAME, "/KStars", KSTARS_NAME, "location", "", [])
+        if reply is None or not reply.body:
+            return
+        try:
+            loc = json.loads(str(plain(reply.body[0])))
+            data = {
+                "latitude": float(loc["latitude"]),
+                "longitude": float(loc["longitude"]),
+                "elevation": float(loc.get("elevation") or 0.0),
+                "tz": float(loc["tz"]) if loc.get("tz") is not None else None,
+                "name": loc.get("name"),
+                "via": "kstars",
+            }
+        except (ValueError, KeyError, TypeError):
+            log.debug("KStars location() not understood: %r", reply.body[0])
+            return
+        self._send("site.location", data)
 
     async def read_strings(self, bus: Any, modules: Iterable[str] | None = None) -> None:
         """Capture's camera and target names; an event only when one changes."""

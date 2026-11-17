@@ -21,7 +21,7 @@ from __future__ import annotations
 import re
 import statistics
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta
 
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert
@@ -92,6 +92,7 @@ class DigestRule(SessionRule):
         self._capture_target: str | None = None  # Ekos Capture's targetName (manual sessions)
         self._camera: str | None = None  # the imaging camera, from Ekos Capture
         self._metrics: dict[tuple[str, str], float] = {}  # (metric, device) -> latest value
+        self.outlook: Callable[[float], str] = lambda now: ""  # "Flip in … · Dawn in …" (sky)
 
     # -- session -----------------------------------------------------------------------------
 
@@ -310,6 +311,9 @@ class DigestRule(SessionRule):
         conditions = self._conditions()
         if conditions:
             lines.append(conditions)
+        outlook = self.outlook(due)
+        if outlook:
+            lines.append(outlook)
         if self._since:
             events = "; ".join(f"{hhmm(t)} {what}" for t, what in sorted(self._since))
             lines.append(f"Since last: {events}.")
