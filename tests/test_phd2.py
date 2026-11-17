@@ -194,7 +194,7 @@ def test_m31_guiding_story():
 def test_merged_replay_keeps_file_order():
     _, records = replay.read(FIXTURE)
     events = list(replay.events(records))
-    assert {e.source for e in events} == {"ekos", "phd2"}
+    assert {e.source for e in events} == {"ekos", "phd2", "indi"}
     assert all(a.ts <= b.ts + 1.0 for a, b in zip(events, events[1:], strict=False))
 
 

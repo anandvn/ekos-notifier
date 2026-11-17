@@ -314,9 +314,18 @@ When several devices report the same metric, a configurable priority order picks
 2. **Heuristic:** numeric properties whose elements look like VOLTAGE, TEMPERATURE, HUMIDITY, DEW_POINT; the wizard asks the user to confirm each match.
 3. **Manual:** property mapping in config.
 
+### Implemented so far (`ekos_notifier.indi`)
+
+- **Client:** read-only. It sends `getProperties` only (no `new*`, BLOBs never enabled), to the INDI server of the active Ekos profile (`userdb.sqlite` `profile` `host`/`port`; empty means local mode on localhost:7624; `indi.host`/`indi.port` in config override it). It retries quietly while the server is down (it only runs while Ekos is connected).
+- **Metrics:** presets match devices by INDI interface bits (`DRIVER_INTERFACE`: 2 camera, 8 focuser, 128 weather, …, checked against the simulators) or driver executable, and map `PROPERTY.ELEMENT` to canonical metrics. Built-in and verified on the simulators: weather stations (`WEATHER_PARAMETERS` temperature, humidity, dew point), camera temperature (`CCD_TEMPERATURE`) and focuser temperature. Anything else is mapped in config, `metric: "Device / PROPERTY.ELEMENT"`. The dew point is derived (Magnus) for a device with temperature and humidity but none of its own.
+- **Events:** `metric` (`metric`, `value`, `device`, `via`) when a value moves past a small deadband or at least once a minute; `indi.device` on connect/disconnect; `indi.capabilities` (metric → devices) whenever the set changes, which it does as Ekos connects and disconnects equipment. Samples are stored with their source device (schema 4), and each frame gets the imaging camera's temperature (Ekos Capture's `camera`, or the name in its log lines).
+- **Digest:** camera temperature, ambient, RH and dew margin.
+- **`ekos-notifier indi-dump`:** every device's properties to a file, site location removed, with what's recognised and the readings that could be mapped.
+- **Not yet:** power-box presets (need `indi-dump` output from real devices), heuristic detection with confirmation (needs the wizard), stale-metric notices, and the alerts that use the metrics (dew risk, battery, cooler).
+
 ### Presets as data
 
-- Presets are YAML files in `presets/`, contributed by pull request with no Python required.
+- Presets are YAML files in `src/ekos_notifier/indi/presets/`, contributed by pull request with no Python required.
 - `ekos-notifier indi-dump` writes a device's full property list for attaching to a "support my device" issue.
 - Each preset is labelled verified, community or untested; the wizard shows the label.
 

@@ -26,6 +26,9 @@ from ekos_notifier.digest import DigestRule
 from ekos_notifier.ekos.adapter import EkosAdapter
 from ekos_notifier.ekos.settings import guide_deviation_limit
 from ekos_notifier.events import Event
+from ekos_notifier.indi.adapter import IndiAdapter
+from ekos_notifier.indi.decode import IndiDecoder
+from ekos_notifier.indi.presets import load_builtin
 from ekos_notifier.notify import Notifier, init_cursor
 from ekos_notifier.phd2.adapter import Phd2Adapter
 from ekos_notifier.pipeline import TICK, Pipeline
@@ -47,6 +50,14 @@ def phd2_source(emit: Emit) -> Coroutine[Any, Any, None]:
     return Phd2Adapter(emit).run()
 
 
+def indi_source(config: Config) -> Source:
+    def source(emit: Emit) -> Coroutine[Any, Any, None]:
+        decoder = IndiDecoder(load_builtin(), config.indi_mappings)
+        return IndiAdapter(emit, decoder, host=config.indi_host, port=config.indi_port).run()
+
+    return source
+
+
 SOURCES: tuple[Source, ...] = (ekos_source, phd2_source)
 
 
@@ -54,7 +65,7 @@ async def serve(
     db_path: str | Path,
     *,
     config: Config | None = None,
-    sources: Iterable[Source] = SOURCES,
+    sources: Iterable[Source] | None = None,
     notifier: Notifier | None = None,
     tick: float = TICK,
     clock: Callable[[], float] = time.time,
@@ -63,6 +74,8 @@ async def serve(
     """Run until ``stop`` is set (or SIGINT/SIGTERM when ``stop`` isn't given)."""
     db_path = Path(db_path)
     config = config or Config()
+    if sources is None:
+        sources = (*SOURCES, indi_source(config))
     store = Store(db_path)  # migrates, and tells us where the last run left off
     manager = SessionManager.resume(store)
     resumed_alerts = (

@@ -1,0 +1,8 @@
+# Any INDI focuser with a temperature probe.
+name: INDI focuser (temperature probe)
+status: verified
+verified_with: indi_simulator_focus (libindi 2.2.5)
+match:
+  interface: focuser
+metrics:
+  focuser.temperature: FOCUS_TEMPERATURE.TEMPERATURE

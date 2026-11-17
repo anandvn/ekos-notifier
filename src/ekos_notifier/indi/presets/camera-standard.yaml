@@ -1,0 +1,8 @@
+# Any INDI camera: the CCD interface's standard temperature property.
+name: INDI camera (standard temperature)
+status: verified
+verified_with: indi_simulator_ccd, indi_simulator_guide (libindi 2.2.5)
+match:
+  interface: ccd
+metrics:
+  camera.temperature: CCD_TEMPERATURE.CCD_TEMPERATURE_VALUE

@@ -14,7 +14,6 @@ EXIT_NOT_IMPLEMENTED = 3
 
 PLANNED = {
     "doctor": "check D-Bus, PHD2, INDI, clock, disk, notifier and sync, and suggest fixes",
-    "indi-dump": "write all INDI device properties to a file for a device-support request",
     "simulate": "replay a recorded night to preview alerts",
     "install-service": "install the systemd user service",
 }
@@ -57,6 +56,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="send at Emergency priority (Pushover repeats it until you acknowledge it)",
     )
 
+    dump = sub.add_parser(
+        "indi-dump",
+        help="write your INDI devices' properties to a file, for a device-support request",
+        description="Connect to the INDI server (read-only), write every device's properties to "
+        "a file with the site location removed, and list what Ekos Notifier recognises and the "
+        "readings that could be mapped in the config. Connect your equipment in Ekos first.",
+    )
+    dump.add_argument("-o", "--output", metavar="FILE", default="indi-dump.xml")
+    dump.add_argument("--host", help="INDI server (default: the active Ekos profile's)")
+    dump.add_argument("--port", type=int, help="INDI port (default: the profile's, or 7624)")
+    dump.add_argument("--seconds", type=float, default=5.0, help="how long to listen (default 5)")
+    dump.add_argument("--config", metavar="PATH", help=CONFIG_HELP)
+
     for name, help_text in PLANNED.items():
         sub.add_parser(name, help=f"{help_text} (not yet implemented)")
 
@@ -82,6 +94,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_test_notify(args)
     if args.command == "config":
         return cmd_config_check(args)
+    if args.command == "indi-dump":
+        return cmd_indi_dump(args)
     print(f"ekos-notifier {args.command}: not implemented yet (pre-alpha).", file=sys.stderr)
     return EXIT_NOT_IMPLEMENTED
 
@@ -160,7 +174,44 @@ def cmd_config_check(args: argparse.Namespace) -> int:
         print(f"  digest: every {cfg.digest_interval_minutes:g} min, {when}")
     else:
         print("  digest: off")
+    if cfg.indi_host or cfg.indi_port:
+        print(f"  indi: {cfg.indi_host or 'localhost'}:{cfg.indi_port or 7624} (set in config)")
+    else:
+        print("  indi: the active Ekos profile's server")
+    for m in cfg.indi_mappings:
+        print(f"  indi metric: {m.metric} <- {m.device} / {m.prop}.{m.element}")
     return 1 if problems else 0
+
+
+def cmd_indi_dump(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from ekos_notifier.ekos.settings import INDI_HOST, INDI_PORT, indi_server
+    from ekos_notifier.indi import dump
+    from ekos_notifier.indi.presets import load_builtin
+
+    cfg = _load_config(args.config)
+    if cfg is None:
+        return 1
+    found = indi_server() or (INDI_HOST, INDI_PORT)
+    host = args.host or cfg.indi_host or found[0]
+    port = args.port or cfg.indi_port or found[1]
+    try:
+        elements = asyncio.run(dump.collect(host, port, args.seconds))
+    except (OSError, asyncio.TimeoutError) as exc:
+        print(f"Can't reach the INDI server on {host}:{port} ({exc}).", file=sys.stderr)
+        print("Start Ekos with your equipment profile first.", file=sys.stderr)
+        return 1
+    if not elements:
+        print(f"The INDI server on {host}:{port} sent no properties.", file=sys.stderr)
+        return 1
+    out = Path(args.output)
+    dump.write(dump.scrub(elements), out)
+    for line in dump.summary(elements, load_builtin()):
+        print(line)
+    print(f"\nWrote {len(elements)} properties to {out} (site location removed).")
+    print("Attach it to a 'Device support' issue, or map a candidate in the config's indi.metrics.")
+    return 0
 
 
 def cmd_test_notify(args: argparse.Namespace) -> int:

@@ -194,3 +194,25 @@ def test_open_problems_survive_a_restart():
         out += rules.tick(T + t)
     (d,) = [a for a in out if a.data.get("rule") == "digest"]
     assert d.data["title"] == "21:35 \u2014 Attention: Capture aborted"
+
+
+def test_conditions_from_indi_and_the_manual_target():
+    def metric(offset, name, value, device):
+        return Event(
+            T + offset, "metric", {"metric": name, "value": value, "device": device}, "indi"
+        )
+
+    events = START + [
+        ev(5, "capture.target", target="NGC 7000"),
+        ev(6, "ekos.log", module="Capture", text="[Main Cam] Capturing 300.000-second Ha image..."),
+        metric(10, "camera.temperature", -10.04, "Main Cam"),
+        metric(10, "camera.temperature", 21.0, "Guide Cam"),
+        metric(10, "env.temperature", 14.2, "Weather"),
+        metric(10, "env.humidity", 78.0, "Weather"),
+        metric(10, "env.dewpoint", 10.1, "Weather"),
+        light(300),
+    ]
+    (d,) = run(events, until=1810)
+    lines = d.data["body"].splitlines()
+    assert lines[0].startswith("NGC 7000 · Ha")
+    assert "Camera -10.0 °C · Ambient 14.2 °C · RH 78% · Dew margin 4.1 °C." in lines

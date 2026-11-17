@@ -1,0 +1,12 @@
+# Any INDI weather device: the weather interface's standard parameters.
+name: INDI weather (standard parameters)
+status: verified        # verified | community | untested
+verified_with: indi_simulator_weather (libindi 2.2.5)
+match:
+  interface: weather
+metrics:
+  env.temperature: WEATHER_PARAMETERS.WEATHER_TEMPERATURE
+  env.humidity: WEATHER_PARAMETERS.WEATHER_HUMIDITY
+  env.dewpoint: WEATHER_PARAMETERS.WEATHER_DEWPOINT
+# Not readings: WEATHER_TEMPERATURE / WEATHER_HUMIDITY *vectors* hold alert thresholds, and the
+# simulator's WEATHER_CONTROL holds its knobs. Only WEATHER_PARAMETERS elements are used.

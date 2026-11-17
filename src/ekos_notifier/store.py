@@ -21,6 +21,7 @@ import json
 import logging
 import math
 import os
+import re
 import sqlite3
 from collections.abc import Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor
@@ -107,8 +108,16 @@ MIGRATIONS = [
     );
     CREATE INDEX outbox_pending ON outbox (status, next_try);
     """,
+    # 4: where a sample came from (two cameras both report camera.temperature).
+    """
+    ALTER TABLE samples ADD COLUMN source TEXT;
+    """,
 ]
 
+# A frame's camera temperature: the imaging camera's last reading at most this old. Readings
+# are sent when they change or at least once a minute (ekos_notifier.indi.decode.HEARTBEAT).
+CAMERA_TEMP_MAX_AGE = 180.0
+CAMERA_IN_LOG = re.compile(r"^\[([^\]]+)\] ")
 # A frame's guide RMS is the last guide.rms seen at most this many seconds before it.
 GUIDE_RMS_MAX_AGE = 30.0
 
@@ -132,6 +141,8 @@ class Store:
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA foreign_keys=ON")
         self._guide_rms: tuple[float, float] | None = None  # (ts, total)
+        self._camera: str | None = None  # the imaging camera, from Ekos Capture
+        self._camera_temps: dict[str, tuple[float, float]] = {}  # device -> (ts, temperature)
 
     def close(self) -> None:
         self.db.close()
@@ -191,13 +202,26 @@ class Store:
                     (event.ts, "guide.rms", total),
                 ],
             )
+        elif event.kind == "metric":
+            self.db.execute(
+                "INSERT INTO samples (ts, metric, value, source) VALUES (?, ?, ?, ?)",
+                (event.ts, d["metric"], d["value"], d.get("device")),
+            )
+            if d["metric"] == "camera.temperature" and d.get("device"):
+                self._camera_temps[d["device"]] = (event.ts, d["value"])
+        elif event.kind == "capture.camera" and d.get("camera"):
+            self._camera = d["camera"]
+        elif event.kind == "ekos.log" and self._camera is None and d.get("module") == "Capture":
+            if m := CAMERA_IN_LOG.match(str(d.get("text", ""))):
+                self._camera = m.group(1)  # "[CCD Simulator] Capturing…": Capture's camera
         elif event.kind == "capture.frame":
             rms = None
             if self._guide_rms and 0 <= event.ts - self._guide_rms[0] <= GUIDE_RMS_MAX_AGE:
                 rms = self._guide_rms[1]
             self.db.execute(
                 "INSERT INTO frames (event_id, session_id, ts, type, filter, exposure, hfr,"
-                " star_count, guide_rms, file) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                " star_count, guide_rms, camera_temp, file)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     event_id,
                     session_id,
@@ -208,6 +232,7 @@ class Store:
                     d.get("hfr"),
                     d.get("star_count"),
                     rms,
+                    self._camera_temp(event.ts),
                     d.get("file"),
                 ),
             )
@@ -302,12 +327,27 @@ class Store:
             self.db.execute("SELECT * FROM frames WHERE session_id = ? ORDER BY ts", (session_id,))
         )
 
-    def samples(self, metric: str, since: float = 0.0) -> list[tuple[float, float]]:
-        rows = self.db.execute(
-            "SELECT ts, value FROM samples WHERE metric = ? AND ts >= ? ORDER BY ts",
-            (metric, since),
-        )
+    def samples(
+        self, metric: str, since: float = 0.0, source: str | None = None
+    ) -> list[tuple[float, float]]:
+        sql = "SELECT ts, value FROM samples WHERE metric = ? AND ts >= ?"
+        params: list[Any] = [metric, since]
+        if source is not None:
+            sql += " AND source = ?"
+            params.append(source)
+        rows = self.db.execute(sql + " ORDER BY ts", params)
         return [(r[0], r[1]) for r in rows]
+
+    def _camera_temp(self, ts: float) -> float | None:
+        """The imaging camera's temperature (Ekos Capture's camera; the only one if just one
+        reports), if read within CAMERA_TEMP_MAX_AGE."""
+        name = self._camera
+        if name is None and len(self._camera_temps) == 1:
+            name = next(iter(self._camera_temps))
+        reading = self._camera_temps.get(name) if name else None
+        if reading and 0 <= ts - reading[0] <= CAMERA_TEMP_MAX_AGE:
+            return reading[1]
+        return None
 
 
 class EventWriter:

@@ -194,3 +194,32 @@ def guide_deviation_limit(proc: Path = Path("/proc"), uid: int | None = None) ->
         except ValueError:
             return None
     return values.pop() if len(values) == 1 else None
+
+
+INDI_HOST = "localhost"
+INDI_PORT = 7624
+
+
+def indi_server(proc: Path = Path("/proc"), uid: int | None = None) -> tuple[str, int] | None:
+    """The INDI server the active Ekos profile uses (``profile`` ``host``/``port``; empty means
+    local mode: Ekos starts its own server on localhost:7624). None if it can't be read."""
+    found = set()
+    for k in kstars_processes(proc, uid):
+        rc = read_kstarsrc(k)
+        if rc is None:
+            return None
+        name = rc["Ekos"].get("profile") or DEFAULT_PROFILE
+        try:
+            con = sqlite3.connect(f"file:{quote(str(userdb_file(k)))}?mode=ro", uri=True, timeout=2)
+            try:
+                row = con.execute(
+                    "SELECT host, port FROM profile WHERE name = ?", (name,)
+                ).fetchone()
+            finally:
+                con.close()
+        except sqlite3.Error:
+            return None
+        if row is None:
+            return None
+        found.add((row[0] or INDI_HOST, int(row[1] or INDI_PORT)))
+    return found.pop() if len(found) == 1 else None

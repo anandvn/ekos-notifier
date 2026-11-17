@@ -13,6 +13,8 @@ from typing import Any
 
 import yaml
 
+from ekos_notifier.indi.decode import Mapping
+
 
 class ConfigError(Exception):
     """A config problem, worded for the user."""
@@ -28,6 +30,9 @@ class Config:
     digest_enabled: bool = True
     digest_interval_minutes: float = 60.0
     digest_align_to_clock: bool = True
+    indi_host: str | None = None
+    indi_port: int | None = None
+    indi_mappings: list[Mapping] = field(default_factory=list)
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -71,6 +76,21 @@ def load(path: str | Path | None = None) -> Config:
     interval = _minutes(path, "digest.interval_minutes", digest.get("interval_minutes", 60))
     if interval == 0:
         raise ConfigError(f"{path}: 'digest.interval_minutes' must be more than 0")
+    indi = raw.get("indi") or {}
+    if not isinstance(indi, dict):
+        raise ConfigError(f"{path}: 'indi' must be a section of settings (key: value)")
+    host = indi.get("host") or None
+    if host is not None and not isinstance(host, str):
+        raise ConfigError(f"{path}: 'indi.host' must be a host name")
+    port = indi.get("port") or None
+    if port is not None and (isinstance(port, bool) or not isinstance(port, int) or port < 1):
+        raise ConfigError(f"{path}: 'indi.port' must be a port number")
+    mappings = []
+    for metric, target in (indi.get("metrics") or {}).items():
+        try:
+            mappings.append(Mapping.parse(str(metric), str(target)))
+        except ValueError as exc:
+            raise ConfigError(f"{path}: indi.metrics: {exc}") from None
     return Config(
         path=path,
         notify=[u.strip() for u in notify if u.strip()],
@@ -82,6 +102,9 @@ def load(path: str | Path | None = None) -> Config:
         digest_align_to_clock=_bool(
             path, "digest.align_to_clock", digest.get("align_to_clock", True)
         ),
+        indi_host=host,
+        indi_port=port,
+        indi_mappings=mappings,
         raw=raw,
     )
 
