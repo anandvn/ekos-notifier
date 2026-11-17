@@ -114,6 +114,15 @@ and `CLAUDE.md` if a decision changes.
       `disconnectGuider`/`connectGuider`. Next try: restart KStars itself before recording, or drop
       the Guide step from the job and let the scenario run guiding itself. Partial recordings are
       kept off-repo for reference.
+      **Nearly (2026-11-16).** With KStars freshly started and its simulation clock running
+      (KStars had been launched with `--paused`; whether that caused the stall is unconfirmed),
+      the Scheduler's Guide step worked. A manually built Scheduler job (IC 410, narrowband 300 s +
+      LRGB 120 s, then flats) ran 21:34–03:39: slew → autofocus → plate solve → guiding → capture
+      → meridian flip (01:41, guiding recalibrated and settled in under 2 min) → R/G/B panel
+      flats. KStars then segfaulted (see below), so there is no clean job end or park. The
+      scrubbed recording (21:39–03:46, 9.4 MB) is kept off-repo until we decide how to store
+      fixtures. Still needed: a short run (~45 min, target ~10 min east of the meridian, panel
+      flats only) that reaches the job end, the Scheduler's Ekos shutdown and the park.
 
 ## Ekos behaviour found while recording (KStars 3.8.5)
 
@@ -136,6 +145,32 @@ These change how the Ekos adapter and alert rules must work.
       does not. On a real rig that leaves the mount tracking with nothing watching it, and Town
       Crier loses the mount's properties. **Emergency rule "Ekos stopped with the mount unparked"
       adopted (2026-11-16)** and added to `design.md`.
+- [ ] **KStars 3.8.5 (Flatpak) segfaults at the wall-flat step**, reproduced twice (19:08 and
+      03:40 on 2026-11-16) with identical backtraces in Qt widget painting. Both times it came
+      right after the R/G/B panel flats, when the next flat job slewed to the wall position
+      ("Slew to wall position complete, tracking stopped"); the log ends there and the crash
+      follows 70–85 s later. Guess (unconfirmed): a light-source prompt dialog. Both times the
+      INDI server outlived KStars, leaving the mount **unparked with nothing watching it**: the
+      Emergency rule's case, reached by a crash. Workaround: panel flats only. To report upstream,
+      reproduce with the KStars debug extension for a symbolised backtrace.
+- [x] **Ekos disables the meridian flip during polar alignment** ("Meridian flip set inactive
+      during polar alignment", re-activated when it finishes). Not a fault.
+- [x] **The Scheduler logs each job stage as a readable line** ("Job 'X' is slewing to target",
+      "… is focusing", "… guiding is in progress", "… capture is in progress"), plus per-filter
+      progress and a time-to-complete estimate. A simpler source for job progress than mapping
+      the `status` integers; worth checking whether the same strings reach D-Bus (`newLog`).
+- [x] **A manual autofocus failure ran three attempts**, the third logged as both "aborted" and
+      "failed", and Capture then aborted its exposure ("Autofocus failed. Aborting exposure").
+      Confirms the retry-loop note above; the rule must also not count "aborted" twice.
+- [ ] **`captureComplete` reports `hfr = -1` and `starCount = 0` for every light frame**, with
+      stars plainly present (guiding and plate solving worked). Find out whether Capture only
+      measures HFR when an option is on; the session summary's median HFR depends on it.
+- [x] **Verbose logging floods the INDI stream** with driver debug messages (`[DEBUG]`,
+      `[SCOPE]`, `[ALIGNMENT]`: ~60 % of the records in a recording). The INDI adapter should ignore them;
+      `scrub_replay.py` now drops them from fixtures.
+- [x] **A slew to the zenith (e.g. for flats) has a declination equal to the site latitude**, so the
+      latitude leaks into INDI messages as `dd:mm:ss`. `scrub_replay.py` now scrubs sexagesimal
+      forms too.
 - [ ] **Scheduler guiding-stage timeout fired 1 s after the stage began**, ~300 s after a previous
       (stopped) job's guiding stage. Possibly a timer not reset on `stop()`. Unconfirmed.
 
