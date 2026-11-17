@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import gzip
 import json
+import xml.etree.ElementTree as ET
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any
 
 from ekos_notifier.ekos.decode import decode_name_owner_changed, decode_signal
 from ekos_notifier.events import Event
+from ekos_notifier.indi.decode import IndiDecoder
+from ekos_notifier.indi.presets import load_builtin
 from ekos_notifier.phd2.decode import Phd2Decoder
 
 FORMAT = "ekos-notifier-replay/0"
@@ -33,13 +36,21 @@ def read(path: str | Path) -> tuple[dict[str, Any], Iterator[dict[str, Any]]]:
     return meta, records()
 
 
-def events(records: Iterable[dict[str, Any]]) -> Iterator[Event]:
-    """Every source in the recording, in file order, through the live adapters' decoders."""
+def events(records: Iterable[dict[str, Any]], indi: IndiDecoder | None = None) -> Iterator[Event]:
+    """Every source in the recording, in file order, through the live adapters' decoders.
+    INDI elements use the built-in presets unless ``indi`` (a decoder) is given."""
     phd2 = Phd2Decoder()
+    indi = indi or IndiDecoder(load_builtin())
     for rec in records:
         src = rec.get("src")
         if src == "dbus":
             yield from _dbus(rec)
+        elif src == "indi" and rec.get("xml"):
+            try:
+                element = ET.fromstring(rec["xml"])
+            except ET.ParseError:
+                continue
+            yield from indi.feed(rec["t"], element)
         elif src == "phd2" and isinstance(rec.get("msg"), dict):
             yield from phd2.feed(rec["t"], rec["msg"])
         elif src == "recorder" and rec.get("stream") == "phd2" and rec.get("event") != "connected":

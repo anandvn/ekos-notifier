@@ -5,6 +5,15 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **INDI adapter** (`ekos_notifier.indi`): a read-only client of the INDI server the Ekos
+  profile uses. Presets (YAML, by interface or driver) map device properties to canonical
+  metrics: weather stations, camera and focuser temperatures built in; anything else via
+  `indi.metrics` in the config. Dew point derived when a device has temperature and humidity.
+  `metric`, `indi.device` and `indi.capabilities` events; samples keep their source device
+  (schema 4) and frames get the imaging camera's temperature. The digest shows camera
+  temperature, ambient, RH and dew margin, and the Capture target for manual sessions.
+  `ekos-notifier indi-dump` writes every device's properties (site location removed) and lists
+  candidate readings.
 - **Hourly digest** (`ekos_notifier.digest`): on the hour during a session, "HH:MM — All's
   well" (Quiet, sent silently) or "HH:MM — Attention: …" (Normal) when a problem was raised and
   not cleared, or is still open. Target, filter, job progress, lights and integration this

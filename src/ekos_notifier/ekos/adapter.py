@@ -57,6 +57,12 @@ SNAPSHOT = (
     ("Guide", "status", "guide.state", "guide"),
     ("Align", "status", "align.state", "align"),
 )
+# Text properties, read on connect and after each saved frame (no change signal for them):
+# (module, property, event kind, data key). Sent only when the value changes.
+STRINGS = (
+    ("Capture", "camera", "capture.camera", "camera"),
+    ("Capture", "targetName", "capture.target", "target"),
+)
 
 
 def _path(module: str) -> str:
@@ -82,6 +88,7 @@ class EkosAdapter:
         self._backoff = backoff
         self._bus: Any = None
         self._tasks: set[asyncio.Task] = set()
+        self._strings: dict[str, str] = {}  # event kind -> last value sent
 
     # -- lifecycle -------------------------------------------------------------------------
 
@@ -166,6 +173,8 @@ class EkosAdapter:
                 self._spawn(self.snapshot(self._bus, modules=[str(plain(msg.body[0]))]))
             for event in decode_signal(now, msg.path, msg.member, list(msg.body)):
                 self._emit(event)
+            if msg.member == "captureComplete":
+                self._spawn(self.read_strings(self._bus))
         except Exception:  # noqa: BLE001
             log.exception("Ekos adapter: could not decode %s %s", msg.path, msg.member)
         return None
@@ -193,6 +202,31 @@ class EkosAdapter:
                 continue
             code = int(plain(reply.body[0]))
             self._send(kind, {"state": states.name(table, code), "code": code, "snapshot": True})
+        await self.read_strings(bus, modules)
+
+    async def read_strings(self, bus: Any, modules: Iterable[str] | None = None) -> None:
+        """Capture's camera and target names; an event only when one changes."""
+        if bus is None:
+            return
+        wanted = None if modules is None else set(modules)
+        for module, prop, kind, key in STRINGS:
+            if wanted is not None and module not in wanted:
+                continue
+            reply = await self._call(
+                bus,
+                KSTARS_NAME,
+                _path(module),
+                "org.freedesktop.DBus.Properties",
+                "Get",
+                "ss",
+                [_interface(module), prop],
+            )
+            if reply is None or not reply.body:
+                continue
+            value = str(plain(reply.body[0])).strip()
+            if value and self._strings.get(kind) != value:
+                self._strings[kind] = value
+                self._send(kind, {key: value})
 
     # -- helpers -------------------------------------------------------------------------------
 

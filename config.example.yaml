@@ -28,6 +28,17 @@ heartbeat:
   url: ""
   grace_minutes: 30
 
+# INDI devices, read only. The server is the active Ekos profile's; set host/port only to
+# override it. Devices are recognised by presets (weather stations, camera and focuser
+# temperatures so far). Map anything else yourself as metric: "Device / PROPERTY.ELEMENT";
+# `ekos-notifier indi-dump` lists your devices' properties.
+indi:
+  host: ""
+  port: 0
+  metrics: {}
+  #  power.voltage: "Pegasus PPBA / POWER_SENSORS.SENSOR_VOLTAGE"
+  #  env.humidity: "My Sensor / HUMIDITY.VALUE"
+
 # Power. preset: auto | none | mains | <preset name from presets/>
 power:
   preset: auto

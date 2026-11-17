@@ -58,7 +58,22 @@ Every hour on the hour during a session, an **hourly digest**: "23:00 — All's 
 silently) or "23:00 — Attention: Guiding poor", with the target, filter and job progress, lights
 and integration this hour and tonight, median guide RMS, failed dithers and everything that
 happened since the last one. Set it in the config's `digest:` section (`enabled`,
-`interval_minutes`, `align_to_clock`). Stops Ekos makes on purpose (meridian flip, slews, autofocus, plate
+`interval_minutes`, `align_to_clock`).
+
+### INDI devices
+
+Ekos Notifier also reads your INDI devices (read only, from the server your Ekos profile uses):
+weather stations, camera and focuser temperatures are recognised automatically, and the digest
+shows camera temperature, ambient, humidity and dew margin. For anything else (a power box, a
+USB temperature/humidity sensor), run `ekos-notifier indi-dump` with your equipment connected:
+it lists your devices and the readings that could be used, and writes a file you can attach to a
+"Device support" issue. Map a reading yourself in the config:
+
+```yaml
+indi:
+  metrics:
+    power.voltage: "Pegasus PPBA / POWER_SENSORS.SENSOR_VOLTAGE"
+``` Stops Ekos makes on purpose (meridian flip, slews, autofocus, plate
 solving, flats with tracking off, the end of the run) don't count. If an alert can't be delivered because the rig is
 offline, it's retried for 10 minutes and then dropped, never sent late; it stays in the session
 record. Change the window with `notify_expire_minutes` in the config.

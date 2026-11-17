@@ -47,6 +47,7 @@ OPEN_UNTIL = {
 }
 NOT_LISTED = {"digest", "session_started"}
 JOB = re.compile(r"Job '(.+?)' ")
+CAMERA = re.compile(r"^\[([^\]]+)\] ")
 JOB_PLAN = re.compile(r"Job requires ([\d.]+)-second (.+?) images, has (\d+)/(\d+) frames")
 MILESTONES = {
     "Meridian flip completed OK": "meridian flip complete",
@@ -88,6 +89,9 @@ class DigestRule(SessionRule):
         self._target: str | None = None
         self._filter: str | None = None
         self._job: tuple[str, float, int, int] | None = None  # filter, exposure, done, planned
+        self._capture_target: str | None = None  # Ekos Capture's targetName (manual sessions)
+        self._camera: str | None = None  # the imaging camera, from Ekos Capture
+        self._metrics: dict[tuple[str, str], float] = {}  # (metric, device) -> latest value
 
     # -- session -----------------------------------------------------------------------------
 
@@ -167,6 +171,15 @@ class DigestRule(SessionRule):
                 self._calibration[d["type"]] += 1
             if d.get("filter"):
                 self._filter = d["filter"]
+        elif kind == "metric" and isinstance(d.get("value"), (int, float)):
+            self._metrics[(d["metric"], d.get("device") or "")] = float(d["value"])
+        elif kind == "indi.capabilities":
+            available = {(m, dev) for m, devices in d.get("metrics", {}).items() for dev in devices}
+            self._metrics = {k: v for k, v in self._metrics.items() if k in available}
+        elif kind == "capture.camera" and d.get("camera"):
+            self._camera = d["camera"]
+        elif kind == "capture.target" and d.get("target"):
+            self._capture_target = d["target"]
         elif kind == "guide.rms" and d.get("ra") is not None and d.get("dec") is not None:
             self._rms.append((float(d["ra"]) ** 2 + float(d["dec"]) ** 2) ** 0.5)
         elif kind == "phd2.settle" and d.get("ok") is False:
@@ -175,6 +188,8 @@ class DigestRule(SessionRule):
             self._dither_fails += 1
         elif kind == "ekos.log":
             text = str(d.get("text", ""))
+            if self._camera is None and d.get("module") == "Capture" and (m := CAMERA.match(text)):
+                self._camera = m.group(1)  # "[CCD Simulator] Capturing…": Capture's camera
             if d.get("module") == "Scheduler" and (m := JOB.search(text)):
                 self._target = m.group(1)
             elif m := JOB_PLAN.search(text):
@@ -201,6 +216,32 @@ class DigestRule(SessionRule):
         return [digest]
 
     # -- helpers -------------------------------------------------------------------------------
+
+    def _metric(self, metric: str, device: str | None = None) -> float | None:
+        if device is not None:
+            return self._metrics.get((metric, device))
+        values = [v for (m, _), v in sorted(self._metrics.items()) if m == metric]
+        return values[0] if values else None
+
+    def _conditions(self) -> str:
+        """Camera temperature, ambient, humidity and dew margin, from INDI, when available."""
+        parts = []
+        cameras = [dev for (m, dev) in self._metrics if m == "camera.temperature"]
+        camera = (
+            self._camera if self._camera in cameras else (cameras[0] if len(cameras) == 1 else None)
+        )
+        if camera is not None:
+            parts.append(f"Camera {self._metric('camera.temperature', camera):.1f} \u00b0C")
+        ambient = self._metric("env.temperature")
+        humidity = self._metric("env.humidity")
+        dew = self._metric("env.dewpoint")
+        if ambient is not None:
+            parts.append(f"Ambient {ambient:.1f} \u00b0C")
+        if humidity is not None:
+            parts.append(f"RH {humidity:.0f}%")
+        if ambient is not None and dew is not None:
+            parts.append(f"Dew margin {ambient - dew:.1f} \u00b0C")
+        return " \u00b7 ".join(parts) + "." if parts else ""
 
     def _close(self, rule: str) -> None:
         """A problem without an all-clear alert is over: the rig is working again."""
@@ -233,7 +274,7 @@ class DigestRule(SessionRule):
             "Attention: " + ", ".join(problems) if problems else "All's well"
         )
         lines = []
-        where = [p for p in (self._target, self._filter) if p]
+        where = [p for p in (self._target or self._capture_target, self._filter) if p]
         if self._job:
             f, exp, done, planned = self._job
             where.append(f"job {min(done, planned)}/{planned}")
@@ -266,6 +307,9 @@ class DigestRule(SessionRule):
             guiding.append(f"HFR {statistics.median(self._hfr):.2f} (median)")
         if guiding:
             lines.append(", ".join(guiding) + ".")
+        conditions = self._conditions()
+        if conditions:
+            lines.append(conditions)
         if self._since:
             events = "; ".join(f"{hhmm(t)} {what}" for t, what in sorted(self._since))
             lines.append(f"Since last: {events}.")

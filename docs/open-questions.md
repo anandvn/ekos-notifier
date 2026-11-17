@@ -133,9 +133,9 @@ and `CLAUDE.md` if a decision changes.
 - [x] **Stopping Ekos makes PHD2 warn** "INDI mount was disconnected" and "INDI camera
       disconnected" in the same second as "Disconnecting INDI devices...", just before INDI
       reports idle.
-- [ ] **INDI host and port:** Ekos profiles can point at a remote INDI server or a port other than
-      7624. Read them from the active Ekos profile (KStars `userdb.sqlite`) and don't assume
-      localhost:7624.
+- [x] **INDI host and port:** read from the active Ekos profile (`userdb.sqlite` `profile`
+      `host`/`port`; on the VM both are empty for local mode, meaning localhost:7624), the same
+      way as the guider settings. Config can override them.
 - [ ] **Minimum KStars version:** Seen: 3.8.2 (Astroberry OS v3.1), 3.8.3 (StellarMate 2.2.0),
       3.8.5 (VM). Distro repos (Debian/Ubuntu universe) lag further behind. Pick a floor (3.8 is
       the likely answer), and save D-Bus introspection fixtures for each version in the range.
