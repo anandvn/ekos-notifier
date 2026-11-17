@@ -140,3 +140,21 @@ def test_writer_stopped_mid_batch_writes_the_batch(tmp_path):
     s = Store(tmp_path / "tc.db", readonly=True)
     assert len(s.events_after(limit=1000)) == 300
     s.close()
+
+
+def test_writer_drains_a_backlog_without_waiting_per_batch(tmp_path):
+    async def scenario():
+        writer = EventWriter(tmp_path / "tc.db", batch_size=500, linger=0.25)
+        task = asyncio.create_task(writer.run())
+        for i in range(6000):  # 12 batches: lingering before each would take 3 s
+            writer.put(Event(float(i), "e", {}))
+        loop = asyncio.get_running_loop()
+        start = loop.time()
+        while writer.written < 6000 and loop.time() - start < 5:
+            await asyncio.sleep(0.01)
+        elapsed = loop.time() - start
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        return elapsed
+
+    assert asyncio.run(scenario()) < 1.5

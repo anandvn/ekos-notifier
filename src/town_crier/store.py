@@ -88,6 +88,25 @@ MIGRATIONS = [
     );
     CREATE INDEX sessions_state ON sessions (state);
     """,
+    # 3: delivery bookkeeping for the notifier (and later consumers).
+    """
+    CREATE TABLE consumers (
+        name          TEXT PRIMARY KEY,
+        last_event_id INTEGER NOT NULL      -- events up to here have been seen
+    );
+    CREATE TABLE outbox (
+        id         INTEGER PRIMARY KEY,
+        event_id   INTEGER NOT NULL REFERENCES events (id),
+        sink       TEXT NOT NULL,           -- which notifier URL (a short hash, never the URL)
+        status     TEXT NOT NULL,           -- pending, sent, held (for the digest), failed
+        attempts   INTEGER NOT NULL DEFAULT 0,
+        next_try   REAL,
+        last_error TEXT,
+        sent_at    REAL,
+        UNIQUE (event_id, sink)
+    );
+    CREATE INDEX outbox_pending ON outbox (status, next_try);
+    """,
 ]
 
 # A frame's guide RMS is the last guide.rms seen at most this many seconds before it.
@@ -141,13 +160,14 @@ class Store:
         with self.db:
             for event in events:
                 cur = self.db.execute(
-                    "INSERT INTO events (session_id, ts, source, kind, data)"
-                    " VALUES (?, ?, ?, ?, ?)",
+                    "INSERT INTO events (session_id, ts, source, kind, priority, data)"
+                    " VALUES (?, ?, ?, ?, ?, ?)",
                     (
                         event.session_id,
                         event.ts,
                         event.source,
                         event.kind,
+                        event.data.get("priority") if event.kind == "alert" else None,
                         json.dumps(event.data),
                     ),
                 )
@@ -344,10 +364,15 @@ class EventWriter:
             await self._write(batch, retry=False)
 
     async def _gather(self, batch: list[Event]) -> None:
-        """Wait briefly, then take what arrived, so a burst becomes one transaction.
-        (Not ``wait_for(queue.get())``: an item can be lost if the timeout and the get race.)"""
+        """Take what's queued; if that doesn't fill a batch, wait briefly for more, so a burst
+        becomes one transaction without slowing a backlog down. (Not
+        ``wait_for(queue.get())``: an item can be lost if the timeout and the get race.)"""
+        self._drain(batch)
         if len(batch) < self.batch_size and self.linger > 0:
             await asyncio.sleep(self.linger)
+            self._drain(batch)
+
+    def _drain(self, batch: list[Event]) -> None:
         while len(batch) < self.batch_size and not self.queue.empty():
             batch.append(self.queue.get_nowait())
 
