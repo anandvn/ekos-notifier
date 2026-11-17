@@ -56,7 +56,7 @@ MILESTONES = {
 
 
 def _duration(seconds: float) -> str:
-    minutes = int(round(seconds / 60))
+    minutes = max(1, int(round(seconds / 60)))
     return f"{minutes // 60} h {minutes % 60:02d} min" if minutes >= 60 else f"{minutes} min"
 
 

@@ -18,10 +18,12 @@ from ekos_notifier.indi.decode import IndiDecoder
 from ekos_notifier.indi.presets import INTERFACES, Preset
 
 LOCATION = {"GEOGRAPHIC_COORD"}
-LOOKS_LIKE = re.compile(r"TEMP|HUMID|DEW|VOLT|CURRENT|AMP|POWER", re.I)
+# "CURRENT" only as a word end ("SENSOR_CURRENT"), not "ALIGNMENT_POINTSET_CURRENT_ENTRY" (live).
+LOOKS_LIKE = re.compile(r"TEMP|HUMID|DEW|VOLT|CURRENT(?![_A-Z])|AMP(?![_A-Z])|POWER", re.I)
 # Thresholds, limits, set points and simulator knobs (WEATHER_CONTROL), not readings.
 NOT_READINGS = re.compile(
-    r"MIN|MAX|LIMIT|WARN|ALERT|THRESHOLD|OFFSET|TARGET|SETPOINT|RAMP|CONTROL", re.I
+    r"MIN|MAX|LIMIT|WARN|ALERT|THRESHOLD|OFFSET|TARGET|SETPOINT|RAMP|CONTROL|SETTINGS|^SIM_",
+    re.I,
 )
 
 
@@ -61,8 +63,12 @@ async def collect(
     return elements
 
 
+HOME = re.compile(r"/home/[^/\s]+")
+
+
 def scrub(elements: list[ET.Element]) -> list[ET.Element]:
-    """Remove the site location: GEOGRAPHIC_COORD values, and dd:mm:ss in texts."""
+    """Remove the site location (GEOGRAPHIC_COORD values, dd:mm:ss in texts) and the user name
+    in home paths (upload directories, seen live)."""
     for el in elements:
         if el.get("name") in LOCATION:
             for child in el:
@@ -71,6 +77,8 @@ def scrub(elements: list[ET.Element]) -> list[ET.Element]:
             for child in el:
                 if child.text and re.search(r"-?\d{1,3}[:°]\d{2}[:']\d{2}", child.text):
                     child.text = " (removed) "
+                elif child.text:
+                    child.text = HOME.sub("/home/user", child.text)
     return elements
 
 

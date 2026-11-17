@@ -11,8 +11,10 @@ Kinds:
 - ``indi.device``: ``device``, ``driver``, ``interfaces`` (names), ``connected``; when a device
   appears or its connection changes.
 - ``metric``: ``metric``, ``value``, ``device``, ``via`` (the preset's name, or "config"). Sent
-  when the value moves past ``DEADBAND`` or ``HEARTBEAT`` seconds after the last one, so the
-  record stays small but a silent sensor is noticeable. ``env.dewpoint`` is derived (Magnus
+  when the value moves past ``DEADBAND``, or for an update ``HEARTBEAT`` seconds after the last
+  one sent. INDI itself only sends a value when it changes (a settled camera cooler goes quiet,
+  seen live), so a reading stays current until ``indi.capabilities`` says it's gone; age alone
+  doesn't make it stale. ``env.dewpoint`` is derived (Magnus
   formula) for a device that has temperature and humidity but no dew point of its own.
 - ``indi.capabilities``: ``metrics`` = {metric: [devices]}, whenever that set changes (devices
   connecting and disconnecting during the night), for "not available on this rig".

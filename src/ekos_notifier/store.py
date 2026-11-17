@@ -114,9 +114,9 @@ MIGRATIONS = [
     """,
 ]
 
-# A frame's camera temperature: the imaging camera's last reading at most this old. Readings
-# are sent when they change or at least once a minute (ekos_notifier.indi.decode.HEARTBEAT).
-CAMERA_TEMP_MAX_AGE = 180.0
+# A frame's camera temperature is the imaging camera's last reading, however old: INDI sends a
+# value only when it changes (a settled cooler goes quiet, seen live), so a reading stays current
+# until INDI says the device or property is gone (indi.capabilities).
 CAMERA_IN_LOG = re.compile(r"^\[([^\]]+)\] ")
 # A frame's guide RMS is the last guide.rms seen at most this many seconds before it.
 GUIDE_RMS_MAX_AGE = 30.0
@@ -209,6 +209,9 @@ class Store:
             )
             if d["metric"] == "camera.temperature" and d.get("device"):
                 self._camera_temps[d["device"]] = (event.ts, d["value"])
+        elif event.kind == "indi.capabilities":
+            cameras = set(d.get("metrics", {}).get("camera.temperature", []))
+            self._camera_temps = {k: v for k, v in self._camera_temps.items() if k in cameras}
         elif event.kind == "capture.camera" and d.get("camera"):
             self._camera = d["camera"]
         elif event.kind == "ekos.log" and self._camera is None and d.get("module") == "Capture":
@@ -340,14 +343,12 @@ class Store:
 
     def _camera_temp(self, ts: float) -> float | None:
         """The imaging camera's temperature (Ekos Capture's camera; the only one if just one
-        reports), if read within CAMERA_TEMP_MAX_AGE."""
+        reports), while INDI still has it."""
         name = self._camera
         if name is None and len(self._camera_temps) == 1:
             name = next(iter(self._camera_temps))
         reading = self._camera_temps.get(name) if name else None
-        if reading and 0 <= ts - reading[0] <= CAMERA_TEMP_MAX_AGE:
-            return reading[1]
-        return None
+        return reading[1] if reading and reading[0] <= ts else None
 
 
 class EventWriter:
