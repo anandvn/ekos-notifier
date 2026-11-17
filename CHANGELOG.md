@@ -11,6 +11,11 @@ Semantic Versioning.
   tracking off, calibration frames and the end of the run pause the clock; a guider stuck
   recalibrating doesn't count as recovered. Uses Ekos's Guide state (internal guider or PHD2)
   and PHD2's own lost-star reports; replays of the M 31 and IC 410 nights send no false alarm.
+- **PHD2 warning** alert (High): PHD2's warnings and errors during a session, once per message
+  per session, with the current guide RMS; its dark-library advice, info messages and the
+  warnings caused by the Scheduler's shutdown aren't sent. Rules now also pick up an active
+  session after a service restart (before, guiding alerts went silent until the next session),
+  without resending PHD2 warnings already sent in it.
 - **Renamed to Ekos Notifier** (was Town Crier): PyPI `ekos-notifier`, command `ekos-notifier`,
   package `ekos_notifier`, repository `anandvn/ekos-notifier`. The hourly "town crier" digest is
   now the hourly digest (config `digest:`, was `crier:`); the Olde English style stays. On first

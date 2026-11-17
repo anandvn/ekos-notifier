@@ -95,6 +95,15 @@ and `CLAUDE.md` if a decision changes.
       native `~/.config/kstarsrc` on the VM is stale. Ekos Notifier reads both the profile and the
       Guide setting through the running process's environment and `/proc/<pid>/root`; "not PHD2"
       needs both to agree.
+- [x] **What a guiding failure looks like** (live, VM, 2026-11-17, PHD2, manual capture): with
+      the guide camera disconnected, in the same second Ekos's Guide went `aborted`, Capture
+      logged "Autoguiding stopped. Aborting..." and went `aborted`, and PHD2 went `stopped`. So
+      without the Scheduler, Ekos aborts the capture *because* guiding stopped; the guiding rule
+      tells this from the user stopping capture by event order. Before that, the simulator mount
+      wasn't tracking (Ekos `Mount.status` idle the whole time, nothing had slewed it), and PHD2
+      repeatedly lost the star ("Star lost - low mass") and warned "not able to make sufficient
+      corrections in RA"; a mount that isn't tracking is now reported in the alert rather than
+      treated as a planned pause.
 - [ ] **INDI host and port:** Ekos profiles can point at a remote INDI server or a port other than
       7624. Read them from the active Ekos profile (KStars `userdb.sqlite`) and don't assume
       localhost:7624.

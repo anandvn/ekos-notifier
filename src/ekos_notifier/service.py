@@ -63,6 +63,11 @@ async def serve(
     config = config or Config()
     store = Store(db_path)  # migrates, and tells us where the last run left off
     manager = SessionManager.resume(store)
+    resumed_alerts = (
+        store.session_alerts(manager.session_id)
+        if manager.state == "active" and manager.session_id
+        else []
+    )
     init_cursor(store)
     store.close()
     if manager.session_id:
@@ -70,6 +75,8 @@ async def serve(
 
     writer = EventWriter(db_path)
     rules = Rules(guiding_recovery=config.guiding_recovery_minutes * 60)
+    if manager.state == "active" and manager.session_id:
+        rules.resume(manager.session_id, resumed_alerts)
     pipeline = Pipeline(writer.put, manager=manager, rules=rules)
     writer_task = asyncio.create_task(writer.run(), name="store")
     writer.put(Event(clock(), "service.started", {"version": __version__}, "service"))

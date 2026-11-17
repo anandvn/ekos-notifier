@@ -13,7 +13,8 @@ Rules so far:
 - **Session summary** (Normal, immediate) when a session that imaged closes: as soon as the
   Scheduler stops or a manual sequence completes, parked or not, with the mount's last known
   state in the message.
-- **Guiding lost** (High) and **Guiding recovered**: see ``ekos_notifier.guiding``.
+- **Guiding lost** (High) and **Guiding recovered**, and **PHD2 warnings** (High, PHD2's own
+  warnings and errors, once per message per session): see ``ekos_notifier.guiding``.
 - **Ekos stopped with the mount unparked** (Emergency): Ekos or INDI stops, or KStars vanishes,
   while the last known mount state was unparked, and Ekos isn't back within ``unparked_grace``
   seconds. Uses the last known state on purpose: the mount's properties vanish with Ekos.
@@ -24,6 +25,7 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict
+from collections.abc import Iterable
 from typing import Any
 
 from ekos_notifier.events import Event
@@ -75,6 +77,16 @@ class Rules:
         self._calibration: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
     # -- events ------------------------------------------------------------------------------
+
+    def resume(self, session_id: str, alerts: Iterable[Event] = ()) -> None:
+        """The service restarted during an active session; ``alerts`` are the ones it already
+        raised, so they aren't raised again."""
+        sent = [
+            a.data.get("message") or a.data.get("body", "").split("\n")[0]
+            for a in alerts
+            if a.data.get("rule") == "phd2_warning"
+        ]
+        self.guiding.resume(session_id, sent)
 
     def handle(self, event: Event) -> list[Event]:
         out = self.tick(event.ts) + self.guiding.handle(event)

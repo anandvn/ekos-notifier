@@ -47,7 +47,8 @@ manual sequence completes (parked or not; it says whether the mount is parked), 
 stopped with the mount unparked** Emergency (2 minutes after Ekos stops; on Pushover it repeats
 every minute until you acknowledge it), and **Guiding lost** (High) when guiding stops and
 hasn't recovered after 5 minutes (`alerts: guiding_recovery_minutes`), followed by **Guiding
-recovered** when it's back. Stops Ekos makes on purpose (meridian flip, slews, autofocus, plate
+recovered** when it's back, and **PHD2's own warnings** (High, e.g. "not able to make sufficient
+corrections in RA"), once per message per session. Stops Ekos makes on purpose (meridian flip, slews, autofocus, plate
 solving, flats with tracking off, the end of the run) don't count. If an alert can't be delivered because the rig is
 offline, it's retried for 10 minutes and then dropped, never sent late; it stays in the session
 record. Change the window with `notify_expire_minutes` in the config.
