@@ -4,8 +4,8 @@
 # PRE-ALPHA: keys may change before 1.0.
 
 # Where to send alerts. Any Apprise URL works: https://github.com/caronc/apprise/wiki
-# Leave empty for record-only mode.
-notify: []
+# Uncomment a line (or add your own) to turn alerts on; with none, Town Crier only records.
+notify:
 #  - "pover://USER_KEY@APP_TOKEN"      # Pushover
 #  - "ntfy://ntfy.sh/my-rig-topic"     # ntfy
 
