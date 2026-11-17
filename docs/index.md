@@ -52,7 +52,13 @@ corrections in RA"), once per message per session. Also High: **Guiding poor** (
 Ekos's own guide-deviation limit for 10 minutes, `alerts: guiding_poor_minutes`; when the
 sequence enforces the limit, the time Ekos has been holding exposures), **Capture aborted** (with
 Ekos's reason; your own Stop isn't reported), **Scheduler aborted**, **Capture stalled** (no
-progress for twice the exposure plus download), and **Autofocus failed** (two runs in a row). Stops Ekos makes on purpose (meridian flip, slews, autofocus, plate
+progress for twice the exposure plus download), and **Autofocus failed** (two runs in a row).
+
+Every hour on the hour during a session, an **hourly digest**: "23:00 — All's well" (sent
+silently) or "23:00 — Attention: Guiding poor", with the target, filter and job progress, lights
+and integration this hour and tonight, median guide RMS, failed dithers and everything that
+happened since the last one. Set it in the config's `digest:` section (`enabled`,
+`interval_minutes`, `align_to_clock`). Stops Ekos makes on purpose (meridian flip, slews, autofocus, plate
 solving, flats with tracking off, the end of the run) don't count. If an alert can't be delivered because the rig is
 offline, it's retried for 10 minutes and then dropped, never sent late; it stays in the session
 record. Change the window with `notify_expire_minutes` in the config.

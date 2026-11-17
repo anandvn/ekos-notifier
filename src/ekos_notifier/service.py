@@ -22,6 +22,7 @@ from typing import Any
 
 from ekos_notifier import __version__
 from ekos_notifier.config import Config
+from ekos_notifier.digest import DigestRule
 from ekos_notifier.ekos.adapter import EkosAdapter
 from ekos_notifier.ekos.settings import guide_deviation_limit
 from ekos_notifier.events import Event
@@ -79,6 +80,11 @@ async def serve(
         guiding_recovery=config.guiding_recovery_minutes * 60,
         guiding_poor_window=config.guiding_poor_minutes * 60,
         deviation_limit=guide_deviation_limit,
+        digest=DigestRule(
+            enabled=config.digest_enabled,
+            interval=config.digest_interval_minutes * 60,
+            align_to_clock=config.digest_align_to_clock,
+        ),
     )
     if manager.state == "active" and manager.session_id:
         rules.resume(manager.session_id, resumed_alerts)

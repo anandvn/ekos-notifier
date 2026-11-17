@@ -25,6 +25,9 @@ class Config:
     notify_expire_minutes: float = 10.0
     guiding_recovery_minutes: float = 5.0
     guiding_poor_minutes: float = 10.0
+    digest_enabled: bool = True
+    digest_interval_minutes: float = 60.0
+    digest_align_to_clock: bool = True
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -61,14 +64,31 @@ def load(path: str | Path | None = None) -> Config:
         path, "alerts.guiding_recovery_minutes", alerts.get("guiding_recovery_minutes", 5)
     )
     poor = _minutes(path, "alerts.guiding_poor_minutes", alerts.get("guiding_poor_minutes", 10))
+    digest = raw.get("digest") or {}
+    if not isinstance(digest, dict):
+        raise ConfigError(f"{path}: 'digest' must be a section of settings (key: value)")
+    interval = _minutes(path, "digest.interval_minutes", digest.get("interval_minutes", 60))
+    if interval == 0:
+        raise ConfigError(f"{path}: 'digest.interval_minutes' must be more than 0")
     return Config(
         path=path,
         notify=[u.strip() for u in notify if u.strip()],
         notify_expire_minutes=expire,
         guiding_recovery_minutes=guiding,
         guiding_poor_minutes=poor,
+        digest_enabled=_bool(path, "digest.enabled", digest.get("enabled", True)),
+        digest_interval_minutes=interval,
+        digest_align_to_clock=_bool(
+            path, "digest.align_to_clock", digest.get("align_to_clock", True)
+        ),
         raw=raw,
     )
+
+
+def _bool(path: Path, key: str, value: object) -> bool:
+    if not isinstance(value, bool):
+        raise ConfigError(f"{path}: '{key}' must be true or false")
+    return value
 
 
 def _minutes(path: Path, key: str, value: object) -> float:

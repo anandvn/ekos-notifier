@@ -84,7 +84,7 @@ def test_sends_new_alerts_not_old_ones_emergency_first(db):
             alert(2.0, "normal"),
             alert(3.0, "emergency"),
             alert(4.0, "normal", immediate=False),
-            alert(5.0, "quiet"),
+            alert(5.0, "quiet", immediate=False),
         ]
     )
     send, now = FakeSender(), {"t": 10.0}
@@ -181,4 +181,15 @@ def test_alert_already_too_old_when_seen_is_dropped(db):
     Notifier(db, [PUSHOVER], send=send, clock=lambda: 100.0 + 3600, max_age=600).step()
     assert send.sent == []
     assert s.db.execute("SELECT status FROM outbox").fetchone()[0] == "dropped"
+    s.close()
+
+
+def test_an_immediate_quiet_alert_goes_out_silently(db):
+    # The hourly "All's well" digest: sent now, at Quiet priority (Pushover low: no sound).
+    s = Store(db)
+    s.append([alert(2.0, "quiet", title="22:00 \u2014 All's well")])
+    send = FakeSender()
+    notifier(db, send, {"t": 10.0}).step()
+    assert send.sent == [(PUSHOVER, "quiet", "22:00 \u2014 All's well")]
+    assert params(with_priority(PUSHOVER, "quiet")[0]) == {"priority": "low"}
     s.close()

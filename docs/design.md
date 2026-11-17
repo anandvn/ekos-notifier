@@ -148,7 +148,9 @@ The digest is one status message per interval (default 60 min) while a session i
 
 - **Title carries the verdict:** "23:00 — All's well" or "23:00 — Attention: dew margin 1.4 °C".
 - **Priority:** Quiet when all's well; Normal when it says Attention.
-- **Timing:** on the clock hour, or every N minutes from session start (configurable).
+- **Timing:** on the clock hour, or every N minutes from session start (configurable). A digest due less than 10 minutes after the session started is skipped.
+- **Verdict:** Attention when a High or Emergency alert was raised in the interval and not cleared in it, or a problem raised earlier is still open (guiding lost and not recovered, guiding poor, capture stalled, mount left unparked); the problems are named in the title and an open one carries over as "Still open".
+- **Implemented so far** (`ekos_notifier.digest`, plain style): target (from the Scheduler's job), filter and job progress (from Capture's "has N/M frames captured"), lights and integration this interval and tonight, calibration frames, median guide RMS, failed dithers, median HFR when Ekos measures it, and "Since last": every alert (sent or held) and milestones such as a completed meridian flip. Temperatures, battery, dew, flip and dawn times wait for the INDI adapter and the site location; Terse and Olde English for the template sets.
 - **Body:** target · filter · frames done/planned (+ this interval) · median HFR · guide RMS · camera temp · battery and trend · ambient, RH, dew margin · time to flip and dawn · events since last digest · thumbnail.
 
 ```
