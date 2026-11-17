@@ -258,6 +258,18 @@ class Store:
     def sessions(self) -> list[sqlite3.Row]:
         return list(self.db.execute("SELECT * FROM sessions ORDER BY setup_at, started_at"))
 
+    def session_alerts(self, session_id: str) -> list[Event]:
+        """The alerts already raised in a session (to pick up where a restart left off)."""
+        rows = self.db.execute(
+            "SELECT ts, source, kind, data, session_id FROM events"
+            " WHERE kind = 'alert' AND session_id = ? ORDER BY id",
+            (session_id,),
+        )
+        return [
+            Event(r["ts"], r["kind"], json.loads(r["data"]), r["source"], r["session_id"])
+            for r in rows
+        ]
+
     def events_after(
         self, last_id: int = 0, kinds: Iterable[str] | None = None, limit: int = 1000
     ) -> list[Event]:
