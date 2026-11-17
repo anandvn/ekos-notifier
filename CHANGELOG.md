@@ -19,7 +19,8 @@ Semantic Versioning.
   (removes site coordinates and hostnames before a recording is committed).
 - `tools/scrub_replay.py`: joins several recordings, trims to a time window (`--since`/`--until`),
   drops non-KStars D-Bus traffic and INDI debug messages (`--keep-noise` keeps them), and scrubs
-  site coordinates written as degrees and minutes. The `GEOGRAPHIC_COORD` rewrite now works (it
+  site coordinates written as degrees and minutes. `--since`/`--until` take ISO 8601 with an
+  offset. The `GEOGRAPHIC_COORD` rewrite now works (it
   never matched JSON-escaped quotes, so elevation was left unscrubbed).
 - Design: new Emergency alert "Ekos stopped with the mount unparked", because the Ekos Scheduler
   stops Ekos and disconnects INDI when a job finishes or aborts, even with the mount tracking.
