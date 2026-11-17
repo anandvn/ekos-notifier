@@ -37,6 +37,14 @@ CLEARED_BY = {
     "ekos_stopped_mount_unparked": "mount_unparked_cleared",
 }
 CLEARS = {v: k for k, v in CLEARED_BY.items()}
+# Problems with no all-clear alert of their own: open until the rig is working again (seen live:
+# "All's well" with nothing captured since an abort).
+CAPTURE_WORKING = {"capturing", "image_received", "in_progress", "changing_filter", "dithering"}
+OPEN_UNTIL = {
+    "capture_aborted": "capture running",
+    "scheduler_aborted": "scheduler running",
+    "autofocus_failed": "focus complete",
+}
 NOT_LISTED = {"digest", "session_started"}
 JOB = re.compile(r"Job '(.+?)' ")
 JOB_PLAN = re.compile(r"Job requires ([\d.]+)-second (.+?) images, has (\d+)/(\d+) frames")
@@ -83,12 +91,25 @@ class DigestRule(SessionRule):
 
     # -- session -----------------------------------------------------------------------------
 
-    def resume(self, session_id: str | None, alerts: Iterable[Event] = ()) -> None:
+    def resume(
+        self,
+        session_id: str | None,
+        alerts: Iterable[Event] = (),
+        started_at: float | None = None,
+    ) -> None:
         if session_id != self.session:
-            self._started = None
+            self._started = started_at  # a restart mid-session knows the real start
             self._next = None
             self._tonight = []
             self._open = {}
+            # Problems still open from before the restart; Ekos's snapshot on reconnect closes
+            # the ones that aren't (capture running again, focus complete…).
+            for a in alerts:
+                rule = a.data.get("rule", "")
+                if rule in CLEARS:
+                    self._open.pop(CLEARS[rule], None)
+                elif rule in CLEARED_BY or rule in OPEN_UNTIL:
+                    self._open[rule] = a.data.get("title", rule)
         super().resume(session_id, alerts)
 
     def on_session_closed(self) -> None:
@@ -108,7 +129,7 @@ class DigestRule(SessionRule):
                 self._raised.pop(CLEARS[rule], None)
             elif a.data.get("priority") in ("emergency", "high"):
                 self._raised[rule] = a.data.get("title", rule)
-                if rule in CLEARED_BY:
+                if rule in CLEARED_BY or rule in OPEN_UNTIL:
                     self._open[rule] = a.data.get("title", rule)
 
     def on_event(self, event: Event) -> list[Event]:
@@ -117,10 +138,21 @@ class DigestRule(SessionRule):
             self._started = event.ts
             self._reset_interval(event.ts)
             self._next = self._boundary_after(event.ts)
-        elif self._started is None and self.session:
-            self._started = event.ts  # resumed after a restart: count from here
+        elif self._next is None and self.session:
+            # Resumed after a restart: this interval's numbers start now, but the session's age
+            # (for skipping a digest right after it started) comes from resume().
+            if self._started is None:
+                self._started = event.ts
             self._reset_interval(event.ts)
             self._next = self._boundary_after(event.ts)
+        if (kind == "capture.state" and d.get("state") in CAPTURE_WORKING) or (
+            kind == "capture.frame" and d.get("type") == "light"
+        ):
+            self._close("capture_aborted")
+        elif kind == "scheduler.state" and d.get("state") == "running":
+            self._close("scheduler_aborted")
+        elif kind == "focus.state" and d.get("state") == "complete":
+            self._close("autofocus_failed")
         if kind == "capture.frame" and d.get("type"):
             if d["type"] == "light":
                 frame = (d.get("filter") or "no filter", float(d.get("exposure") or 0))
@@ -154,6 +186,11 @@ class DigestRule(SessionRule):
         return []
 
     def on_tick(self, now: float) -> list[Event]:
+        if self._next is None and self.session:  # resumed, and no event yet: schedule from now
+            if self._started is None:
+                self._started = now
+            self._reset_interval(now)
+            self._next = self._boundary_after(now)
         if not self.enabled or self._next is None or now < self._next:
             return []
         due, self._next = self._next, self._boundary_after(self._next)
@@ -164,6 +201,10 @@ class DigestRule(SessionRule):
         return [digest]
 
     # -- helpers -------------------------------------------------------------------------------
+
+    def _close(self, rule: str) -> None:
+        """A problem without an all-clear alert is over: the rig is working again."""
+        self._open.pop(rule, None)
 
     def _reset_interval(self, ts: float | None) -> None:
         self._since_ts = ts
@@ -201,7 +242,8 @@ class DigestRule(SessionRule):
         span = _duration(due - self._since_ts) if self._since_ts else "this interval"
         if self._frames:
             parts, total = _lights(self._frames)
-            lines.append(f"Last {span}: {len(self._frames)} lights ({parts}), {_duration(total)}.")
+            n = len(self._frames)
+            lines.append(f"Last {span}: {n} light{'s' * (n != 1)} ({parts}), {_duration(total)}.")
         else:
             lines.append(f"Last {span}: no light frames.")
         if self._calibration:
@@ -212,7 +254,8 @@ class DigestRule(SessionRule):
             )
         if len(self._tonight) > len(self._frames):  # the first digest would just repeat itself
             _, total = _lights(self._tonight)
-            lines.append(f"Tonight: {len(self._tonight)} lights, {_duration(total)}.")
+            n = len(self._tonight)
+            lines.append(f"Tonight: {n} light{'s' * (n != 1)}, {_duration(total)}.")
         guiding = []
         if self._rms:
             guiding.append(f"Guide RMS {statistics.median(self._rms):.2f}″ (median)")
