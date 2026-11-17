@@ -132,9 +132,10 @@ and `CLAUDE.md` if a decision changes.
       Scheduler's shutdown doesn't park when the shutdown procedure is off, so the fixture ends
       in the "Ekos stopped with the mount unparked" Emergency case. Scrubbed: 1.6 MB, 140 frames,
       kept off-repo with the IC 410 one until the storage decision.
-- [ ] **How to store fixtures.** The short run is 1.6 MB, the IC 410 night 9.4 MB (gzipped),
-      mostly high-rate mount position vectors. Options: commit as is; thin the position vectors
-      (~1/s) and commit; Git LFS; attach the long night to a GitHub release.
+- [x] **How to store fixtures.** The short run is 1.6 MB, the IC 410 night 9.4 MB (gzipped),
+      mostly high-rate mount position vectors. **Decided (2026-11-16):** the short run is
+      committed unthinned (`tests/fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz`);
+      the IC 410 night goes on a GitHub release, not in the repository.
 
 ## Ekos behaviour found while recording (KStars 3.8.5)
 
