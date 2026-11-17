@@ -224,11 +224,13 @@ RA_WARNING = (
 )
 
 
-def phd2_alerts(events):
-    rules = Rules()
+def phd2_alerts(events, rules=None):
+    """Feed events, then let the clock run past PHD2_HOLD so held warnings go out."""
+    rules = rules or Rules()
     out = []
     for e in events:
         out += rules.handle(e)
+    out += rules.tick(events[-1].ts + 10)
     return [a for a in out if a.kind == "alert" and a.data["rule"] == "phd2_warning"]
 
 
@@ -304,7 +306,29 @@ def test_a_restart_does_not_resend_phd2_warnings(tmp_path):
     rules = Rules()
     rules.resume("s1", store.session_alerts("s1"))
     store.close()
-    again = rules.handle(ev(200, "phd2.alert", message=RA_WARNING, type="warning"))
-    assert again == []
-    new = rules.handle(ev(210, "phd2.alert", message="INDI camera disconnected", type="warning"))
-    assert [a.data["message"] for a in new] == ["INDI camera disconnected"]
+    got = phd2_alerts(
+        [
+            ev(200, "phd2.alert", message=RA_WARNING, type="warning"),
+            ev(210, "phd2.alert", message="INDI camera disconnected", type="warning"),
+        ],
+        rules,
+    )
+    assert [a.data["message"] for a in got] == ["INDI camera disconnected"]
+
+
+def test_phd2_warnings_when_you_stop_ekos_are_dropped():
+    # Seen live 2026-11-17: stopping Ekos logged "Disconnecting INDI devices...", then PHD2 warned
+    # about the mount and camera in the same second, just before INDI reported idle.
+    events = guiding_night() + [
+        ev(100, "ekos.log", module="Ekos", text="Disconnecting INDI devices..."),
+        ev(100, "phd2.alert", message="INDI mount was disconnected", type="warning"),
+        ev(100, "phd2.alert", message="INDI camera disconnected", type="warning"),
+        ev(100, "indi.state", state="idle"),
+    ]
+    assert phd2_alerts(events) == []
+    # A camera that really drops out mid-run is still reported, 10 s later.
+    events = guiding_night() + [
+        ev(100, "phd2.alert", message="INDI camera disconnected", type="warning"),
+    ]
+    got = phd2_alerts(events)
+    assert [round(a.ts - T) for a in got] == [110]

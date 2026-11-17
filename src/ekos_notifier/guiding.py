@@ -29,7 +29,7 @@ import time
 from collections.abc import Callable, Iterable
 from typing import Any
 
-from ekos_notifier.alerts import SessionRule, make_alert, minutes
+from ekos_notifier.alerts import SessionRule, hhmm, make_alert, minutes
 from ekos_notifier.events import Event
 
 RECOVERY = 300.0
@@ -63,6 +63,7 @@ ALIGN_BUSY = {"in_progress", "syncing", "slewing", "rotating"}
 CALIBRATION = {"flat", "dark", "bias"}
 # PHD2 tags some advice as a warning; it isn't something to act on mid-night.
 PHD2_ADVICE = ("For best results",)
+PHD2_HOLD = 10.0  # seconds a PHD2 warning waits, in case Ekos is shutting down
 
 
 def _clock(ts: float) -> str:
@@ -95,6 +96,7 @@ class GuidingRule:
         self._calibration_frames = False
         self._hints: dict[str, str] = {}
         self._phd2_sent: set[str] = set()  # PHD2 warnings already sent this session
+        self._phd2_pending: list[tuple[float, Event]] = []  # (send at, alert), held PHD2_HOLD s
         self._rms: tuple[float, float] | None = None  # Ekos's latest guide RMS (RA, DEC), arcsec
 
     # -- events ------------------------------------------------------------------------------
@@ -109,6 +111,7 @@ class GuidingRule:
             self.resume(event.session_id)
         elif kind == "session.closed":
             self._session = None
+            self._phd2_pending.clear()
             self._end_outage()
         elif kind == "guide.state":
             self._ekos_guide = state
@@ -143,8 +146,15 @@ class GuidingRule:
             self._calibration_frames = d["type"] in CALIBRATION
         elif kind in ("ekos.state", "indi.state"):
             self._ekos_gone = state in ("idle", "error")
+            if self._ekos_gone:
+                self._phd2_pending.clear()
         elif kind == "kstars.vanished":
             self._ekos_gone = True
+            self._phd2_pending.clear()
+        elif kind == "ekos.log" and "Disconnecting INDI devices" in str(d.get("text", "")):
+            # Ekos is shutting down (the user, or the Scheduler's end): PHD2 is about to warn
+            # that the camera and mount disconnected, just before INDI reports idle (seen live).
+            self._phd2_pending.clear()
 
         if self._guiding_ok():
             if self._ekos_guide == "guiding":
@@ -157,6 +167,21 @@ class GuidingRule:
         return out + self.tick(event.ts)
 
     def tick(self, now: float) -> list[Event]:
+        return self._due_phd2(now) + self._lost_tick(now)
+
+    def _due_phd2(self, now: float) -> list[Event]:
+        due = [a for t, a in self._phd2_pending if t <= now]
+        if not due or self._session is None:
+            return []
+        self._phd2_pending = [(t, a) for t, a in self._phd2_pending if t > now]
+        out = []
+        for alert in due:
+            if alert.data["message"] not in self._phd2_sent:
+                self._phd2_sent.add(alert.data["message"])
+                out.append(Event(now, alert.kind, alert.data, alert.source, self._session))
+        return out
+
+    def _lost_tick(self, now: float) -> list[Event]:
         if self._lost_at is None or self._alerted:
             return []
         if self._session is None or self._paused():
@@ -226,7 +251,8 @@ class GuidingRule:
         self._session = session_id
 
     def _phd2_warning(self, event: Event) -> list[Event]:
-        """PHD2's own warnings and errors, once per message per session."""
+        """PHD2's own warnings and errors, once per message per session. Held ``PHD2_HOLD``
+        seconds and dropped if Ekos shuts down meanwhile."""
         d = event.data
         message = str(d["message"]).strip()
         if (
@@ -238,9 +264,9 @@ class GuidingRule:
             or d.get("type") not in ("warning", "error")
             or message.startswith(PHD2_ADVICE)
             or message in self._phd2_sent
+            or any(a.data["message"] == message for _, a in self._phd2_pending)
         ):
             return []
-        self._phd2_sent.add(message)
         lines = [message]
         if self._rms is not None:
             ra, dec = self._rms
@@ -249,7 +275,8 @@ class GuidingRule:
         title = "PHD2 error" if d.get("type") == "error" else "PHD2 warning"
         alert = _alert(event.ts, self._session, "phd2_warning", "high", title, "\n".join(lines))
         alert.data["message"] = message  # what a restart checks against
-        return [alert]
+        self._phd2_pending.append((event.ts + PHD2_HOLD, alert))
+        return []
 
     def _end_outage(self) -> None:
         self._lost_at = self._clock_from = self._lost_seq = None
@@ -301,10 +328,11 @@ def _alert(
 class PoorGuidingRule(SessionRule):
     """ "Guiding poor" (High), following Ekos's own guide-deviation limit.
 
-    - **Ekos's limit is on** for the running job: Ekos suspends exposures while guiding deviation
-      is over it, logging "Guiding deviation 3.1 exceeded limit value of 2 arcsecs …, suspending
-      exposure" and later "… is now lower than limit value of 2 arcsecs, resuming exposure".
-      Alert when Ekos has been holding exposures for ``window`` seconds, quoting its numbers.
+    - **Ekos's limit is on** for the running job: Ekos suspends an exposure when deviation goes
+      over it ("Guiding deviation 3.791 exceeded limit value of 0.5 arcsecs …, suspending
+      exposure"), resumes once under its separate resume limit ("… is now lower than limit value
+      of 2 arcsecs, resuming exposure"), and can trip again seconds later (seen live). Alert when
+      Ekos has been suspending exposures and no frame has finished for ``window`` seconds.
     - **Ekos's limit is off** (Ekos does nothing about poor guiding): watch Ekos's guide RMS,
       total √(RA² + DEC²) in arcseconds, against Ekos's own deviation value (``limit()``, from
       ``kstarsrc`` ``[Capture] GuideDeviation``, default 2″), and alert after ``window`` seconds
@@ -312,19 +340,22 @@ class PoorGuidingRule(SessionRule):
       dithering doesn't.
       Once Ekos is seen enforcing its limit in a session, only that path is used.
 
-    A Normal "Guiding back within limits" follows: when Ekos resumes, or after the RMS has stayed
-    under the limit for ``clear_after`` seconds. ``window`` 0 turns the rule off. Ekos logs in
-    the KStars language; the Ekos path matches the English messages only.
+    A Normal "Guiding back within limits" follows: when a frame finishes (Ekos path), or after the
+    RMS has stayed under the limit for ``clear_after`` seconds. ``window`` 0 turns the rule off.
+    Ekos logs in the KStars language; the Ekos path matches the English messages only.
     """
 
+    # "exceeded" names the limit that suspends exposures; "still higher" and "now lower" name the
+    # separate, usually looser, limit Ekos resumes at (2" when the trip limit was 0.5", live).
     EXCEEDED = re.compile(
-        r"deviation (?:at capture startup )?(-?[\d.]+) (?:exceeded limit(?: value of)?|is still "
-        r"higher than limit value of) ([\d.]+) arcsecs"
+        r"deviation (?:at capture startup )?(-?[\d.]+) exceeded limit(?: value of)? "
+        r"([\d.]+) arcsecs"
     )
-    BELOW = re.compile(
-        r"deviation (?:at capture startup )?(-?[\d.]+) (?:is now lower than|below) limit value "
-        r"of ([\d.]+) arcsecs"
+    DEVIATION = re.compile(
+        r"deviation (?:at capture startup )?(-?[\d.]+) (?:is still higher than|is now lower than"
+        r"|below) limit value of ([\d.]+) arcsecs"
     )
+    STOPPED = {"aborted", "complete", "paused"}
 
     def __init__(
         self,
@@ -338,8 +369,9 @@ class PoorGuidingRule(SessionRule):
         self.clear_after = clear_after
         self.limit = DEFAULT_DEVIATION
         self._enforced = False  # Ekos was seen enforcing its limit this session
-        self._held_since: float | None = None  # Ekos holding exposures for deviation
-        self._ekos_numbers: tuple[float, float] | None = None  # (deviation, limit) from its log
+        self._held_since: float | None = None  # first suspension since the last finished frame
+        self._ekos_limit: float | None = None  # the limit that suspends exposures
+        self._deviation: float | None = None  # Ekos's latest reported deviation
         self._guiding = False
         self._rms: tuple[float, float] | None = None
         self._bad_since: float | None = None
@@ -363,16 +395,19 @@ class PoorGuidingRule(SessionRule):
             text = str(d["text"])
             if m := self.EXCEEDED.search(text):
                 self._enforced = True
-                self._ekos_numbers = (float(m.group(1)), float(m.group(2)))
+                self._deviation, self._ekos_limit = float(m.group(1)), float(m.group(2))
                 if self._held_since is None:
                     self._held_since = event.ts
-            elif m := self.BELOW.search(text):
-                self._enforced = True
-                self._ekos_numbers = (float(m.group(1)), float(m.group(2)))
-                self._held_since = None
-                if self._alerted:
-                    self._alerted = False
-                    out.append(self._back(event.ts))
+            elif m := self.DEVIATION.search(text):
+                self._deviation = float(m.group(1))
+        elif kind == "capture.frame" and self._enforced:
+            # Ekos resuming isn't recovery (it can trip again within seconds); a finished frame is.
+            self._held_since = None
+            if self._alerted:
+                self._alerted = False
+                out.append(self._back(event.ts))
+        elif kind == "capture.state" and d.get("state") in self.STOPPED:
+            self._held_since = None  # capture stopped: nothing is being held any more
         elif kind == "guide.state":
             # Dithering and Ekos's own suspensions are part of guiding: with a dither every frame
             # or two, resetting on them would mean the window never fills.
@@ -417,6 +452,7 @@ class PoorGuidingRule(SessionRule):
     def on_session_closed(self) -> None:
         self._bad_since = self._good_since = self._held_since = None
         self._alerted = self._enforced = False
+        self._ekos_limit = self._deviation = None
 
     def _total(self) -> float:
         assert self._rms is not None
@@ -430,13 +466,15 @@ class PoorGuidingRule(SessionRule):
 
     def _poor_ekos(self, now: float) -> Event:
         assert self._held_since is not None
-        lines = [f"Ekos has been holding exposures for {minutes(now - self._held_since)}"]
-        if self._ekos_numbers:
-            deviation, limit = self._ekos_numbers
-            lines[0] += (
-                f": guide deviation {deviation:g}\u2033 is over its limit of {limit:g}\u2033"
-            )
-        lines[0] += "."
+        lines = [
+            "Ekos keeps suspending exposures for guide deviation: no frame has finished since "
+            f"{hhmm(self._held_since)} ({minutes(now - self._held_since)})."
+        ]
+        if self._ekos_limit is not None:
+            line = f"Its limit is {self._ekos_limit:g}\u2033"
+            if self._deviation is not None:
+                line += f"; latest deviation {self._deviation:g}\u2033"
+            lines.append(line + ".")
         if self._rms is not None:
             lines.append(f"Guide RMS: {self._values()}.")
         lines.append(ADVICE)
@@ -453,8 +491,10 @@ class PoorGuidingRule(SessionRule):
         return make_alert(now, self.session, "guiding_poor", "high", "Guiding poor", body)
 
     def _back(self, now: float) -> Event:
-        limit = self._ekos_numbers[1] if self._enforced and self._ekos_numbers else self.limit
-        body = f"Guiding is back under {limit:g}\u2033."
+        if self._enforced:
+            body = f"Exposures are finishing again: a frame completed at {hhmm(now)}."
+        else:
+            body = f"Guiding is back under {self.limit:g}\u2033."
         if self._rms is not None:
             body += f" Guide RMS: {self._values()}."
         return make_alert(

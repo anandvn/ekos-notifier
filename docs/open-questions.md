@@ -114,9 +114,25 @@ and `CLAUDE.md` if a decision changes.
       read it. When enforced, Ekos logs "Guiding deviation %1 exceeded limit value of %2 arcsecs
       for %4 consecutive samples, suspending exposure…", "…is still higher than limit value of %2
       arcsecs" and "…is now lower than limit value of %2 arcsecs, resuming exposure" (strings
-      from the KStars 3.8.5 binary; not yet seen live). These are translated in other languages.
-- [ ] **What a user's own Capture Stop logs**, to confirm the "Capture aborted" rule treats it as
-      the user's (an abort with no logged reason) and not as a failure.
+      from the KStars 3.8.5 binary, confirmed live below). These are translated in other
+      languages.
+- [x] **What a user's own Capture Stop logs** (live 2026-11-17): only "[CCD Simulator] Camera
+      capture stopped", then `aborted`. An Ekos abort adds its reason first ("Autoguiding stopped.
+      Aborting...", "Autofocus failed. Aborting exposure..."). A failed *focus* exposure made Ekos
+      report Capture `aborted` while it was idle.
+- [x] **Ekos's guide-deviation limit, live** (0.5″ limit): Ekos suspended the exposure at
+      "Guiding deviation 3.791 exceeded limit value of 0.5 arcsecs for 3 consecutive samples",
+      but logged "still higher than" / "now lower than limit value of **2** arcsecs" and resumed
+      under 2″, a separate resume limit (default 2″). It then tripped again within seconds; no
+      60 s exposure finished for six minutes. Changing the limit in the GUI also wrote
+      `[Capture] GuideDeviation=0.5` and `EnforceGuideDeviation=true` to `kstarsrc`.
+- [x] **A failed autofocus on KStars 3.8.5 ends `aborted`, not `failed`** (live): each attempt
+      logs "Autofocus failed, moving back to initial focus position N", Ekos logs "Restarting
+      autofocus process..." and starts again (a new `in_progress`, no `aborted` between), and
+      when it gives up it reports `aborted` once. A run whose retry succeeds reports `complete`.
+- [x] **Stopping Ekos makes PHD2 warn** "INDI mount was disconnected" and "INDI camera
+      disconnected" in the same second as "Disconnecting INDI devices...", just before INDI
+      reports idle.
 - [ ] **INDI host and port:** Ekos profiles can point at a remote INDI server or a port other than
       7624. Read them from the active Ekos profile (KStars `userdb.sqlite`) and don't assume
       localhost:7624.

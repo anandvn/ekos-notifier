@@ -28,6 +28,7 @@ STALL_MIN = 120.0
 CAUSE_WINDOW = 5.0  # seconds before an abort in which its cause shows up
 WORKING = {"capturing", "image_received", "in_progress", "changing_filter", "dithering"}
 RESUMED = WORKING | {"meridian_flip", "aligning", "focusing", "filter_focus", "calibrating"}
+BUSY = RESUMED | {"suspended", "guider_drift", "pause_planned", "waiting", "setting_temperature"}
 EXPOSURE = re.compile(r"Capturing ([\d.]+)-second")
 DOWNLOAD = re.compile(r"Download Time: ([\d.]+) s")
 ROUTINE = re.compile(r"Download Time|Received image|Captured |Capturing [\d.]+-second")
@@ -82,8 +83,10 @@ class CaptureRule(SessionRule):
                 self._exposure = float(d["exposure"])
             out += self._unstalled(event.ts)
         elif kind == "capture.state" and not d.get("snapshot"):
-            self._capture, self._since = state, event.ts
-            if state == "aborted" and self.session:
+            was, self._capture, self._since = self._capture, state, event.ts
+            # Only an abort of a capture that was running: a failed focus exposure makes Ekos
+            # report Capture "aborted" even when it was idle (seen live).
+            if state == "aborted" and self.session and was in BUSY:
                 self._abort = (event.ts, self._reason(event.ts))
             elif state in RESUMED:
                 self._abort = None
