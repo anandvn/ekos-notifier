@@ -5,6 +5,12 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Guiding lost** alert (High, `ekos_notifier.guiding`): guiding stopped and not back within
+  `alerts.guiding_recovery_minutes` (default 5) of time when guiding was expected, then
+  **Guiding recovered**. Intent-aware: slews, meridian flips, plate solving, autofocus, flats with
+  tracking off, calibration frames and the end of the run pause the clock; a guider stuck
+  recalibrating doesn't count as recovered. Uses Ekos's Guide state (internal guider or PHD2)
+  and PHD2's own lost-star reports; replays of the M 31 and IC 410 nights send no false alarm.
 - **Renamed to Ekos Notifier** (was Town Crier): PyPI `ekos-notifier`, command `ekos-notifier`,
   package `ekos_notifier`, repository `anandvn/ekos-notifier`. The hourly "town crier" digest is
   now the hourly digest (config `digest:`, was `crier:`); the Olde English style stays. On first

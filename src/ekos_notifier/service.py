@@ -27,6 +27,7 @@ from ekos_notifier.events import Event
 from ekos_notifier.notify import Notifier, init_cursor
 from ekos_notifier.phd2.adapter import Phd2Adapter
 from ekos_notifier.pipeline import TICK, Pipeline
+from ekos_notifier.rules import Rules
 from ekos_notifier.session import SessionManager
 from ekos_notifier.store import EventWriter, Store
 
@@ -68,7 +69,8 @@ async def serve(
         log.info("resuming %s session %s", manager.state, manager.session_id)
 
     writer = EventWriter(db_path)
-    pipeline = Pipeline(writer.put, manager=manager)
+    rules = Rules(guiding_recovery=config.guiding_recovery_minutes * 60)
+    pipeline = Pipeline(writer.put, manager=manager, rules=rules)
     writer_task = asyncio.create_task(writer.run(), name="store")
     writer.put(Event(clock(), "service.started", {"version": __version__}, "service"))
     if notifier is None and config.notify:

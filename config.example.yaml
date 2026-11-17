@@ -38,7 +38,7 @@ power:
 # Alert thresholds.
 alerts:
   dew_margin_c: 2.0
-  guiding_recovery_minutes: 5
+  guiding_recovery_minutes: 5   # guiding lost this long (planned stops excluded) → High alert
   cooler_tolerance_c: 2.0
   disk_low_gb: 10
   twilight_warning_minutes: 45
