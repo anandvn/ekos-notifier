@@ -143,7 +143,9 @@ These change how the Ekos adapter and alert rules must work.
 
 - [x] **Focus signals carry the optical train.** `newStatus` payload is `[[state], "Primary"]`;
       `newHFR` is `[hfr, position, ?, "Primary"]` with `hfr = -1` meaning no stars found. States
-      seen: 5 = running, 1 = complete, 3 = failed. Focus methods (`start`, `status`, `abort`)
+      seen: 5 = running, 1 = complete, 3 = failed. (Per the KStars source 2 = failed and
+      3 = aborted; the D-Bus recording of 2026-11-16 confirms only 1 and 5. The third `newHFR`
+      argument is true during autofocus. Names used by the adapter: `src/town_crier/ekos/states.py`.) Focus methods (`start`, `status`, `abort`)
       all take the train name.
 - [x] **Ekos retries a failed autofocus by itself** ("Restarting autofocus process…"), emitting
       status 3 for each attempt. The "autofocus failed: 2 consecutive failures" rule must count
@@ -194,6 +196,17 @@ These change how the Ekos adapter and alert rules must work.
 - [ ] **`captureComplete` reports `hfr = -1` and `starCount = 0` for every light frame**, with
       stars plainly present (guiding and plate solving worked). Find out whether Capture only
       measures HFR when an option is on; the session summary's median HFR depends on it.
+- [x] **Ekos state codes checked against a recording.** Each D-Bus `newStatus` in the M 31 run
+      was matched to the state name KStars logged at the same moment; the confirmed codes are
+      listed in `src/town_crier/ekos/states.py` (`VERIFIED`). `Capture.meridianFlipStarted` exists
+      in the introspection but wasn't emitted during the flip: the flip shows as Capture state 18
+      and a `pierSideChanged`.
+- [x] **The Flatpak KStars process reports a sandbox-only bus address** (`unix:path=/run/flatpak/bus`
+      in `/proc/<pid>/environ`), so the "read it from the kstars process" fallback only helps for
+      native KStars. The adapter tries each candidate by connecting, which weeds it out.
+- [x] **Ekos module objects don't exist while Ekos is stopped**: `Properties.Get` on
+      `/KStars/Ekos/Mount` returns `org.freedesktop.DBus.Error.UnknownObject`. `/KStars/Ekos` and
+      `/KStars/Ekos/Scheduler` always exist.
 - [x] **Verbose logging floods the INDI stream** with driver debug messages (`[DEBUG]`,
       `[SCOPE]`, `[ALIGNMENT]`: ~60 % of the records in a recording). The INDI adapter should ignore them;
       `scrub_replay.py` now drops them from fixtures.
