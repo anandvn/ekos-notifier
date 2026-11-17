@@ -11,13 +11,14 @@
   debug messages (`[DEBUG]`, `[SCOPE]`, `[ALIGNMENT]`, …), which verbose logging turns on and
   which can be most of a recording. INDI `[INFO]`, `[WARNING]` and `[ERROR]` messages are kept.
 - Several inputs (consecutive parts of one night) are joined in time order; the first one's meta
-  record is kept. --since/--until trim to a window (local "YYYY-MM-DDTHH:MM:SS" or Unix seconds).
+  record is kept. --since/--until trim to a window: Unix seconds, or ISO 8601 with an offset
+  ("2026-11-17T03:46:00+03:00"); without an offset, the machine's current local time is used.
 - Optionally merges scenario markers (--markers) into the stream, sorted by time.
 
 Usage:
   python tools/scrub_replay.py IN.ndjson.gz [IN2.ndjson.gz ...] OUT.ndjson.gz \
       --lat 51.48 --lon 0.0 --elev 46 [--hostname myrig] [--markers markers.ndjson] \
-      [--since 2026-11-16T21:30:00] [--until 2026-11-17T03:45:00] [--keep-noise]
+      [--since 2026-11-16T21:30:00+03:00] [--until 2026-11-17T03:45:00+03:00] [--keep-noise]
 """
 
 from __future__ import annotations
@@ -27,17 +28,19 @@ import gzip
 import json
 import re
 import socket
-import time
+from datetime import datetime
 
 INDI_KEEP_LEVELS = {"INFO", "WARNING", "ERROR"}
 INDI_LEVEL = re.compile(r'<message\b[^>]*\bmessage="\[(\w+)\]')
 
 
 def parse_when(value: str) -> float:
+    """Unix seconds, or ISO 8601. Without an offset it means the machine's local time, which is
+    wrong if the timezone changed since the recording; prefer an explicit offset."""
     try:
         return float(value)
     except ValueError:
-        return time.mktime(time.strptime(value, "%Y-%m-%dT%H:%M:%S"))
+        return datetime.fromisoformat(value).timestamp()
 
 
 class NoiseFilter:
@@ -54,14 +57,19 @@ class NoiseFilter:
         if rec.get("src") != "dbus":
             return True
         msg = rec.get("msg", {})
+        # KStars appearing, vanishing or crashing on the bus.
+        if msg.get("member") == "NameOwnerChanged":
+            return "org.kde.kstars" in json.dumps(msg.get("payload"))
         about = " ".join(str(msg.get(k, "")) for k in ("interface", "path", "destination"))
-        if "kstars" in about.lower() or "org.kde.kstars" in json.dumps(msg.get("payload")):
+        # Only KStars's own interfaces: KStars also talks to desktop services (file dialogs,
+        # KDirNotify), and those carry file paths.
+        if "kstars" in about.lower() and not str(msg.get("interface", "")).startswith(
+            ("org.freedesktop.impl.portal", "org.freedesktop.portal", "org.kde.KDirNotify")
+        ):
             if msg.get("type") == "method_call":
                 self.callers.add(msg.get("sender"))
             else:
                 self.kstars_names.add(msg.get("sender"))
-            return True
-        if msg.get("sender") in self.kstars_names and msg.get("type") == "signal":
             return True
         # Replies from KStars to a caller that called it.
         return (

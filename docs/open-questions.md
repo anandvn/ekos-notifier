@@ -104,7 +104,7 @@ and `CLAUDE.md` if a decision changes.
 
 ## Fixtures to record
 
-- [ ] One full simulated night (setup → scheduler session → flip → park) recorded as a replay
+- [x] One full simulated night (setup → scheduler session → flip → park) recorded as a replay
       fixture for CI and for "simulate a night".
       **Not yet (2026-11-15).** `tools/record_night.py` (recorder) and `tools/sim_night.py`
       (scenario) work. Six attempts reached setup (autofocus OK, PHD2 calibration and guiding OK)
@@ -120,9 +120,21 @@ and `CLAUDE.md` if a decision changes.
       LRGB 120 s, then flats) ran 21:34–03:39: slew → autofocus → plate solve → guiding → capture
       → meridian flip (01:41, guiding recalibrated and settled in under 2 min) → R/G/B panel
       flats. KStars then segfaulted (see below), so there is no clean job end or park. The
-      scrubbed recording (21:39–03:46, 9.4 MB) is kept off-repo until we decide how to store
-      fixtures. Still needed: a short run (~45 min, target ~10 min east of the meridian, panel
-      flats only) that reaches the job end, the Scheduler's Ekos shutdown and the park.
+      scrubbed recording (21:39–03:46 +03, 9.4 MB) is kept off-repo until we decide how to store
+      fixtures.
+      **Done (2026-11-16, short run).** Scheduler job "M 31", sequence `LRGBSHO_Short_nowall`
+      (12 × 60 s each of Hα/OIII/SII, 20 × 10 s each of LRGB, 4 × 1 s panel flats per filter),
+      recorded from before the Scheduler started (times EST): start 20:54 → slew → autofocus →
+      plate solve → guiding 20:56 → meridian flip 21:27:52–21:28:24 → post-flip re-solve and PHD2
+      recalibration (guiding settled 21:29:41) → lights done 21:48 → panel flats, no wall slew →
+      "Job 'M 31' is complete" 21:49:17 → "No pre-shutdown tasks, proceeding to stop Ekos/INDI"
+      → INDI disconnected, Ekos stopped 21:49:21. No crash. **The mount was never parked**: the
+      Scheduler's shutdown doesn't park when the shutdown procedure is off, so the fixture ends
+      in the "Ekos stopped with the mount unparked" Emergency case. Scrubbed: 1.6 MB, 140 frames,
+      kept off-repo with the IC 410 one until the storage decision.
+- [ ] **How to store fixtures.** The short run is 1.6 MB, the IC 410 night 9.4 MB (gzipped),
+      mostly high-rate mount position vectors. Options: commit as is; thin the position vectors
+      (~1/s) and commit; Git LFS; attach the long night to a GitHub release.
 
 ## Ekos behaviour found while recording (KStars 3.8.5)
 
@@ -146,13 +158,29 @@ These change how the Ekos adapter and alert rules must work.
       Crier loses the mount's properties. **Emergency rule "Ekos stopped with the mount unparked"
       adopted (2026-11-16)** and added to `design.md`.
 - [ ] **KStars 3.8.5 (Flatpak) segfaults at the wall-flat step**, reproduced twice (19:08 and
-      03:40 on 2026-11-16) with identical backtraces in Qt widget painting. Both times it came
-      right after the R/G/B panel flats, when the next flat job slewed to the wall position
-      ("Slew to wall position complete, tracking stopped"); the log ends there and the crash
-      follows 70–85 s later. Guess (unconfirmed): a light-source prompt dialog. Both times the
-      INDI server outlived KStars, leaving the mount **unparked with nothing watching it**: the
-      Emergency rule's case, reached by a crash. Workaround: panel flats only. To report upstream,
-      reproduce with the KStars debug extension for a symbolised backtrace.
+      03:40 +03 on 2026-11-16) with identical backtraces in Qt widget painting. Both times it came
+      right after the R/G/B flats, when the next flat job (Hα, the only one with `SkyFlat=true`)
+      slewed to the wall position again ("Slew to wall position complete, tracking stopped"); the
+      log ends there and the crash follows 70–85 s later. Guess (unconfirmed): a light-source
+      prompt dialog. Both times the INDI server outlived KStars, leaving the mount **unparked
+      with nothing watching it**: the Emergency rule's case, reached by a crash. Avoided by
+      removing the hidden wall pre-action (next item); no crash in the short run. To report
+      upstream, reproduce with the KStars debug extension for a symbolised backtrace.
+- [x] **Light jobs carry a hidden "Goto Wall" pre-action that Ekos applies at the flats.** In a
+      saved `.esq`, every light job had `<PreAction><Type>3</Type><Az>0</Az><Alt>90</Alt>` and
+      `<SkyFlat>true</SkyFlat>`; flat jobs had `<Type>1</Type>` and no Az/Alt. `PreAction` looks
+      like bit flags (1 = none, 2 = goto wall; inferred from which jobs carry Az/Alt, not checked
+      against the source). The GUI disables the Calibration button on light jobs, so this can't
+      be seen or cleared there, yet the IC 410 run slewed to the wall at the first flat. With
+      the light jobs edited by hand to `Type 1`, no Az/Alt and `SkyFlat=false`, the short run's
+      flats used the panel with no slew. Worth reporting upstream with the crash.
+- [x] **The Scheduler's normal end stops Ekos without parking** ("No pre-shutdown tasks,
+      proceeding to stop Ekos/INDI"; 21:49 EST in the short run). Confirms the item above on a
+      clean, crash-free run.
+- [x] **Post-flip recalibration logs an error, then recovers**: "Post meridian flip calibration
+      error. Restarting..." 0.2 s after PHD2 cleared its calibration, then a normal calibration
+      and "Post meridian flip calibration completed successfully". Intent-aware rules must not
+      alert on it.
 - [x] **Ekos disables the meridian flip during polar alignment** ("Meridian flip set inactive
       during polar alignment", re-activated when it finishes). Not a fault.
 - [x] **The Scheduler logs each job stage as a readable line** ("Job 'X' is slewing to target",
