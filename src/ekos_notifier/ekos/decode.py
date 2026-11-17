@@ -15,8 +15,8 @@ import json
 from collections.abc import Callable
 from typing import Any
 
-from town_crier.ekos import states
-from town_crier.events import Event
+from ekos_notifier.ekos import states
+from ekos_notifier.events import Event
 
 KSTARS_NAME = "org.kde.kstars"
 EKOS_PATH = "/KStars/Ekos"
@@ -120,7 +120,7 @@ HANDLERS: dict[tuple[str, str], Handler] = {
 
 
 def decode_signal(ts: float, path: str, member: str, args: list[Any]) -> list[Event]:
-    """Events for one signal from KStars; ``[]`` for signals Town Crier doesn't use."""
+    """Events for one signal from KStars; ``[]`` for signals Ekos Notifier doesn't use."""
     args = plain(list(args))
     if path.startswith(INDI_PATH + "/"):
         if member in ("Connected", "Disconnected"):

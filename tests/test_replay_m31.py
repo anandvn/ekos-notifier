@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from town_crier import replay
+from ekos_notifier import replay
 
 FIXTURE = Path(__file__).parent / "fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz"
 

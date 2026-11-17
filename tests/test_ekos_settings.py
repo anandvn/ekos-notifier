@@ -1,7 +1,7 @@
 import os
 import sqlite3
 
-from town_crier.ekos.settings import UNKNOWN, guider_settings, parse_kconfig
+from ekos_notifier.ekos.settings import UNKNOWN, guider_settings, parse_kconfig
 
 HOME = "/home/astro"
 FLATPAK_ENV = {
@@ -16,7 +16,7 @@ FLATPAK_DB = f"{HOME}/.var/app/org.kde.kstars/data/kstars/userdb.sqlite"
 PROFILES = [
     ("Simulators", 0, None, None),
     ("p1 svx102t", 0, None, None),
-    ("Town Crier Sim", 1, "localhost", 4400),
+    ("Ekos Notifier Sim", 1, "localhost", 4400),
     ("Remote guider", 1, "guidepi.local", 4401),
     ("Lin", 2, None, None),
 ]
@@ -98,7 +98,7 @@ def test_system_default_under_the_user_file(tmp_path):
     proc = fake_kstars(tmp_path, rc="[General]\n")
     system = proc / "1352/root/app/etc/xdg/kstarsrc"
     system.parent.mkdir(parents=True)
-    system.write_text("[Ekos]\nprofile=Town Crier Sim\n")
+    system.write_text("[Ekos]\nprofile=Ekos Notifier Sim\n")
     assert settings(proc).guider == "phd2"
 
 
@@ -124,5 +124,5 @@ def test_unknown_unless_certain(tmp_path):
     mixed = "[Ekos]\nprofile=Lin\n"  # profile lin_guider, Guide setting internal
     assert settings(fake_kstars(tmp_path / "e", rc=mixed)) == UNKNOWN
     proc = fake_kstars(tmp_path / "f", rc="")
-    fake_kstars(tmp_path / "f", pid=2, rc="[Ekos]\nprofile=Town Crier Sim\n")
+    fake_kstars(tmp_path / "f", pid=2, rc="[Ekos]\nprofile=Ekos Notifier Sim\n")
     assert settings(proc) == UNKNOWN  # two KStars that disagree

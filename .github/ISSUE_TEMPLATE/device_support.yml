@@ -16,6 +16,6 @@ body:
   - type: textarea
     id: dump
     attributes:
-      label: Output of `town-crier indi-dump`
+      label: Output of `ekos-notifier indi-dump`
       description: Attach the file it writes, or paste it here.
       render: text

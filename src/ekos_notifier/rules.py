@@ -25,7 +25,7 @@ import time
 from collections import defaultdict
 from typing import Any
 
-from town_crier.events import Event
+from ekos_notifier.events import Event
 
 UNPARKED_GRACE = 120.0
 MOVING = {"tracking", "slewing", "moving"}

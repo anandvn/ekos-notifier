@@ -1,4 +1,4 @@
-"""The Town Crier service: sources → sessions → rules → store → notifier (docs/design.md,
+"""The Ekos Notifier service: sources → sessions → rules → store → notifier (docs/design.md,
 "Architecture").
 
 ``serve()`` runs until SIGINT/SIGTERM. Shutdown stops the sources and the clock first, then lets
@@ -20,15 +20,15 @@ from collections.abc import Callable, Coroutine, Iterable
 from pathlib import Path
 from typing import Any
 
-from town_crier import __version__
-from town_crier.config import Config
-from town_crier.ekos.adapter import EkosAdapter
-from town_crier.events import Event
-from town_crier.notify import Notifier, init_cursor
-from town_crier.phd2.adapter import Phd2Adapter
-from town_crier.pipeline import TICK, Pipeline
-from town_crier.session import SessionManager
-from town_crier.store import EventWriter, Store
+from ekos_notifier import __version__
+from ekos_notifier.config import Config
+from ekos_notifier.ekos.adapter import EkosAdapter
+from ekos_notifier.events import Event
+from ekos_notifier.notify import Notifier, init_cursor
+from ekos_notifier.phd2.adapter import Phd2Adapter
+from ekos_notifier.pipeline import TICK, Pipeline
+from ekos_notifier.session import SessionManager
+from ekos_notifier.store import EventWriter, Store
 
 log = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ async def serve(
     if notifier is not None:
         workers.append(asyncio.create_task(notifier.run(), name="notifier"))
     stopper = asyncio.create_task(stop.wait(), name="stop")
-    log.info("Town Crier %s running; store %s", __version__, db_path)
+    log.info("Ekos Notifier %s running; store %s", __version__, db_path)
 
     try:
         done, _ = await asyncio.wait(

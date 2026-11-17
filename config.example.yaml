@@ -1,10 +1,10 @@
-# Town Crier configuration — example
-# Copy to ~/.config/town-crier/config.yaml. Every key is optional; defaults are shown.
+# Ekos Notifier configuration — example
+# Copy to ~/.config/ekos-notifier/config.yaml. Every key is optional; defaults are shown.
 # The first-run wizard writes this file for you, so most people never edit it by hand.
 # PRE-ALPHA: keys may change before 1.0.
 
 # Where to send alerts. Any Apprise URL works: https://github.com/caronc/apprise/wiki
-# Uncomment a line (or add your own) to turn alerts on; with none, Town Crier only records.
+# Uncomment a line (or add your own) to turn alerts on; with none, Ekos Notifier only records.
 notify:
 #  - "pover://USER_KEY@APP_TOKEN"      # Pushover
 #  - "ntfy://ntfy.sh/my-rig-topic"     # ntfy
@@ -17,7 +17,7 @@ notify_expire_minutes: 10
 style: plain
 
 # Hourly status digest while a session is running.
-crier:
+digest:
   enabled: true
   interval_minutes: 60
   align_to_clock: true     # on the hour, rather than N minutes from session start

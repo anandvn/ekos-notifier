@@ -1,7 +1,7 @@
 from dbus_fast import Variant
 
-from town_crier.ekos import states
-from town_crier.ekos.decode import decode_name_owner_changed, decode_signal, plain
+from ekos_notifier.ekos import states
+from ekos_notifier.ekos.decode import decode_name_owner_changed, decode_signal, plain
 
 T = 1000.0
 

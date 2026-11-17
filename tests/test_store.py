@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from town_crier import replay
-from town_crier.events import Event
-from town_crier.store import MIGRATIONS, EventWriter, Store
+from ekos_notifier import replay
+from ekos_notifier.events import Event
+from ekos_notifier.store import MIGRATIONS, EventWriter, Store
 
 FIXTURE = Path(__file__).parent / "fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz"
 
@@ -34,7 +34,7 @@ def test_refuses_a_newer_schema(tmp_path):
     db = sqlite3.connect(tmp_path / "tc.db")
     db.execute(f"PRAGMA user_version = {len(MIGRATIONS) + 1}")
     db.close()
-    with pytest.raises(RuntimeError, match="Upgrade Town Crier"):
+    with pytest.raises(RuntimeError, match="Upgrade Ekos Notifier"):
         Store(tmp_path / "tc.db")
 
 

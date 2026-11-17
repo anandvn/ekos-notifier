@@ -1,8 +1,8 @@
-# Town Crier
+# Ekos Notifier
 
-**Hear ye, hear ye — your imaging night, reported.**
+**Your imaging night, watched and reported.**
 
-Town Crier is a companion service for KStars/Ekos astrophotography rigs. It runs on your imaging
+Ekos Notifier is a companion service for KStars/Ekos astrophotography rigs. It runs on your imaging
 computer, watches the night, and:
 
 - **Alerts you when it matters**: guiding lost, sequence aborted, dew coming, battery low, mount
@@ -19,7 +19,7 @@ no problem.
 > **Status: pre-alpha.** The design is done; code is starting. See [the design](docs/design.md)
 > and [the roadmap](docs/design.md#roadmap). Not released yet.
 >
-> What works today: `town-crier run` follows Ekos over D-Bus and records the night (sessions,
+> What works today: `ekos-notifier run` follows Ekos over D-Bus and records the night (sessions,
 > frames, guiding, every Ekos state change) in a local SQLite database, and sends the first
 > alerts (session start and summary, and the "mount left unparked" Emergency) to any
 > [Apprise](https://github.com/caronc/apprise/wiki) notifier, such as Pushover.
@@ -27,14 +27,14 @@ no problem.
 >
 > ```bash
 > python -m venv .venv && . .venv/bin/activate && pip install -e .
-> town-crier run            # Ctrl-C to stop; the database is ~/.local/share/town-crier/town-crier.db
+> ekos-notifier run            # Ctrl-C to stop; the database is ~/.local/share/ekos-notifier/ekos-notifier.db
 > ```
 
 ## Planned install
 
 ```bash
-pipx install ekos-towncrier
-town-crier install-service
+pipx install ekos-notifier
+ekos-notifier install-service
 # the first-run wizard opens in your browser
 ```
 

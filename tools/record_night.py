@@ -29,7 +29,7 @@ import threading
 import time
 import xml.etree.ElementTree as ET
 
-FORMAT = "town-crier-replay/0"
+FORMAT = "ekos-notifier-replay/0"
 
 stop = threading.Event()
 out_q: queue.Queue[dict] = queue.Queue()

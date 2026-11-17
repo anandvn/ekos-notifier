@@ -32,7 +32,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from town_crier.events import Event
+from ekos_notifier.events import Event
 
 log = logging.getLogger(__name__)
 

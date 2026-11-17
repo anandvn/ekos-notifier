@@ -3,7 +3,7 @@
 Recorded nights that drive the test suite and the user-facing "simulate a night" feature.
 Recorded with `tools/record_night.py`; simulated nights are scripted with `tools/sim_night.py`.
 
-## Format: `town-crier-replay/0` (gzipped NDJSON)
+## Format: `ekos-notifier-replay/0` (gzipped NDJSON)
 
 Line 1 is a `meta` record (`format`, `started`, `kstars`, `python`). Every other line is:
 
@@ -21,6 +21,9 @@ Line 1 is a `meta` record (`format`, `started`, `kstars`, `python`). Every other
 
 `t` is Unix time in seconds. D-Bus records use the bus's own timestamp; the others use the time of
 receipt.
+
+Recordings made before the project was renamed carry `town-crier-replay/0`; the format is the
+same and both names are accepted (the M 31 fixture is one).
 
 Version 0 means unstable: the format may change until the replay engine exists.
 

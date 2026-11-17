@@ -1,4 +1,4 @@
-"""The config file (``~/.config/town-crier/config.yaml``; see config.example.yaml).
+"""The config file (``~/.config/ekos-notifier/config.yaml``; see config.example.yaml).
 
 Every key is optional. A missing file means record-only mode. Only the keys the code uses so far
 are read; the rest of the example file is kept in ``raw`` for the features still to come.
@@ -28,7 +28,7 @@ class Config:
 
 def default_path() -> Path:
     base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
-    return Path(base) / "town-crier" / "config.yaml"
+    return Path(base) / "ekos-notifier" / "config.yaml"
 
 
 def load(path: str | Path | None = None) -> Config:

@@ -1,11 +1,11 @@
-# Town Crier — Design Spec
+# Ekos Notifier — Design Spec
 
 Exported from the working design doc, Nov 2026. This file is the source of truth from here on;
 update it alongside the code.
 
 ## Overview
 
-Town Crier is an open-source (MIT) companion service for KStars/Ekos rigs: it watches an imaging night, records it as a session in a local database, sends alerts that matter, and carries the night's data home. It runs on the imaging computer itself and depends on no specific server, notification service or network.
+Ekos Notifier is an open-source (MIT) companion service for KStars/Ekos rigs: it watches an imaging night, records it as a session in a local database, sends alerts that matter, and carries the night's data home. It runs on the imaging computer itself and depends on no specific server, notification service or network.
 
 **Goals**
 
@@ -17,7 +17,7 @@ Town Crier is an open-source (MIT) companion service for KStars/Ekos rigs: it wa
 
 **Non-goals (v1)**
 
-- Controlling equipment. Town Crier observes and reports; Ekos stays in charge.
+- Controlling equipment. Ekos Notifier observes and reports; Ekos stays in charge.
 - N.I.N.A./Windows support.
 - Image processing or stacking.
 
@@ -29,16 +29,16 @@ A session starts automatically when the Ekos Scheduler starts (or the first Ligh
 
 1. **Standby** — service started at boot by systemd. Nothing is sent except the critical-battery Emergency.
 2. **Setup** — entered when Ekos connects the equipment profile. A setup log records in the background while the user focuses, polar aligns and calibrates. The GUI shows it as a live checklist.
-3. **Active** — entered on Scheduler start (or first manual Light frame, or GUI Start). Snapshot, pre-flight checks, then alerting, town crier and heartbeat begin.
-4. **Closed** — when the imaging run ends, on GUI End, or on Ekos disconnect. Summary sent, heartbeat and crier stopped, session exported for sync. If Ekos went away while the mount was unparked, the "Ekos stopped with the mount unparked" Emergency is sent too, whatever the state.
+3. **Active** — entered on Scheduler start (or first manual Light frame, or GUI Start). Snapshot, pre-flight checks, then alerting, the hourly digest and heartbeat begin.
+4. **Closed** — when the imaging run ends, on GUI End, or on Ekos disconnect. Summary sent, heartbeat and digest stopped, session exported for sync. If Ekos went away while the mount was unparked, the "Ekos stopped with the mount unparked" Emergency is sent too, whatever the state.
    - *The imaging run ends* when the Scheduler stops after running (finished or aborted), or, with no Scheduler, when Capture reports its sequence complete (with the Scheduler, Capture reports that once per job, so it's ignored). Parked or not: the summary says the mount's last known state, and the Emergency covers an unparked mount. The summary arrives within seconds of the last frame. A later run the same night starts a new session.
-   - Snapshot readings (taken when Town Crier connects) never close a session: after a restart mid-run, the Scheduler's snapshot has read `idle` while it was running.
+   - Snapshot readings (taken when Ekos Notifier connects) never close a session: after a restart mid-run, the Scheduler's snapshot has read `idle` while it was running.
    - *Ekos disconnect* means Ekos stays gone for a grace period (default 10 min), so a KStars crash followed by a restart doesn't split the night; the session's end time is when Ekos went away. The Emergency has its own 2-minute timer and isn't delayed by this.
    - A session still open at local noon after its night closes as `night_ended`, at its last activity.
    - A session that closes from Setup without ever imaging is recorded as `abandoned`.
-   - A session can start straight from Standby (Town Crier started mid-night, or no Ekos connect seen). After a service restart, the open session is picked up from the store.
+   - A session can start straight from Standby (Ekos Notifier started mid-night, or no Ekos connect seen). After a service restart, the open session is picked up from the store.
 
-The rules are implemented in `town_crier.session.SessionManager`, which is driven only by events and the clock, so replayed nights test the same decisions as live ones.
+The rules are implemented in `ekos_notifier.session.SessionManager`, which is driven only by events and the clock, so replayed nights test the same decisions as live ones.
 
 ### Setup log (recorded during Setup)
 
@@ -72,7 +72,7 @@ A GUI text box saves timestamped notes into the session ("seeing poor, breeze fr
 
 ## Alerts
 
-Every alert maps to one of four priorities; Emergency and High send immediately, Normal is batched into the town crier digest unless time-critical. All thresholds are config defaults.
+Every alert maps to one of four priorities; Emergency and High send immediately, Normal is batched into the hourly digest unless time-critical. All thresholds are config defaults.
 
 | Priority | Delivery | Meaning |
 | --- | --- | --- |
@@ -137,9 +137,9 @@ Meridian flip in 15 min.
 - **Correlate:** concurrent star-lost, HFR jump and star-count drop become one Clouds alert.
 - **Thumbnails:** a 100–200 KB stretched JPEG attaches to first-sub and summary messages where the notifier supports images.
 
-## Town crier digest and message styles
+## Hourly digest and message styles
 
-The town crier sends one status digest per interval (default 60 min) while a session is Active, folding in any held Normal events. Off in the GUI = Normal events send individually.
+The digest is one status message per interval (default 60 min) while a session is Active, folding in any held Normal events. Off in the GUI = Normal events send individually.
 
 ### Digest
 
@@ -203,7 +203,7 @@ SQLite (WAL mode) on the rig is the source of truth; a closed session is exporte
 
 `events` is append-only and holds every event as the adapters reported it (`capture.frame`,
 `mount.park`, `guide.rms`, `phd2.step`, …); `frames` and `samples` are filled from events in the same
-transaction. The database lives at `~/.local/share/town-crier/town-crier.db` (honouring
+transaction. The database lives at `~/.local/share/ekos-notifier/ekos-notifier.db` (honouring
 `XDG_DATA_HOME`), in WAL mode so readers never block the writer, and its schema is versioned with
 `PRAGMA user_version` migrations. Implemented so far: `events`, `frames`, `samples`; the other
 tables arrive with the session manager, notifier and GUI.
@@ -260,7 +260,7 @@ A phone-first web page served by the service on the rig's local network, read-on
 | Notes | Add timestamped notes to the session |
 | Sessions | Past sessions with summaries and sync status |
 | Sync | Unsynced count, destination reachable?, last flush, Flush button with progress, FITS checkbox |
-| Settings | Notifier test, thresholds, crier interval, message style, heartbeat, sync destination, units |
+| Settings | Notifier test, thresholds, digest interval, message style, heartbeat, sync destination, units |
 
 - **Stack:** Starlette, server-rendered HTML, htmx for live updates, uPlot for charts; all assets vendored, no CDN.
 - **Never slows capture:** the GUI only reads SQLite (WAL), and all work runs at low priority.
@@ -312,7 +312,7 @@ When several devices report the same metric, a configurable priority order picks
 ### Presets as data
 
 - Presets are YAML files in `presets/`, contributed by pull request with no Python required.
-- `town-crier indi-dump` writes a device's full property list for attaching to a "support my device" issue.
+- `ekos-notifier indi-dump` writes a device's full property list for attaching to a "support my device" issue.
 - Each preset is labelled verified, community or untested; the wizard shows the label.
 
 ### Isolation and stale data
@@ -334,8 +334,8 @@ Top priority: a new user goes from install to a test alert on their phone in und
 
 ### Configuration
 
-- One YAML file (`~/.config/town-crier/config.yaml`), fully commented, every key with a default.
-- The GUI Settings view edits the same file; `town-crier config check` validates it and explains errors in plain words.
+- One YAML file (`~/.config/ekos-notifier/config.yaml`), fully commented, every key with a default.
+- The GUI Settings view edits the same file; `ekos-notifier config check` validates it and explains errors in plain words.
 
 ### First-run wizard (GUI, opens automatically on first start)
 
@@ -345,12 +345,12 @@ Top priority: a new user goes from install to a test alert on their phone in und
 4. **Power:** pick power box preset and battery type, or "mains power".
 5. **Heartbeat (optional):** explain the dead-man's switch in two sentences, paste a ping URL, test.
 6. **Sync (optional):** pick destination type, guided rclone setup, Test write.
-7. **Style + crier:** message style (with live preview, including Olde English), digest interval.
+7. **Style + digest:** message style (with live preview, including Olde English), digest interval.
 8. **Done:** a checklist of what's on, and "Simulate a night" to see sample alerts.
 
 ### Built-in safety nets
 
-- `town-crier doctor`: checks D-Bus access, PHD2 port, INDI connection, clock sync, disk, notifier, sync destination; prints fixes.
+- `ekos-notifier doctor`: checks D-Bus access, PHD2 port, INDI connection, clock sync, disk, notifier, sync destination; prints fixes.
 - **Simulation mode:** replays a recorded night so users can tune alerts in daylight; also drives the test suite.
 
 ### Documentation plan (MkDocs site on GitHub Pages)
@@ -372,10 +372,10 @@ Top priority: a new user goes from install to a test alert on their phone in und
 
 One Python process on the imaging computer: adapters feed events in, SQLite stores everything first, and every output is a consumer reading from the store.
 
-The PHD2 adapter (`town_crier.phd2`) reads PHD2's event server and sends nothing; PHD2 serves several clients, so Ekos's connection is unaffected. PHD2's connect burst (`Version` … `AppState`) is recorded as a snapshot, and the guider state (`stopped`, `looping`, `calibrating`, `guiding`, `lost_lock`, `paused`) is tracked from the events that follow. Guide steps are recorded at PHD2's rate (about one a second), about 240 bytes each in the database: some 5 MB for a 6-hour night. It reads which guider Ekos uses from the running KStars (Flatpak or native): the selected equipment profile's guider (`userdb.sqlite` `profile`, selected by `kstarsrc` `[Ekos] profile`) and the Guide module's setting (`kstarsrc` `[Guide] GuiderType`, `PHD2Host`, `PHD2Port`), which Ekos sets from the profile when it starts. If either says PHD2, it connects to that host and port. Only when both say another guider (internal or lin_guider) does it leave PHD2 alone, re-reading the settings every 30 s so a switch mid-night is picked up; the choice is recorded as an `ekos.guider` event. When it can't tell (KStars not running yet), or PHD2 isn't running, it retries quietly.
+The PHD2 adapter (`ekos_notifier.phd2`) reads PHD2's event server and sends nothing; PHD2 serves several clients, so Ekos's connection is unaffected. PHD2's connect burst (`Version` … `AppState`) is recorded as a snapshot, and the guider state (`stopped`, `looping`, `calibrating`, `guiding`, `lost_lock`, `paused`) is tracked from the events that follow. Guide steps are recorded at PHD2's rate (about one a second), about 240 bytes each in the database: some 5 MB for a 6-hour night. It reads which guider Ekos uses from the running KStars (Flatpak or native): the selected equipment profile's guider (`userdb.sqlite` `profile`, selected by `kstarsrc` `[Ekos] profile`) and the Guide module's setting (`kstarsrc` `[Guide] GuiderType`, `PHD2Host`, `PHD2Port`), which Ekos sets from the profile when it starts. If either says PHD2, it connects to that host and port. Only when both say another guider (internal or lin_guider) does it leave PHD2 alone, re-reading the settings every 30 s so a switch mid-night is picked up; the choice is recorded as an `ekos.guider` event. When it can't tell (KStars not running yet), or PHD2 isn't running, it retries quietly.
 
 ```
- Sources                  Town Crier service                Outputs
+ Sources                  Ekos Notifier service                Outputs
  ┌──────────────┐        ┌──────────────────────┐         ┌────────────────────┐
  │ Ekos (D-Bus) │──────▶ │ Session manager      │    ┌──▶ │ Notifier (Apprise) │
  └──────────────┘        │          │           │    │    └────────────────────┘
@@ -394,7 +394,7 @@ Because outputs only read from the store, a dead notifier, network or sync targe
 
 - **Language and runtime:** Python 3.10+, asyncio; `dbus-fast` for Ekos, raw sockets for PHD2, a light INDI XML client. Nothing that must compile at install time (dbus-fast's optional speed-ups fall back to pure Python).
 - **Platforms:** StellarMate OS (including the Arch/Flatpak release), Astroberry, any Linux with KStars; x86-64 mini PCs and Raspberry Pi (ARM64).
-- **Runs where KStars runs.** Ekos is observed over the local session D-Bus, so Town Crier must run on the computer running KStars/Ekos. That computer doesn't have to host the INDI server. The INDI host and port come from the active Ekos profile. A Linux laptop running KStars against a remote INDI Pi works if Town Crier is on the laptop. KStars on Windows or macOS is out of scope.
+- **Runs where KStars runs.** Ekos is observed over the local session D-Bus, so Ekos Notifier must run on the computer running KStars/Ekos. That computer doesn't have to host the INDI server. The INDI host and port come from the active Ekos profile. A Linux laptop running KStars against a remote INDI Pi works if Ekos Notifier is on the laptop. KStars on Windows or macOS is out of scope.
 - **Session bus discovery:** `DBUS_SESSION_BUS_ADDRESS`, then `/run/user/<uid>/bus`, then the address in the running `kstars` process's environment. `doctor` reports which one worked.
 - **Start at boot:** `install-service` enables lingering for the user so the service runs without a desktop login.
 
@@ -409,7 +409,7 @@ Because outputs only read from the store, a dead notifier, network or sync targe
 | AstroArch | Arch ARM, rolling | native, latest | Supported |
 | Debian 11 and older | 3.9 or older | — | Unsupported (Python < 3.10) |
 | KStars snap | any | snap | Unverified |
-- **Install:** `pipx install ekos-towncrier` then `town-crier install-service` (systemd user unit) and the wizard opens in the browser.
+- **Install:** `pipx install ekos-notifier` then `ekos-notifier install-service` (systemd user unit) and the wizard opens in the browser.
 - **Footprint target:** < 100 MB RAM, < 2 % CPU on a Pi 4 during a session.
 - **Quality:** simulation-replay test suite in CI (GitHub Actions), semver releases, CHANGELOG, MIT LICENSE, CONTRIBUTING and issue templates from day one.
 
@@ -419,7 +419,7 @@ Four milestones to a public 1.0; the wizard and docs land before the GUI polish 
 
 | Milestone | Scope |
 | --- | --- |
-| 0.1 Core | Event sources (Ekos D-Bus, PHD2, INDI), canonical metrics with capability gating, `indi-dump`, SQLite store, session lifecycle, alert rules, Apprise notifier, town crier, simulation mode |
+| 0.1 Core | Event sources (Ekos D-Bus, PHD2, INDI), canonical metrics with capability gating, `indi-dump`, SQLite store, session lifecycle, alert rules, Apprise notifier, hourly digest, simulation mode |
 | 0.2 First run | Wizard, `doctor`, config validation, Quick start + Alerts reference docs, Olde English and Terse styles |
 | 0.3 GUI + sync | Web GUI views, export folders, rclone sync and Flush, heartbeat |
 | 1.0 Public | Full docs site, power box presets, pipx packaging, reference importer, multi-setup test matrix passing in CI, field-tested on StellarMate and Astroberry |

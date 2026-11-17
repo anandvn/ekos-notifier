@@ -7,7 +7,7 @@ import asyncio
 import logging
 import sys
 
-from town_crier import __version__
+from ekos_notifier import __version__
 
 # Distinct from argparse's usage-error code (2) so scripts can tell them apart.
 EXIT_NOT_IMPLEMENTED = 3
@@ -19,12 +19,12 @@ PLANNED = {
     "install-service": "install the systemd user service",
 }
 
-CONFIG_HELP = "config file (default: ~/.config/town-crier/config.yaml)"
+CONFIG_HELP = "config file (default: ~/.config/ekos-notifier/config.yaml)"
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="town-crier",
+        prog="ekos-notifier",
         description="Alerts, hourly digests and session records for KStars/Ekos rigs.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -34,12 +34,12 @@ def build_parser() -> argparse.ArgumentParser:
         "run",
         help="run the monitoring service in the foreground",
         description="Run the monitoring service in the foreground until Ctrl-C or SIGTERM. "
-        "The systemd service runs this; run it by hand to watch what Town Crier sees.",
+        "The systemd service runs this; run it by hand to watch what Ekos Notifier sees.",
     )
     run.add_argument(
         "--db",
         metavar="PATH",
-        help="database file (default: ~/.local/share/town-crier/town-crier.db)",
+        help="database file (default: ~/.local/share/ekos-notifier/ekos-notifier.db)",
     )
     run.add_argument("--config", metavar="PATH", help=CONFIG_HELP)
     run.add_argument("-v", "--verbose", action="store_true", help="debug logging")
@@ -73,18 +73,21 @@ def main(argv: list[str] | None = None) -> int:
     if args.command is None:
         parser.print_help()
         return 0
+    from ekos_notifier import legacy
+
+    legacy.migrate(say=lambda msg: print(msg, file=sys.stderr))
     if args.command == "run":
         return cmd_run(args)
     if args.command == "test-notify":
         return cmd_test_notify(args)
     if args.command == "config":
         return cmd_config_check(args)
-    print(f"town-crier {args.command}: not implemented yet (pre-alpha).", file=sys.stderr)
+    print(f"ekos-notifier {args.command}: not implemented yet (pre-alpha).", file=sys.stderr)
     return EXIT_NOT_IMPLEMENTED
 
 
 def _load_config(path: str | None):
-    from town_crier import config
+    from ekos_notifier import config
 
     try:
         return config.load(path)
@@ -102,8 +105,8 @@ def _private(url: str) -> str:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    from town_crier.service import serve
-    from town_crier.store import default_path
+    from ekos_notifier.service import serve
+    from ekos_notifier.store import default_path
 
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
@@ -115,7 +118,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     try:
         asyncio.run(serve(args.db or default_path(), config=cfg))
     except Exception as exc:  # noqa: BLE001 - report, don't dump a traceback on users
-        logging.getLogger("town_crier").error("%s", exc, exc_info=args.verbose)
+        logging.getLogger("ekos_notifier").error("%s", exc, exc_info=args.verbose)
         return 1
     return 0
 
@@ -127,8 +130,8 @@ def cmd_config_check(args: argparse.Namespace) -> int:
     if cfg is None:
         return 1
     if cfg.path is None:
-        print("No config file: Town Crier records only and sends nothing.")
-        print("Copy config.example.yaml to ~/.config/town-crier/config.yaml to set one up.")
+        print("No config file: Ekos Notifier records only and sends nothing.")
+        print("Copy config.example.yaml to ~/.config/ekos-notifier/config.yaml to set one up.")
         return 0
     print(f"{cfg.path}: OK")
     problems = 0
@@ -146,7 +149,7 @@ def cmd_config_check(args: argparse.Namespace) -> int:
 
 
 def cmd_test_notify(args: argparse.Namespace) -> int:
-    from town_crier.notify import send_apprise
+    from ekos_notifier.notify import send_apprise
 
     cfg = _load_config(args.config)
     if cfg is None:
@@ -155,12 +158,12 @@ def cmd_test_notify(args: argparse.Namespace) -> int:
         print("No notifiers in the config ('notify:' is empty or there's no config file).")
         return 1
     priority = "emergency" if args.emergency else "normal"
-    body = "If you can read this, Town Crier can reach you."
+    body = "If you can read this, Ekos Notifier can reach you."
     if args.emergency:
         body += "\nThis is a test Emergency: acknowledge it to stop the repeats."
     failures = 0
     for url in cfg.notify:
-        error = send_apprise(url, priority, "Town Crier test", body)
+        error = send_apprise(url, priority, "Ekos Notifier test", body)
         if error is None:
             print(f"sent     {_private(url)}")
         else:

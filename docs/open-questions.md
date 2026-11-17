@@ -36,7 +36,7 @@ and `CLAUDE.md` if a decision changes.
       Focus, Align and Mount objects must appear once Ekos starts, so the adapter has to watch for
       objects appearing and disappearing, not introspect once at startup.
 - [x] Where does Flatpak KStars keep its data? Expect `~/.var/app/org.kde.kstars/...`. Find the
-      `.analyze` files and logs; Town Crier must search both native and Flatpak paths, and
+      `.analyze` files and logs; Ekos Notifier must search both native and Flatpak paths, and
       `doctor` must report which it found.
       **`~/.var/app/org.kde.kstars/data/kstars/`** (has `analyze/`, `logs/`, `astrometry/`);
       config in `~/.var/app/org.kde.kstars/config/kstars`. A stale `~/.local/share/kstars/` with
@@ -47,18 +47,18 @@ and `CLAUDE.md` if a decision changes.
       (`/app/bin/indiserver`, libindi 2.2.5), not the host's native libindi, and it listens on
       host port 7624. The Flatpak has `shared=network` and `sockets=session-bus`, which is why
       both D-Bus and the port work from the host. `doctor` should check these permissions, since
-      a future Flatpak that tightens them would break Town Crier. PHD2 is native here, so its
+      a future Flatpak that tightens them would break Ekos Notifier. PHD2 is native here, so its
       Flatpak case is untested.
       **Native case verified (VM, 2026-11-15):** `indiserver` with the five simulators answers
       `getProperties` on 7624 (84 vectors, 5 devices); PHD2 2.6.14 on 4400 sends `Version`
       (MsgVersion 1) and `AppState` on connect and answers `get_app_state`, even with no
       equipment profile. Both listen on `0.0.0.0` with no authentication, so they're open to the
-      LAN. Town Crier's clients should connect to localhost, and the docs shouldn't suggest
+      LAN. Ekos Notifier's clients should connect to localhost, and the docs shouldn't suggest
       opening these ports further.
 - [x] Are PHD2 and INDI Flatpaks too, or native packages? Record versions.
       **On the VM:** PHD2 2.6.14 is native. A native `libindi 2.2.5` is installed, but Ekos uses
       the copy bundled in the KStars Flatpak (also 2.2.5) — see above.
-- [ ] Confirm Town Crier installs and runs on the host via pipx (Arch Python version, `dbus-fast` works).
+- [ ] Confirm Ekos Notifier installs and runs on the host via pipx (Arch Python version, `dbus-fast` works).
       Host Python is 3.14.7; an editable install, tests and the CLI work. pipx + `dbus-fast` not yet tried.
 
 ## Other platforms (Astroberry, Raspberry Pi OS, Ubuntu, AstroArch)
@@ -92,7 +92,7 @@ and `CLAUDE.md` if a decision changes.
       D-Bus property for the current profile; the Guide module's `guider` property is the ST4
       device ("Telescope Simulator"), not the guider type. The Flatpak reads
       `~/.var/app/org.kde.kstars/config/kstarsrc` and `…/data/kstars/userdb.sqlite`; an old
-      native `~/.config/kstarsrc` on the VM is stale. Town Crier reads both the profile and the
+      native `~/.config/kstarsrc` on the VM is stale. Ekos Notifier reads both the profile and the
       Guide setting through the running process's environment and `/proc/<pid>/root`; "not PHD2"
       needs both to agree.
 - [ ] **INDI host and port:** Ekos profiles can point at a remote INDI server or a port other than
@@ -110,7 +110,7 @@ and `CLAUDE.md` if a decision changes.
       (needs `indi-dump` output from the real rig).
 - [x] Which INDI weather simulator properties exist, to build the "weather station only" fixture.
       **Only after the device is connected.** Before that, every device shows just CONNECTION,
-      DRIVER_INFO and housekeeping, so Town Crier (observe-only) sees no metrics until Ekos connects
+      DRIVER_INFO and housekeeping, so Ekos Notifier (observe-only) sees no metrics until Ekos connects
       the equipment. Capability detection must re-run when devices connect, not once at startup.
       Connected, the readings are `WEATHER_PARAMETERS` with elements `WEATHER_FORECAST`,
       `WEATHER_TEMPERATURE`, `WEATHER_HUMIDITY`, `WEATHER_WIND_SPEED`, `WEATHER_WIND_GUST`,
@@ -124,7 +124,8 @@ and `CLAUDE.md` if a decision changes.
 ## Defaults and packaging
 
 - [ ] Default dew margin for humid sites (2 °C vs wider).
-- [x] PyPI name: `ekos-towncrier` (confirmed). CLI command stays `town-crier`.
+- [x] PyPI name: `ekos-notifier`, CLI `ekos-notifier` (renamed from `ekos-towncrier`/`town-crier`,
+      2026-11-17).
 
 ## Fixtures to record
 
@@ -169,7 +170,7 @@ These change how the Ekos adapter and alert rules must work.
       `newHFR` is `[hfr, position, ?, "Primary"]` with `hfr = -1` meaning no stars found. States
       seen: 5 = running, 1 = complete, 3 = failed. (Per the KStars source 2 = failed and
       3 = aborted; the D-Bus recording of 2026-11-16 confirms only 1 and 5. The third `newHFR`
-      argument is true during autofocus. Names used by the adapter: `src/town_crier/ekos/states.py`.) Focus methods (`start`, `status`, `abort`)
+      argument is true during autofocus. Names used by the adapter: `src/ekos_notifier/ekos/states.py`.) Focus methods (`start`, `status`, `abort`)
       all take the train name.
 - [x] **Ekos retries a failed autofocus by itself** ("Restarting autofocus process…"), emitting
       status 3 for each attempt. The "autofocus failed: 2 consecutive failures" rule must count
@@ -181,8 +182,8 @@ These change how the Ekos adapter and alert rules must work.
       profile), and then the job aborts before it starts. `doctor` could flag this.
 - [x] **When the Scheduler finishes or aborts by itself, it stops Ekos and disconnects INDI**,
       even with the shutdown procedure disabled and the mount unparked. A manual `Scheduler.stop()`
-      does not. On a real rig that leaves the mount tracking with nothing watching it, and Town
-      Crier loses the mount's properties. **Emergency rule "Ekos stopped with the mount unparked"
+      does not. On a real rig that leaves the mount tracking with nothing watching it, and Ekos
+      Notifier loses the mount's properties. **Emergency rule "Ekos stopped with the mount unparked"
       adopted (2026-11-16)** and added to `design.md`.
 - [x] **A run's end, as Ekos reports it** (M 31 replay and a live run, 2026-11-17): Capture
       `complete` (19), then INDI and Ekos idle, then Scheduler `idle`, within 4 s. Capture reports
@@ -229,7 +230,7 @@ These change how the Ekos adapter and alert rules must work.
       measures HFR when an option is on; the session summary's median HFR depends on it.
 - [x] **Ekos state codes checked against a recording.** Each D-Bus `newStatus` in the M 31 run
       was matched to the state name KStars logged at the same moment; the confirmed codes are
-      listed in `src/town_crier/ekos/states.py` (`VERIFIED`). `Capture.meridianFlipStarted` exists
+      listed in `src/ekos_notifier/ekos/states.py` (`VERIFIED`). `Capture.meridianFlipStarted` exists
       in the introspection but wasn't emitted during the flip: the flip shows as Capture state 18
       and a `pierSideChanged`.
 - [x] **The Flatpak KStars process reports a sandbox-only bus address** (`unix:path=/run/flatpak/bus`
