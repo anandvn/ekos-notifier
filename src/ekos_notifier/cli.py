@@ -146,6 +146,13 @@ def cmd_config_check(args: argparse.Namespace) -> int:
     if cfg.notify:
         print(f"  undelivered alerts dropped after {cfg.notify_expire_minutes:g} min")
     print(f"  guiding lost: alert after {cfg.guiding_recovery_minutes:g} min without recovery")
+    if cfg.guiding_poor_minutes > 0:
+        print(
+            f"  guiding poor: alert after {cfg.guiding_poor_minutes:g} min over Ekos's guide "
+            "deviation limit"
+        )
+    else:
+        print("  guiding poor: off (guiding_poor_minutes is 0)")
     return 1 if problems else 0
 
 

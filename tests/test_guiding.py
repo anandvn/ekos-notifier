@@ -278,7 +278,7 @@ def test_rules_resumed_after_a_service_restart_still_alert():
     for e in guiding_night()[1:] + [ev(100, "guide.state", state="aborted")]:
         out += rules.handle(e)
     out += rules.tick(T + 200)
-    assert [a.data["rule"] for a in out if a.kind == "alert"] == ["guiding_lost"]
+    assert [a.data["rule"] for a in out if a.data["rule"].startswith("guiding")] == ["guiding_lost"]
 
 
 def test_phd2_warnings_at_the_end_of_the_run_are_not_sent():

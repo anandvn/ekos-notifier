@@ -24,6 +24,7 @@ class Config:
     notify: list[str] = field(default_factory=list)
     notify_expire_minutes: float = 10.0
     guiding_recovery_minutes: float = 5.0
+    guiding_poor_minutes: float = 10.0
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -59,16 +60,22 @@ def load(path: str | Path | None = None) -> Config:
     guiding = _minutes(
         path, "alerts.guiding_recovery_minutes", alerts.get("guiding_recovery_minutes", 5)
     )
+    poor = _minutes(path, "alerts.guiding_poor_minutes", alerts.get("guiding_poor_minutes", 10))
     return Config(
         path=path,
         notify=[u.strip() for u in notify if u.strip()],
         notify_expire_minutes=expire,
         guiding_recovery_minutes=guiding,
+        guiding_poor_minutes=poor,
         raw=raw,
     )
 
 
 def _minutes(path: Path, key: str, value: object) -> float:
+    return _number(path, key, value, "minutes")
+
+
+def _number(path: Path, key: str, value: object, unit: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
-        raise ConfigError(f"{path}: '{key}' must be a number of minutes, 0 or more")
+        raise ConfigError(f"{path}: '{key}' must be a number of {unit}, 0 or more")
     return float(value)

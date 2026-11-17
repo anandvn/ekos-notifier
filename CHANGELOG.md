@@ -5,6 +5,12 @@ Semantic Versioning.
 
 ## Unreleased
 
+- More High alerts: **Guiding poor** (follows Ekos's own guide-deviation limit: when a job
+  enforces it, the time Ekos holds exposures; otherwise Ekos's guide RMS over that limit; config
+  `alerts.guiding_poor_minutes`, default 10), **Capture aborted** (with Ekos's reason; aborts with
+  no cause are taken as the user's Stop), **Scheduler aborted**, **Capture stalled** (no progress
+  for 2 × (exposure + download), at least 2 min) with "Capture running again", and **Autofocus
+  failed** (two runs in a row, Ekos's retry loop counted once).
 - **Guiding lost** alert (High, `ekos_notifier.guiding`): guiding stopped and not back within
   `alerts.guiding_recovery_minutes` (default 5) of time when guiding was expected, then
   **Guiding recovered**. Intent-aware: slews, meridian flips, plate solving, autofocus, flats with
