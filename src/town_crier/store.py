@@ -301,18 +301,28 @@ class EventWriter:
         self.written = 0
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="store")
         self._store: Store | None = None
+        self._pending: list[Event] = []
 
     def put(self, event: Event) -> None:
         self.queue.put_nowait(event)
 
     async def run(self) -> None:
         loop = asyncio.get_running_loop()
-        self._store = await loop.run_in_executor(self._executor, Store, self.store_path)
+        opening = loop.run_in_executor(self._executor, Store, self.store_path)
         try:
+            try:
+                self._store = await asyncio.shield(opening)
+            except asyncio.CancelledError:
+                # Stopped while the database was still opening: finish opening, so the
+                # flush below can write what's queued instead of losing it.
+                self._store = await opening
+                raise
             while True:
-                batch = [await self.queue.get()]
-                await self._gather(batch)
-                await self._write(batch)
+                # The batch lives on self until committed, so a shutdown mid-batch flushes it.
+                self._pending = [await self.queue.get()]
+                await self._gather(self._pending)
+                await self._write(self._pending)
+                self._pending = []
         except asyncio.CancelledError:
             await self.flush()
             raise
@@ -323,7 +333,10 @@ class EventWriter:
             self._executor.shutdown(wait=False)
 
     async def flush(self) -> None:
-        """Write whatever is queued (on shutdown, and in tests)."""
+        """Write the batch in hand and whatever is queued (on shutdown, and in tests)."""
+        if self._pending:
+            batch, self._pending = self._pending, []
+            await self._write(batch, retry=False)
         while not self.queue.empty():
             batch = []
             while not self.queue.empty() and len(batch) < self.batch_size:
@@ -331,22 +344,26 @@ class EventWriter:
             await self._write(batch, retry=False)
 
     async def _gather(self, batch: list[Event]) -> None:
-        """Wait briefly for more events so a burst becomes one transaction."""
-        deadline = asyncio.get_running_loop().time() + self.linger
-        while len(batch) < self.batch_size:
-            timeout = deadline - asyncio.get_running_loop().time()
-            if timeout <= 0:
-                break
-            try:
-                batch.append(await asyncio.wait_for(self.queue.get(), timeout))
-            except asyncio.TimeoutError:
-                break
+        """Wait briefly, then take what arrived, so a burst becomes one transaction.
+        (Not ``wait_for(queue.get())``: an item can be lost if the timeout and the get race.)"""
+        if len(batch) < self.batch_size and self.linger > 0:
+            await asyncio.sleep(self.linger)
+        while len(batch) < self.batch_size and not self.queue.empty():
+            batch.append(self.queue.get_nowait())
 
     async def _write(self, batch: list[Event], retry: bool = True) -> None:
         loop = asyncio.get_running_loop()
         while True:
+            pending = loop.run_in_executor(self._executor, self._store.append, list(batch))
             try:
-                await loop.run_in_executor(self._executor, self._store.append, batch)
+                try:
+                    await asyncio.shield(pending)
+                except asyncio.CancelledError:
+                    # A write already under way finishes and counts; then stop.
+                    await pending
+                    self.written += len(batch)
+                    batch.clear()
+                    raise
                 self.written += len(batch)
                 return
             except sqlite3.Error as exc:
