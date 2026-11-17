@@ -5,6 +5,13 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Twilight coming** and **Target low** (Normal, immediate) and **Meridian flip soon** (Quiet,
+  for the digest), from a small pure-Python ephemeris (`ekos_notifier.ephemeris`: sidereal time,
+  Sun, altitudes, crossings). Site from KStars's `location()` (or the mount's INDI
+  `GEOGRAPHIC_COORD`), target from the mount's INDI coordinates, limits from Ekos (`[Mount]` flip
+  and altitude settings, the Scheduler's altitude constraint). The digest shows time to the flip,
+  to the target's altitude limit and to dawn. Config `alerts.twilight_warning_minutes`,
+  `alerts.target_low_warning_minutes` are now read.
 - No session summary when you stop Ekos yourself (Ekos logs "Disconnecting INDI devices…"
   first): the session closes quietly as `ekos_stopped`. A crash (KStars vanishing, an error, Ekos
   idle with no shutdown logged) closes as `ekos_lost` with a summary. The "mount unparked"

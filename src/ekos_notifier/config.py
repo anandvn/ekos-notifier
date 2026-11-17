@@ -27,6 +27,8 @@ class Config:
     notify_expire_minutes: float = 10.0
     guiding_recovery_minutes: float = 5.0
     guiding_poor_minutes: float = 10.0
+    twilight_warning_minutes: float = 45.0
+    target_low_warning_minutes: float = 30.0
     digest_enabled: bool = True
     digest_interval_minutes: float = 60.0
     digest_align_to_clock: bool = True
@@ -97,6 +99,12 @@ def load(path: str | Path | None = None) -> Config:
         notify_expire_minutes=expire,
         guiding_recovery_minutes=guiding,
         guiding_poor_minutes=poor,
+        twilight_warning_minutes=_minutes(
+            path, "alerts.twilight_warning_minutes", alerts.get("twilight_warning_minutes", 45)
+        ),
+        target_low_warning_minutes=_minutes(
+            path, "alerts.target_low_warning_minutes", alerts.get("target_low_warning_minutes", 30)
+        ),
         digest_enabled=_bool(path, "digest.enabled", digest.get("enabled", True)),
         digest_interval_minutes=interval,
         digest_align_to_clock=_bool(

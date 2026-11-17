@@ -24,7 +24,7 @@ from ekos_notifier import __version__
 from ekos_notifier.config import Config
 from ekos_notifier.digest import DigestRule
 from ekos_notifier.ekos.adapter import EkosAdapter
-from ekos_notifier.ekos.settings import guide_deviation_limit
+from ekos_notifier.ekos.settings import guide_deviation_limit, observing_limits
 from ekos_notifier.events import Event
 from ekos_notifier.indi.adapter import IndiAdapter
 from ekos_notifier.indi.decode import IndiDecoder
@@ -35,6 +35,7 @@ from ekos_notifier.phd2.adapter import Phd2Adapter
 from ekos_notifier.pipeline import TICK, Pipeline
 from ekos_notifier.rules import Rules
 from ekos_notifier.session import SessionManager
+from ekos_notifier.sky import SkyRule
 from ekos_notifier.store import EventWriter, Store
 
 log = logging.getLogger(__name__)
@@ -114,6 +115,11 @@ async def _serve(
         guiding_recovery=config.guiding_recovery_minutes * 60,
         guiding_poor_window=config.guiding_poor_minutes * 60,
         deviation_limit=guide_deviation_limit,
+        sky=SkyRule(
+            twilight_warning=config.twilight_warning_minutes * 60,
+            target_low_warning=config.target_low_warning_minutes * 60,
+            limits=observing_limits,
+        ),
         digest=DigestRule(
             enabled=config.digest_enabled,
             interval=config.digest_interval_minutes * 60,
