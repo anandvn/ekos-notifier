@@ -64,7 +64,8 @@ def load(path: str | Path | None = None) -> Config:
         path, "alerts.guiding_recovery_minutes", alerts.get("guiding_recovery_minutes", 5)
     )
     poor = _minutes(path, "alerts.guiding_poor_minutes", alerts.get("guiding_poor_minutes", 10))
-    digest = raw.get("digest") or {}
+    # Before the rename (Town Crier) the section was called "crier:"; configs copied then keep it.
+    digest = raw.get("digest", raw.get("crier")) or {}
     if not isinstance(digest, dict):
         raise ConfigError(f"{path}: 'digest' must be a section of settings (key: value)")
     interval = _minutes(path, "digest.interval_minutes", digest.get("interval_minutes", 60))

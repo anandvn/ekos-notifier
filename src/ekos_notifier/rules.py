@@ -100,9 +100,11 @@ class Rules:
 
     # -- events ------------------------------------------------------------------------------
 
-    def resume(self, session_id: str, alerts: Iterable[Event] = ()) -> None:
+    def resume(
+        self, session_id: str, alerts: Iterable[Event] = (), started_at: float | None = None
+    ) -> None:
         """The service restarted during an active session; ``alerts`` are the ones it already
-        raised, so they aren't raised again."""
+        raised, so they aren't raised again; ``started_at`` is when the session started."""
         sent = [
             a.data.get("message") or a.data.get("body", "").split("\n")[0]
             for a in alerts
@@ -111,7 +113,7 @@ class Rules:
         self.guiding.resume(session_id, sent)
         for rule in self.session_rules:
             rule.resume(session_id, alerts)
-        self.digest.resume(session_id, alerts)
+        self.digest.resume(session_id, alerts, started_at)
 
     def handle(self, event: Event) -> list[Event]:
         out = self._handle(event)

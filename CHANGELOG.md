@@ -10,8 +10,10 @@ Semantic Versioning.
   not cleared, or is still open. Target, filter, job progress, lights and integration this
   interval and tonight, calibration, median guide RMS, failed dithers, median HFR, and every
   alert and milestone since the last digest. Config `digest:` (`enabled`, `interval_minutes`,
-  `align_to_clock`) is now read. Immediate alerts are sent at their own priority, so Quiet ones
-  go out silently instead of being held.
+  `align_to_clock`) is now read (the pre-rename `crier:` section still is). Immediate alerts are
+  sent at their own priority, so Quiet ones go out silently instead of being held. A capture
+  abort, Scheduler abort or autofocus failure stays "Still open" until things work again, and
+  open problems and the session's start survive a service restart.
 - More High alerts: **Guiding poor** (follows Ekos's own guide-deviation limit: when a job
   enforces it, the time Ekos holds exposures; otherwise Ekos's guide RMS over that limit; config
   `alerts.guiding_poor_minutes`, default 10), **Capture aborted** (with Ekos's reason; aborts with

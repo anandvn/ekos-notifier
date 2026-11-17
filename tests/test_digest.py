@@ -128,3 +128,69 @@ def test_digest_config(tmp_path):
     f.write_text("digest:\n  enabled: maybe\n")
     with pytest.raises(ConfigError, match="digest.enabled"):
         load(f)
+
+
+def test_old_crier_section_still_read(tmp_path):
+    f = tmp_path / "config.yaml"
+    f.write_text("crier:\n  interval_minutes: 30\n")
+    assert load(f).digest_interval_minutes == 30.0
+
+
+def test_a_restart_mid_session_keeps_the_session_age():
+    # Seen live: after a restart the digest treated the restart as the session start and would
+    # have skipped the next digests as "too soon".
+    rules = Rules(digest=DigestRule(interval=300))
+    rules.resume("s1", [], started_at=T - 3600)  # session started an hour before the restart
+    out = []
+    for t in range(0, 400, 10):
+        if t == 50:
+            out += rules.handle(light(50))
+        out += rules.tick(T + t)
+    digests = [a for a in out if a.data.get("rule") == "digest"]
+    assert [round(d.ts - T) for d in digests] == [300]  # 21:35, not skipped
+    assert "Last 5 min: 1 light (" in digests[0].data["body"]
+
+
+def test_capture_aborted_stays_open_until_capture_runs_again():
+    # Seen live: "All's well" at 23:30 with nothing captured since an abort at 23:23.
+    events = START + [
+        light(300),
+        ev(600, "capture.state", state="capturing"),
+        ev(
+            700,
+            "ekos.log",
+            module="Capture",
+            text="[CCD Simulator] Autofocus failed. Aborting exposure...",
+        ),
+        ev(700, "capture.state", state="aborted"),
+    ]
+    resumed = [ev(4000, "capture.state", state="capturing")]
+    resumed += [light(4060 + 60 * i, exp=60.0) for i in range(25)]
+    first, second, third = run(events + resumed, until=5410, interval=1800)
+    assert first.data["title"] == "22:00 \u2014 Attention: Capture aborted"
+    assert second.data["title"] == "22:30 \u2014 Attention: Capture aborted"
+    assert "Still open: Capture aborted." in second.data["body"]
+    assert third.data["title"] == "23:00 \u2014 All's well"  # capture ran again at 22:36
+
+
+def test_open_problems_survive_a_restart():
+    aborted = Event(
+        T - 600,
+        "alert",
+        {
+            "rule": "capture_aborted",
+            "priority": "high",
+            "title": "Capture aborted",
+            "body": "",
+            "immediate": False,
+        },
+        "rules",
+        "s1",
+    )
+    rules = Rules(digest=DigestRule(interval=300))
+    rules.resume("s1", [aborted], started_at=T - 3600)
+    out = []
+    for t in range(0, 310, 10):
+        out += rules.tick(T + t)
+    (d,) = [a for a in out if a.data.get("rule") == "digest"]
+    assert d.data["title"] == "21:35 \u2014 Attention: Capture aborted"
