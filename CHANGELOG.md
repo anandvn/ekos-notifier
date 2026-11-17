@@ -18,8 +18,8 @@ Semantic Versioning.
   thread and retries failed writes rather than dropping them.
 - Session manager (`town_crier.session`): Standby → Setup → Active → Closed from Ekos events;
   tags every event with its session, attaches setup to the session it leads into and late
-  calibration frames to the last imaging session. Closes on Scheduler finish + park, GUI End,
-  Ekos gone for 10 minutes (a crash and restart doesn't split the night), or the night ending.
+  calibration frames to the last imaging session. Closes when the Scheduler stops (finished or
+  aborted, parked or not) or a manual sequence completes, on GUI End, on Ekos gone for 10 minutes (a crash and restart doesn't split the night), or the night ending.
   Resumes an open session after a service restart. New `sessions` table (schema 2).
 - `town-crier run`: the service in the foreground. Ekos adapter → session manager → store, with a
   clock tick for time-based session rules; SIGINT/SIGTERM stop it cleanly and everything queued

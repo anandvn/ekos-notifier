@@ -43,7 +43,7 @@ def test_night_of():
     assert night_of(datetime(2026, 11, 17, 13, 0).timestamp()) == "2026-11-17"
 
 
-def test_setup_then_scheduler_then_finish_with_park():
+def test_setup_then_scheduler_then_finish_parked_or_not():
     m = manager()
     out = feed(
         m,
@@ -51,8 +51,8 @@ def test_setup_then_scheduler_then_finish_with_park():
         ev(60, "focus.state", state="complete"),
         ev(120, "scheduler.state", state="running"),
         ev(130, "capture.frame", type="light"),
+        ev(890, "capture.state", state="complete"),  # one of the Scheduler's jobs: not the end
         ev(900, "scheduler.state", state="idle"),
-        ev(950, "mount.park", state="parked"),
     )
     assert lifecycle(out) == [
         ("session.setup", "s1", None, None),
@@ -62,6 +62,41 @@ def test_setup_then_scheduler_then_finish_with_park():
     # Setup events belong to the session they led into.
     assert {e.session_id for e in out if not e.kind.startswith("session.")} == {"s1"}
     assert m.state == "standby"
+
+
+def test_scheduler_abort_closes_too():
+    m = manager()
+    out = feed(
+        m, ev(0, "scheduler.state", state="running"), ev(9, "scheduler.state", state="aborted")
+    )
+    assert lifecycle(out)[-1] == ("session.closed", "s1", "scheduler_aborted", "closed")
+
+
+def test_manual_sequence_complete_closes():
+    m = manager()
+    out = feed(
+        m,
+        ev(0, "capture.frame", type="light"),
+        ev(60, "capture.state", state="complete", snapshot=True),  # a reading, not an end
+        ev(70, "capture.frame", type="light"),
+        ev(80, "capture.state", state="complete"),
+    )
+    assert lifecycle(out) == [
+        ("session.started", "s1", "light_frame", None),
+        ("session.closed", "s1", "sequence_complete", "closed"),
+    ]
+
+
+def test_scheduler_snapshot_reading_idle_mid_run_is_not_the_end():
+    # Seen live: after a service restart the snapshot said idle while the Scheduler ran.
+    m = manager()
+    out = feed(
+        m,
+        ev(0, "scheduler.state", state="running"),
+        ev(60, "scheduler.state", state="idle", snapshot=True),
+        ev(64, "scheduler.state", state="running"),
+    )
+    assert lifecycle(out) == [("session.started", "s1", "scheduler", None)]
 
 
 def test_light_frame_starts_a_session_from_standby_but_flats_dont():
@@ -159,15 +194,15 @@ def m31():
     return list(session.run(replay.ekos_events(records), manager()))
 
 
-def test_m31_is_one_session_closed_when_ekos_stopped(m31):
+def test_m31_is_one_session_closed_when_the_scheduler_finished(m31):
     life = [e for e in m31 if e.kind.startswith("session.")]
     assert [(e.kind, e.data.get("reason")) for e in life] == [
         ("session.started", "scheduler"),
-        ("session.closed", "ekos_stopped"),
+        ("session.closed", "scheduler_finished"),
     ]
     started, closed = life
-    indi_idle = next(e for e in m31 if e.kind == "indi.state" and e.data["state"] == "idle")
-    assert closed.data["ended_at"] == indi_idle.ts
+    sched_idle = next(e for e in m31 if e.kind == "scheduler.state" and e.data["state"] == "idle")
+    assert closed.ts == closed.data["ended_at"] == sched_idle.ts
     frames = [e for e in m31 if e.kind == "capture.frame"]
     assert len(frames) == 140 and {f.session_id for f in frames} == {started.session_id}
     # Before the Scheduler started, Town Crier was in standby.
@@ -181,7 +216,7 @@ def test_m31_session_row_in_the_store(tmp_path, m31):
     assert (row["state"], row["start_reason"], row["end_reason"]) == (
         "closed",
         "scheduler",
-        "ekos_stopped",
+        "scheduler_finished",
     )
     assert row["night"] == "2026-11-16"
     assert len(list(store.frames(row["id"]))) == 140

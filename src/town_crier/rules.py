@@ -10,7 +10,9 @@ Alert data: ``rule``, ``priority`` (emergency | high | normal | quiet), ``title`
 Rules so far:
 
 - **Starting session** (Normal, immediate) when a session starts.
-- **Session summary** (Normal, immediate) when a session that imaged closes.
+- **Session summary** (Normal, immediate) when a session that imaged closes: as soon as the
+  Scheduler stops or a manual sequence completes, parked or not, with the mount's last known
+  state in the message.
 - **Ekos stopped with the mount unparked** (Emergency): Ekos or INDI stops, or KStars vanishes,
   while the last known mount state was unparked, and Ekos isn't back within ``unparked_grace``
   seconds. Uses the last known state on purpose: the mount's properties vanish with Ekos.
@@ -34,7 +36,9 @@ START_REASONS = {
     "user": "you pressed Start",
 }
 END_REASONS = {
-    "scheduler_finished": "the Scheduler finished and the mount parked",
+    "scheduler_finished": "the Scheduler finished",
+    "scheduler_aborted": "the Scheduler stopped (aborted)",
+    "sequence_complete": "the capture sequence completed",
     "ekos_stopped": "Ekos stopped",
     "night_ended": "the night ended",
     "user": "you pressed End",
@@ -153,6 +157,13 @@ class Rules:
             return False
         return self._park == "unparked" or self._mount in MOVING
 
+    def _mount_line(self) -> str | None:
+        if self._park == "parked":
+            return "Mount: parked."
+        if self._unparked():
+            return f"Mount: not parked (last seen {self._mount or 'unparked'})."
+        return None
+
     def _summary(self, event: Event, sid: str | None) -> Event:
         d = event.data
         ended = d.get("ended_at", event.ts)
@@ -176,6 +187,9 @@ class Rules:
                 + ", ".join(f"{n} {t}" for t, n in sorted(calibration.items()))
                 + "."
             )
+        mount = self._mount_line()
+        if mount:
+            lines.append(mount)
         return self._alert(
             event.ts,
             sid,

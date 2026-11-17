@@ -160,6 +160,13 @@ These change how the Ekos adapter and alert rules must work.
       does not. On a real rig that leaves the mount tracking with nothing watching it, and Town
       Crier loses the mount's properties. **Emergency rule "Ekos stopped with the mount unparked"
       adopted (2026-11-16)** and added to `design.md`.
+- [x] **A run's end, as Ekos reports it** (M 31 replay and a live run, 2026-11-17): Capture
+      `complete` (19), then INDI and Ekos idle, then Scheduler `idle`, within 4 s. Capture reports
+      `complete` once for a manual sequence queue. The session now closes on Scheduler idle or
+      aborted after running, or on Capture complete when the Scheduler isn't running.
+- [x] **The Scheduler's snapshot can read `idle` mid-run.** After a service restart at 20:11 the
+      `Scheduler.status` read gave `idle`; the `running` signal came 4 s later. Snapshots are not
+      trusted to end a session.
 - [ ] **KStars 3.8.5 (Flatpak) segfaults at the wall-flat step**, reproduced twice (19:08 and
       03:40 +03 on 2026-11-16) with identical backtraces in Qt widget painting. Both times it came
       right after the R/G/B flats, when the next flat job (Hα, the only one with `SkyFlat=true`)

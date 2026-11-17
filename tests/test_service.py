@@ -41,7 +41,7 @@ def test_m31_through_the_service(tmp_path):
     run_with(tmp_path / "tc.db", events, clock_after=events[-1].ts + 601)
     store = Store(tmp_path / "tc.db", readonly=True)
     (session,) = store.sessions()
-    assert (session["state"], session["end_reason"]) == ("closed", "ekos_stopped")
+    assert (session["state"], session["end_reason"]) == ("closed", "scheduler_finished")
     kinds = [e.kind for e in store.events_after(0, limit=100_000)]
     assert kinds[0] == "service.started" and kinds[-1] == "service.stopped"
     assert len(list(store.frames(session["id"]))) == 140

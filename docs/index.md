@@ -39,7 +39,8 @@ town-crier config check
 town-crier test-notify              # add --emergency to try a repeating Pushover Emergency
 ```
 
-Alerts so far: **Starting session**, the **session summary** when it closes, and the **Ekos
+Alerts so far: **Starting session**, the **session summary** as soon as the Scheduler stops or a
+manual sequence completes (parked or not; it says whether the mount is parked), and the **Ekos
 stopped with the mount unparked** Emergency (2 minutes after Ekos stops; on Pushover it repeats
 every minute until you acknowledge it). If an alert can't be delivered because the rig is
 offline, it's retried for 10 minutes and then dropped, never sent late; it stays in the session
