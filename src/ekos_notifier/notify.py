@@ -95,7 +95,8 @@ def init_cursor(store: Store) -> None:
 
 def should_send(data: dict) -> bool:
     priority = data.get("priority")
-    return priority in ("emergency", "high") or (priority == "normal" and data.get("immediate"))
+    # Immediate alerts go at their own priority: a Quiet "All's well" digest arrives silently.
+    return priority in ("emergency", "high") or bool(data.get("immediate"))
 
 
 class Notifier:

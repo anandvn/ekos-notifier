@@ -153,6 +153,11 @@ def cmd_config_check(args: argparse.Namespace) -> int:
         )
     else:
         print("  guiding poor: off (guiding_poor_minutes is 0)")
+    if cfg.digest_enabled:
+        when = "on the clock" if cfg.digest_align_to_clock else "from session start"
+        print(f"  digest: every {cfg.digest_interval_minutes:g} min, {when}")
+    else:
+        print("  digest: off")
     return 1 if problems else 0
 
 

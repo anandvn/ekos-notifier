@@ -19,6 +19,8 @@ Rules so far:
 - **Capture aborted**, **Scheduler aborted** and **Capture stalled** (High): see
   ``ekos_notifier.capture``.
 - **Autofocus failed** (High, two failed runs in a row): see ``ekos_notifier.focus``.
+- **Hourly digest** (Quiet, or Normal with "Attention"), which also sees every other rule's
+  alerts: see ``ekos_notifier.digest``.
 - **Ekos stopped with the mount unparked** (Emergency): Ekos or INDI stops, or KStars vanishes,
   while the last known mount state was unparked, and Ekos isn't back within ``unparked_grace``
   seconds. Uses the last known state on purpose: the mount's properties vanish with Ekos.
@@ -34,6 +36,7 @@ from typing import Any
 
 from ekos_notifier.alerts import SessionRule
 from ekos_notifier.capture import CaptureRule
+from ekos_notifier.digest import DigestRule
 from ekos_notifier.events import Event
 from ekos_notifier.focus import AutofocusRule
 from ekos_notifier.guiding import RECOVERY, GuidingRule, PoorGuidingRule
@@ -73,9 +76,11 @@ class Rules:
         guiding_recovery: float = RECOVERY,
         guiding_poor_window: float = 600.0,
         deviation_limit: Callable[[], float | None] = lambda: None,
+        digest: DigestRule | None = None,
     ) -> None:
         self.unparked_grace = unparked_grace
         self.guiding = GuidingRule(guiding_recovery)
+        self.digest = digest or DigestRule()
         self.session_rules: list[SessionRule] = [
             CaptureRule(),
             AutofocusRule(),
@@ -106,9 +111,20 @@ class Rules:
         self.guiding.resume(session_id, sent)
         for rule in self.session_rules:
             rule.resume(session_id, alerts)
+        self.digest.resume(session_id, alerts)
 
     def handle(self, event: Event) -> list[Event]:
-        out = self.tick(event.ts) + self.guiding.handle(event)
+        out = self._handle(event)
+        self.digest.note_alerts(out)
+        return out + self.digest.handle(event)
+
+    def tick(self, now: float) -> list[Event]:
+        out = self._tick(now)
+        self.digest.note_alerts(out)
+        return out + self.digest.tick(now)
+
+    def _handle(self, event: Event) -> list[Event]:
+        out = self._tick(event.ts) + self.guiding.handle(event)
         for rule in self.session_rules:
             out += rule.handle(event)
         kind, d, sid = event.kind, event.data, event.session_id
@@ -159,7 +175,7 @@ class Rules:
             out.append(self._summary(event, sid))
         return out
 
-    def tick(self, now: float) -> list[Event]:
+    def _tick(self, now: float) -> list[Event]:
         out = self.guiding.tick(now)
         for rule in self.session_rules:
             out += rule.tick(now)

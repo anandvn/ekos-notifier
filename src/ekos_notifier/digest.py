@@ -1,0 +1,235 @@
+"""The hourly digest (docs/design.md, "Hourly digest and message styles").
+
+While a session is active, one status message per interval (default 60 min, on the clock hour):
+
+- **Title carries the verdict:** "23:00 — All's well" (Quiet: sent silently) or "23:00 —
+  Attention: Guiding poor" (Normal) when a problem was raised in the interval and not cleared
+  in it, or a problem raised earlier is still open (e.g. guiding lost, not yet recovered).
+- **Body:** target · filter · job progress; lights this interval and tonight (per filter,
+  integration); calibration frames; guide RMS (median) and failed dithers; median HFR when Ekos
+  measures it; and everything since the last digest: alerts (sent or held) and milestones such
+  as a completed meridian flip.
+
+A digest due less than ``min_session`` seconds after the session started is skipped (the
+"Starting session" message just said it all). Plain wording only for now; Terse and Olde
+English styles come with the template sets. Temperatures, battery, dew, flip and dawn times need
+the INDI adapter and the site location.
+"""
+
+from __future__ import annotations
+
+import re
+import statistics
+from collections import Counter
+from collections.abc import Iterable
+from datetime import datetime, timedelta
+
+from ekos_notifier.alerts import SessionRule, hhmm, make_alert
+from ekos_notifier.events import Event
+
+INTERVAL = 3600.0
+MIN_SESSION = 600.0
+# A problem alert and the alert that clears it.
+CLEARED_BY = {
+    "guiding_lost": "guiding_recovered",
+    "guiding_poor": "guiding_poor_cleared",
+    "capture_stalled": "capture_running",
+    "ekos_stopped_mount_unparked": "mount_unparked_cleared",
+}
+CLEARS = {v: k for k, v in CLEARED_BY.items()}
+NOT_LISTED = {"digest", "session_started"}
+JOB = re.compile(r"Job '(.+?)' ")
+JOB_PLAN = re.compile(r"Job requires ([\d.]+)-second (.+?) images, has (\d+)/(\d+) frames")
+MILESTONES = {
+    "Meridian flip completed OK": "meridian flip complete",
+    "Dithering failed": None,  # counted, not listed
+}
+
+
+def _duration(seconds: float) -> str:
+    minutes = int(round(seconds / 60))
+    return f"{minutes // 60} h {minutes % 60:02d} min" if minutes >= 60 else f"{minutes} min"
+
+
+def _lights(frames: Iterable[tuple[str, float]]) -> tuple[str, float]:
+    counts = Counter(frames)
+    total = sum(n * exp for (_, exp), n in counts.items())
+    parts = [f"{f} {n}×{exp:g}s" for (f, exp), n in sorted(counts.items())]
+    return ", ".join(parts), total
+
+
+class DigestRule(SessionRule):
+    def __init__(
+        self,
+        *,
+        enabled: bool = True,
+        interval: float = INTERVAL,
+        align_to_clock: bool = True,
+        min_session: float = MIN_SESSION,
+    ) -> None:
+        super().__init__()
+        self.enabled = enabled and interval > 0
+        self.interval = interval
+        self.align = align_to_clock
+        self.min_session = min_session
+        self._started: float | None = None
+        self._next: float | None = None
+        self._open: dict[str, str] = {}  # problem rule -> title, until cleared
+        self._tonight: list[tuple[str, float]] = []
+        self._reset_interval(None)
+        self._target: str | None = None
+        self._filter: str | None = None
+        self._job: tuple[str, float, int, int] | None = None  # filter, exposure, done, planned
+
+    # -- session -----------------------------------------------------------------------------
+
+    def resume(self, session_id: str | None, alerts: Iterable[Event] = ()) -> None:
+        if session_id != self.session:
+            self._started = None
+            self._next = None
+            self._tonight = []
+            self._open = {}
+        super().resume(session_id, alerts)
+
+    def on_session_closed(self) -> None:
+        self._started = self._next = None
+
+    # -- events ------------------------------------------------------------------------------
+
+    def note_alerts(self, alerts: Iterable[Event]) -> None:
+        """Alerts raised by the other rules, for "since last" and the verdict."""
+        for a in alerts:
+            rule = a.data.get("rule", "")
+            if rule in NOT_LISTED or a.kind != "alert":
+                continue
+            self._since.append((a.ts, a.data.get("title", rule)))
+            if rule in CLEARS:
+                self._open.pop(CLEARS[rule], None)
+                self._raised.pop(CLEARS[rule], None)
+            elif a.data.get("priority") in ("emergency", "high"):
+                self._raised[rule] = a.data.get("title", rule)
+                if rule in CLEARED_BY:
+                    self._open[rule] = a.data.get("title", rule)
+
+    def on_event(self, event: Event) -> list[Event]:
+        kind, d = event.kind, event.data
+        if kind == "session.started":
+            self._started = event.ts
+            self._reset_interval(event.ts)
+            self._next = self._boundary_after(event.ts)
+        elif self._started is None and self.session:
+            self._started = event.ts  # resumed after a restart: count from here
+            self._reset_interval(event.ts)
+            self._next = self._boundary_after(event.ts)
+        if kind == "capture.frame" and d.get("type"):
+            if d["type"] == "light":
+                frame = (d.get("filter") or "no filter", float(d.get("exposure") or 0))
+                self._frames.append(frame)
+                self._tonight.append(frame)
+                if isinstance(d.get("hfr"), (int, float)) and d["hfr"] > 0:
+                    self._hfr.append(float(d["hfr"]))
+                if self._job and (frame[0], frame[1]) == self._job[:2]:
+                    f, exp, done, planned = self._job
+                    self._job = (f, exp, done + 1, planned)
+            else:
+                self._calibration[d["type"]] += 1
+            if d.get("filter"):
+                self._filter = d["filter"]
+        elif kind == "guide.rms" and d.get("ra") is not None and d.get("dec") is not None:
+            self._rms.append((float(d["ra"]) ** 2 + float(d["dec"]) ** 2) ** 0.5)
+        elif kind == "phd2.settle" and d.get("ok") is False:
+            self._dither_fails += 1
+        elif kind == "guide.state" and d.get("state") == "dithering_error":
+            self._dither_fails += 1
+        elif kind == "ekos.log":
+            text = str(d.get("text", ""))
+            if d.get("module") == "Scheduler" and (m := JOB.search(text)):
+                self._target = m.group(1)
+            elif m := JOB_PLAN.search(text):
+                self._filter = m.group(2)
+                self._job = (m.group(2), float(m.group(1)), int(m.group(3)), int(m.group(4)))
+            for needle, label in MILESTONES.items():
+                if needle in text and label:
+                    self._since.append((event.ts, label))
+        return []
+
+    def on_tick(self, now: float) -> list[Event]:
+        if not self.enabled or self._next is None or now < self._next:
+            return []
+        due, self._next = self._next, self._boundary_after(self._next)
+        if self._started is not None and due - self._started < self.min_session:
+            return []  # the session just started: the next one will say more
+        digest = self._digest(due, now)
+        self._reset_interval(due)
+        return [digest]
+
+    # -- helpers -------------------------------------------------------------------------------
+
+    def _reset_interval(self, ts: float | None) -> None:
+        self._since_ts = ts
+        self._frames: list[tuple[str, float]] = []
+        self._calibration: Counter[str] = Counter()
+        self._rms: list[float] = []
+        self._hfr: list[float] = []
+        self._dither_fails = 0
+        self._since: list[tuple[float, str]] = []
+        self._raised: dict[str, str] = {}
+
+    def _boundary_after(self, ts: float) -> float:
+        if not self.align:
+            return ts + self.interval
+        local = datetime.fromtimestamp(ts)
+        midnight = local.replace(hour=0, minute=0, second=0, microsecond=0)
+        step = timedelta(seconds=self.interval)
+        boundary = midnight
+        while boundary.timestamp() <= ts:
+            boundary += step
+        return boundary.timestamp()
+
+    def _digest(self, due: float, now: float) -> Event:
+        problems = list(dict.fromkeys([*self._raised.values(), *self._open.values()]))
+        title = f"{hhmm(due)} — " + (
+            "Attention: " + ", ".join(problems) if problems else "All's well"
+        )
+        lines = []
+        where = [p for p in (self._target, self._filter) if p]
+        if self._job:
+            f, exp, done, planned = self._job
+            where.append(f"job {min(done, planned)}/{planned}")
+        if where:
+            lines.append(" · ".join(where))
+        span = _duration(due - self._since_ts) if self._since_ts else "this interval"
+        if self._frames:
+            parts, total = _lights(self._frames)
+            lines.append(f"Last {span}: {len(self._frames)} lights ({parts}), {_duration(total)}.")
+        else:
+            lines.append(f"Last {span}: no light frames.")
+        if self._calibration:
+            lines.append(
+                "Calibration: "
+                + ", ".join(f"{n} {t}" for t, n in sorted(self._calibration.items()))
+                + "."
+            )
+        if len(self._tonight) > len(self._frames):  # the first digest would just repeat itself
+            _, total = _lights(self._tonight)
+            lines.append(f"Tonight: {len(self._tonight)} lights, {_duration(total)}.")
+        guiding = []
+        if self._rms:
+            guiding.append(f"Guide RMS {statistics.median(self._rms):.2f}″ (median)")
+        if self._dither_fails:
+            n = self._dither_fails
+            guiding.append(f"{n} dither{'s' if n > 1 else ''} failed")
+        if self._hfr:
+            guiding.append(f"HFR {statistics.median(self._hfr):.2f} (median)")
+        if guiding:
+            lines.append(", ".join(guiding) + ".")
+        if self._since:
+            events = "; ".join(f"{hhmm(t)} {what}" for t, what in sorted(self._since))
+            lines.append(f"Since last: {events}.")
+        still = [t for r, t in self._open.items() if r not in self._raised]
+        if still:
+            lines.append("Still open: " + ", ".join(still) + ".")
+        priority = "normal" if problems else "quiet"
+        return make_alert(
+            now, self.session, "digest", priority, title, "\n".join(lines), immediate=True
+        )
