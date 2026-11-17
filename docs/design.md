@@ -97,7 +97,7 @@ Priorities map onto each notifier's native levels where it has them (Pushover âˆ
 
 | Event | Default trigger |
 | --- | --- |
-| Guiding aborted | Not recovered within 5 min or after Ekos restart attempt |
+| Guiding lost | Guiding stopped (Ekos Guide aborted, reacquiring, calibration or dither error, or PHD2 lost the star) and not guiding again within 5 min of time when guiding was expected; looping or recalibrating doesn't count as recovered. The clock pauses, and restarts from zero, while the mount slews, parks or isn't tracking, Capture flips, solves, focuses or isn't capturing, Focus or Align is busy, or calibration frames are being taken. Capture *suspended* (Ekos waiting for guiding) doesn't pause it. Message names PHD2's lost-star reason and alert if any. Followed by "Guiding recovered" (Normal, immediate). |
 | Sequence / scheduler job aborted | Any abort not initiated by the user |
 | Capture stalled | No frame within 2 Ã— (exposure + download) |
 | Autofocus failed | 2 consecutive failures |

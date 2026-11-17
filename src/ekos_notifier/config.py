@@ -23,6 +23,7 @@ class Config:
     path: Path | None = None
     notify: list[str] = field(default_factory=list)
     notify_expire_minutes: float = 10.0
+    guiding_recovery_minutes: float = 5.0
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -51,12 +52,23 @@ def load(path: str | Path | None = None) -> Config:
         notify = [notify]
     if not isinstance(notify, list) or not all(isinstance(u, str) for u in notify):
         raise ConfigError(f"{path}: 'notify' must be a list of Apprise URLs (quoted strings)")
-    expire = raw.get("notify_expire_minutes", 10)
-    if isinstance(expire, bool) or not isinstance(expire, (int, float)) or expire < 0:
-        raise ConfigError(f"{path}: 'notify_expire_minutes' must be a number of minutes, 0 or more")
+    expire = _minutes(path, "notify_expire_minutes", raw.get("notify_expire_minutes", 10))
+    alerts = raw.get("alerts") or {}
+    if not isinstance(alerts, dict):
+        raise ConfigError(f"{path}: 'alerts' must be a section of settings (key: value)")
+    guiding = _minutes(
+        path, "alerts.guiding_recovery_minutes", alerts.get("guiding_recovery_minutes", 5)
+    )
     return Config(
         path=path,
         notify=[u.strip() for u in notify if u.strip()],
-        notify_expire_minutes=float(expire),
+        notify_expire_minutes=expire,
+        guiding_recovery_minutes=guiding,
         raw=raw,
     )
+
+
+def _minutes(path: Path, key: str, value: object) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+        raise ConfigError(f"{path}: '{key}' must be a number of minutes, 0 or more")
+    return float(value)
