@@ -1,13 +1,13 @@
-# Town Crier — project briefing for Claude Code
+# Ekos Notifier — project briefing for Claude Code
 
 Read this first. It records the decisions already made so you don't re-litigate them.
 The full spec is `docs/design.md`; what still needs verifying is `docs/open-questions.md`.
 
 ## What this is
 
-Town Crier is an open-source (MIT) companion service for KStars/Ekos astrophotography rigs.
+Ekos Notifier is an open-source (MIT) companion service for KStars/Ekos astrophotography rigs.
 It runs **on the imaging computer**, watches an imaging night, records it as a *session* in a
-local SQLite database, sends alerts worth acting on, sends an hourly "town crier" digest, and
+local SQLite database, sends alerts worth acting on, sends an hourly status digest, and
 carries each night's data home with one button. It **observes only**: it never controls equipment.
 
 Owner: Anand (anandvn on GitHub). He images with KStars/Ekos + PHD2 on StellarMate OS on a
@@ -31,7 +31,7 @@ mostly at dark sites with intermittent internet.
   Starts automatically on Ekos Scheduler start (or first manual Light frame); GUI Start/End override.
   Setup (focus, polar align, calibration, trial guiding) is logged *before* the session and attached.
 - **Alert priorities:** Emergency / High / Normal / Quiet. Normal is batched into the hourly
-  town-crier digest except time-critical ones (target low, twilight, sequence complete).
+  digest except time-critical ones (target low, twilight, sequence complete).
 - **Message styles:** Plain (default), Terse, **Olde English**. Jinja templates in `styles/<name>/`.
   Emergency messages always end with a plain-English line, whatever the style.
 - **GUI:** Starlette (not FastAPI: pydantic-core is compiled) + server-rendered HTML + htmx +
@@ -44,21 +44,21 @@ mostly at dark sites with intermittent internet.
 
 - Python **3.10+**, asyncio, nothing that must compile at install time (optional compiled
   speed-ups with a pure-Python fallback, like `dbus-fast`'s, are fine).
-  Package source in `src/town_crier/`.
+  Package source in `src/ekos_notifier/`.
 - Ekos via D-Bus (`dbus-fast`), PHD2 via its JSON event server (TCP 4400), INDI via a light XML
   client (TCP 7624).
 - Tests: `pytest`. The **simulation replay** (recorded nights) drives both tests and the user-facing
   "simulate a night" feature. Lint/format with `ruff`.
-- CLI entry point: `town-crier` (subcommands planned: `run`, `doctor`, `config check`,
+- CLI entry point: `ekos-notifier` (subcommands planned: `run`, `doctor`, `config check`,
   `indi-dump`, `install-service`, `simulate`).
-- Config: `~/.config/town-crier/config.yaml`; `config.example.yaml` in the repo is the commented
+- Config: `~/.config/ekos-notifier/config.yaml`; `config.example.yaml` in the repo is the commented
   reference. Never commit a real `config.yaml` (it holds notifier keys).
 - Keep docs in step with code: a user-visible change updates `docs/` in the same PR.
 
 ## Platform gotcha: Flatpak StellarMate
 
 StellarMate's Arch-based release runs KStars/Ekos (and possibly PHD2/INDI) as **Flatpaks**.
-Town Crier must run on the host (pipx), find KStars data under `~/.var/app/org.kde.kstars/…`
+Ekos Notifier must run on the host (pipx), find KStars data under `~/.var/app/org.kde.kstars/…`
 as well as `~/.local/share/kstars/`, and reach D-Bus/ports across the sandbox.
 This is unverified — see `docs/open-questions.md`.
 
@@ -70,5 +70,8 @@ work through `docs/open-questions.md` and record findings there and in `docs/des
 
 ## Package name
 
-PyPI distribution name is **`ekos-towncrier`** (confirmed by Anand; free on PyPI as of Nov 2026).
-The CLI command stays `town-crier`.
+Renamed from Town Crier / `ekos-towncrier` on 2026-11-17 (Anand's decision): GitHub repo and PyPI
+distribution **`ekos-notifier`** (free on PyPI as of Nov 2026), CLI command `ekos-notifier`,
+Python package `ekos_notifier`. The hourly digest is plain "hourly digest" (config `digest:`);
+the Olde English message style stays as an option. Old recordings (`town-crier-replay/0`) and
+the old `~/.config/town-crier`, `~/.local/share/town-crier` folders are still understood.

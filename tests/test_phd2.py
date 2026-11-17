@@ -2,10 +2,10 @@ import asyncio
 import json
 from pathlib import Path
 
-from town_crier import replay
-from town_crier.ekos.settings import UNKNOWN, GuiderSettings
-from town_crier.phd2.adapter import Phd2Adapter
-from town_crier.phd2.decode import Phd2Decoder
+from ekos_notifier import replay
+from ekos_notifier.ekos.settings import UNKNOWN, GuiderSettings
+from ekos_notifier.phd2.adapter import Phd2Adapter
+from ekos_notifier.phd2.decode import Phd2Decoder
 
 FIXTURE = Path(__file__).parent / "fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz"
 
@@ -254,7 +254,7 @@ def test_adapter_waits_quietly_when_phd2_is_not_running(caplog):
         task.cancel()
         return out
 
-    caplog.set_level("INFO", logger="town_crier.phd2.adapter")
+    caplog.set_level("INFO", logger="ekos_notifier.phd2.adapter")
     assert [e.kind for e in asyncio.run(scenario())] == ["ekos.guider"]
     assert caplog.text.count("PHD2 not reachable") == 1
 

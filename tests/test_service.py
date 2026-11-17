@@ -1,11 +1,11 @@
 import asyncio
 from pathlib import Path
 
-from town_crier import replay
-from town_crier.cli import main
-from town_crier.events import Event
-from town_crier.service import serve
-from town_crier.store import Store
+from ekos_notifier import replay
+from ekos_notifier.cli import main
+from ekos_notifier.events import Event
+from ekos_notifier.service import serve
+from ekos_notifier.store import Store
 
 FIXTURE = Path(__file__).parent / "fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz"
 
@@ -68,4 +68,4 @@ def test_a_failing_writer_stops_the_service_with_an_error(tmp_path, caplog):
     con.execute("PRAGMA user_version = 99")
     con.close()
     assert main(["run", "--db", str(db)]) == 1
-    assert "Upgrade Town Crier" in caplog.text
+    assert "Upgrade Ekos Notifier" in caplog.text

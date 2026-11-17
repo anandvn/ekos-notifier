@@ -1,9 +1,9 @@
-# Contributing to Town Crier
+# Contributing to Ekos Notifier
 
 Thanks for helping. The easiest ways in don't need much Python:
 
-- **Device presets** — YAML files in `presets/` that map an INDI device's properties to Town
-  Crier's metrics. Run `town-crier indi-dump` (once it exists) and open a "Device support" issue.
+- **Device presets** — YAML files in `presets/` that map an INDI device's properties to Ekos
+  Notifier's metrics. Run `ekos-notifier indi-dump` (once it exists) and open a "Device support" issue.
 - **Message styles** — Jinja templates in `styles/<name>/`. Plain, Terse and Olde English are the
   first three; pirate is surely next.
 - **Docs** — if something confused you during setup, that's a docs bug. Please report it.
@@ -11,7 +11,7 @@ Thanks for helping. The easiest ways in don't need much Python:
 ## Development setup
 
 ```bash
-git clone https://github.com/anandvn/ekos-towncrier && cd ekos-towncrier
+git clone https://github.com/anandvn/ekos-notifier && cd ekos-notifier
 python -m venv .venv && . .venv/bin/activate
 pip install -e ".[dev]"
 pytest
@@ -24,7 +24,7 @@ and PHD2's simulator camera is enough to develop against. No real equipment is r
 ## Ground rules
 
 - Read `docs/design.md` before larger changes; open an issue to discuss anything that changes it.
-- Town Crier never controls equipment. It observes and reports.
+- Ekos Notifier never controls equipment. It observes and reports.
 - Nothing may assume a specific device, notifier or network: use the adapter interfaces.
 - User-visible changes update the docs in the same pull request.
 - Add a changelog entry under "Unreleased" in `CHANGELOG.md`.

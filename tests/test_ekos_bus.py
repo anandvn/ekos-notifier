@@ -1,6 +1,6 @@
 import os
 
-from town_crier.ekos.bus import Candidate, candidates
+from ekos_notifier.ekos.bus import Candidate, candidates
 
 UID = os.getuid()
 

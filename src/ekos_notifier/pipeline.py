@@ -14,9 +14,9 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Iterable
 
-from town_crier.events import Event
-from town_crier.rules import Rules
-from town_crier.session import SessionManager
+from ekos_notifier.events import Event
+from ekos_notifier.rules import Rules
+from ekos_notifier.session import SessionManager
 
 log = logging.getLogger(__name__)
 

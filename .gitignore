@@ -219,7 +219,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# --- Town Crier ---
+# --- Ekos Notifier ---
 # Local runtime data
 *.db
 *.db-wal

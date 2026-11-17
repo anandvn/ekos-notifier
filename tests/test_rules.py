@@ -1,10 +1,10 @@
 from datetime import datetime
 from pathlib import Path
 
-from town_crier import replay
-from town_crier.events import Event
-from town_crier.pipeline import Pipeline, simulate
-from town_crier.rules import Rules
+from ekos_notifier import replay
+from ekos_notifier.events import Event
+from ekos_notifier.pipeline import Pipeline, simulate
+from ekos_notifier.rules import Rules
 
 FIXTURE = Path(__file__).parent / "fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz"
 T = datetime(2026, 11, 16, 21, 0).timestamp()

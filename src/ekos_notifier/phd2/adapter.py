@@ -4,7 +4,7 @@ Observe-only: the adapter reads the event stream and sends nothing. PHD2 serves 
 clients, so Ekos's own connection is unaffected.
 
 Before each connection attempt the adapter reads which guider Ekos is set to (its profile and
-Guide setting, ``town_crier.ekos.settings``). If it's certainly not PHD2 (the internal guider or
+Guide setting, ``ekos_notifier.ekos.settings``). If it's certainly not PHD2 (the internal guider or
 lin_guider), the adapter doesn't touch PHD2 at all; it re-reads the KStars settings every
 ``recheck`` seconds so a switch to PHD2 mid-night is picked up. If it is PHD2, it connects to
 the host and port Ekos uses. If it can't tell (KStars not running yet), it tries localhost:4400.
@@ -21,9 +21,9 @@ import socket
 import time
 from collections.abc import Callable
 
-from town_crier.ekos.settings import UNKNOWN, GuiderSettings, guider_settings
-from town_crier.events import Event
-from town_crier.phd2.decode import Phd2Decoder
+from ekos_notifier.ekos.settings import UNKNOWN, GuiderSettings, guider_settings
+from ekos_notifier.events import Event
+from ekos_notifier.phd2.decode import Phd2Decoder
 
 log = logging.getLogger(__name__)
 

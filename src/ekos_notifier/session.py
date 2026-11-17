@@ -11,7 +11,7 @@ Rules:
 - **Setup** opens when Ekos or INDI reports a successful connection. Events during setup belong
   to the session they lead into.
 - **Active** starts on the Scheduler running, the first light frame, or the GUI's Start. It can
-  start straight from Standby (Town Crier started mid-night). Flats, darks and bias never start a
+  start straight from Standby (Ekos Notifier started mid-night). Flats, darks and bias never start a
   session.
 - **Closed** when the imaging run ends: the Scheduler stops after running (finished or aborted,
   parked or not), or, without the Scheduler, Capture reports its sequence complete. Also on the
@@ -30,7 +30,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import Any
 
-from town_crier.events import Event
+from ekos_notifier.events import Event
 
 GRACE = 600.0  # seconds Ekos may be gone before the session closes
 CALIBRATION = {"flat", "dark", "bias"}

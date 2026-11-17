@@ -1,6 +1,6 @@
 """Which guider Ekos uses, read from the running KStars's own files. Observe-only.
 
-Two places say, and Town Crier reads both (verified on KStars 3.8.5, 2026-11-17):
+Two places say, and Ekos Notifier reads both (verified on KStars 3.8.5, 2026-11-17):
 
 - **The Ekos profile.** Each equipment profile has a guider: ``userdb.sqlite`` table ``profile``,
   columns ``guidertype`` (0 internal, 1 PHD2, 2 lin_guider), ``guiderhost``, ``guiderport``. The
@@ -30,7 +30,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 
-from town_crier.ekos.bus import KStarsProcess, kstars_processes
+from ekos_notifier.ekos.bus import KStarsProcess, kstars_processes
 
 log = logging.getLogger(__name__)
 

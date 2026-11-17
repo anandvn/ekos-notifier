@@ -2,17 +2,17 @@ from importlib.metadata import version
 
 import pytest
 
-from town_crier import __version__
-from town_crier.cli import EXIT_NOT_IMPLEMENTED, main
+from ekos_notifier import __version__
+from ekos_notifier.cli import EXIT_NOT_IMPLEMENTED, main
 
 
 def test_version_matches_package_metadata():
-    assert __version__ == version("ekos-towncrier")
+    assert __version__ == version("ekos-notifier")
 
 
 def test_no_command_prints_help(capsys):
     assert main([]) == 0
-    assert "town-crier" in capsys.readouterr().out
+    assert "ekos-notifier" in capsys.readouterr().out
 
 
 def test_stub_command_reports_not_implemented(capsys):  # doctor is still a stub

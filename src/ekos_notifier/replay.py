@@ -1,4 +1,4 @@
-"""Read replay recordings (``town-crier-replay/0``, see tests/fixtures/replay/README.md)."""
+"""Read replay recordings (``ekos-notifier-replay/0``, see tests/fixtures/replay/README.md)."""
 
 from __future__ import annotations
 
@@ -8,18 +8,19 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any
 
-from town_crier.ekos.decode import decode_name_owner_changed, decode_signal
-from town_crier.events import Event
-from town_crier.phd2.decode import Phd2Decoder
+from ekos_notifier.ekos.decode import decode_name_owner_changed, decode_signal
+from ekos_notifier.events import Event
+from ekos_notifier.phd2.decode import Phd2Decoder
 
-FORMAT = "town-crier-replay/0"
+FORMAT = "ekos-notifier-replay/0"
+LEGACY_FORMATS = {"town-crier-replay/0"}  # recordings made before the rename
 
 
 def read(path: str | Path) -> tuple[dict[str, Any], Iterator[dict[str, Any]]]:
     """The meta record and an iterator over the other records, in file order."""
     f = gzip.open(path, "rt", encoding="utf-8")
     meta = json.loads(f.readline())
-    if meta.get("format") != FORMAT:
+    if meta.get("format") != FORMAT and meta.get("format") not in LEGACY_FORMATS:
         f.close()
         raise ValueError(f"{path}: not a {FORMAT} recording (format={meta.get('format')!r})")
 

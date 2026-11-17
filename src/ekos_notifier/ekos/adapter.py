@@ -23,16 +23,16 @@ from typing import Any
 from dbus_fast import Message, MessageType
 from dbus_fast.aio import MessageBus
 
-from town_crier.ekos import states
-from town_crier.ekos.bus import Candidate, candidates
-from town_crier.ekos.decode import (
+from ekos_notifier.ekos import states
+from ekos_notifier.ekos.bus import Candidate, candidates
+from ekos_notifier.ekos.decode import (
     EKOS_PATH,
     KSTARS_NAME,
     decode_name_owner_changed,
     decode_signal,
     plain,
 )
-from town_crier.events import Event
+from ekos_notifier.events import Event
 
 log = logging.getLogger(__name__)
 

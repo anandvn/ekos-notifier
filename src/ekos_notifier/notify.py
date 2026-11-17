@@ -26,7 +26,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from town_crier.store import Store
+from ekos_notifier.store import Store
 
 log = logging.getLogger(__name__)
 

@@ -27,7 +27,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
-from town_crier.events import Event
+from ekos_notifier.events import Event
 
 log = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ MIGRATIONS = [
     );
     CREATE INDEX samples_metric_ts ON samples (metric, ts);
     """,
-    # 2: sessions, filled from session.* events (see town_crier.session).
+    # 2: sessions, filled from session.* events (see ekos_notifier.session).
     """
     CREATE TABLE sessions (
         id           TEXT PRIMARY KEY,
@@ -115,7 +115,7 @@ GUIDE_RMS_MAX_AGE = 30.0
 
 def default_path() -> Path:
     base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local/share")
-    return Path(base) / "town-crier" / "town-crier.db"
+    return Path(base) / "ekos-notifier" / "ekos-notifier.db"
 
 
 class Store:
@@ -144,8 +144,8 @@ class Store:
         version = self.schema_version
         if version > len(MIGRATIONS):
             raise RuntimeError(
-                f"{self.path} has schema {version}; this Town Crier knows up to "
-                f"{len(MIGRATIONS)}. Upgrade Town Crier, or use a different database."
+                f"{self.path} has schema {version}; this Ekos Notifier knows up to "
+                f"{len(MIGRATIONS)}. Upgrade Ekos Notifier, or use a different database."
             )
         for number, script in enumerate(MIGRATIONS[version:], start=version + 1):
             with self.db:

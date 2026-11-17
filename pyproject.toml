@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ekos-towncrier"
+name = "ekos-notifier"
 dynamic = ["version"]
 description = "Alerts, hourly digests and session records for KStars/Ekos astrophotography rigs"
 readme = "README.md"
@@ -24,17 +24,17 @@ dependencies = ["dbus-fast>=2", "apprise>=1.6", "PyYAML>=6"]
 dev = ["pytest>=8", "ruff>=0.6", "mkdocs-material>=9"]
 
 [project.scripts]
-town-crier = "town_crier.cli:main"
+ekos-notifier = "ekos_notifier.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/anandvn/ekos-towncrier"
-Issues = "https://github.com/anandvn/ekos-towncrier/issues"
+Homepage = "https://github.com/anandvn/ekos-notifier"
+Issues = "https://github.com/anandvn/ekos-notifier/issues"
 
 [tool.hatch.version]
-path = "src/town_crier/__init__.py"
+path = "src/ekos_notifier/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/town_crier"]
+packages = ["src/ekos_notifier"]
 
 [tool.ruff]
 line-length = 100

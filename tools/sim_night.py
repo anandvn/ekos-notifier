@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Drive a short simulated night through Ekos, for recording replay fixtures.
 
-DEVELOPER TOOL FOR THE INDI SIMULATORS ONLY. Town Crier itself never controls equipment; this
+DEVELOPER TOOL FOR THE INDI SIMULATORS ONLY. Ekos Notifier itself never controls equipment; this
 script exists so a reproducible night can be recorded with tools/record_night.py.
 
 Preconditions: KStars running with Ekos started on a simulator profile (telescope, CCD,
@@ -157,9 +157,9 @@ def write_plan(workdir: Path, pictures: Path, ra_h: float, dec: float, profile: 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    ap.add_argument("--profile", default="Town Crier Sim")
-    ap.add_argument("--workdir", type=Path, default=Path.home() / "Documents/town-crier-sim")
-    ap.add_argument("--pictures", type=Path, default=Path.home() / "Pictures/town-crier-sim")
+    ap.add_argument("--profile", default="Ekos Notifier Sim")
+    ap.add_argument("--workdir", type=Path, default=Path.home() / "Documents/ekos-notifier-sim")
+    ap.add_argument("--pictures", type=Path, default=Path.home() / "Pictures/ekos-notifier-sim")
     ap.add_argument("--lead-hours", type=float, default=0.2, help="target HA at setup (east)")
     ap.add_argument("--dec", type=float, default=10.0)
     ap.add_argument("--idle-seconds", type=float, default=90)

@@ -2,7 +2,7 @@ import asyncio
 
 from dbus_fast import Message, MessageType, Variant
 
-from town_crier.ekos.adapter import EkosAdapter
+from ekos_notifier.ekos.adapter import EkosAdapter
 
 
 class Reply:

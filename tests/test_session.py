@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from town_crier import replay, session
-from town_crier.events import Event
-from town_crier.session import SessionManager, night_of
-from town_crier.store import Store
+from ekos_notifier import replay, session
+from ekos_notifier.events import Event
+from ekos_notifier.session import SessionManager, night_of
+from ekos_notifier.store import Store
 
 FIXTURE = Path(__file__).parent / "fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz"
 EVENING = datetime(2026, 11, 16, 21, 0).timestamp()
@@ -205,7 +205,7 @@ def test_m31_is_one_session_closed_when_the_scheduler_finished(m31):
     assert closed.ts == closed.data["ended_at"] == sched_idle.ts
     frames = [e for e in m31 if e.kind == "capture.frame"]
     assert len(frames) == 140 and {f.session_id for f in frames} == {started.session_id}
-    # Before the Scheduler started, Town Crier was in standby.
+    # Before the Scheduler started, Ekos Notifier was in standby.
     assert all(e.session_id is None for e in m31 if e.ts < started.ts)
 
 
