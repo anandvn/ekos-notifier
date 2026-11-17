@@ -15,7 +15,7 @@ def test_no_command_prints_help(capsys):
     assert "town-crier" in capsys.readouterr().out
 
 
-def test_stub_command_reports_not_implemented(capsys):
+def test_stub_command_reports_not_implemented(capsys):  # doctor is still a stub
     assert main(["doctor"]) == EXIT_NOT_IMPLEMENTED
     assert "not implemented" in capsys.readouterr().err
 

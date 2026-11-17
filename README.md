@@ -17,7 +17,16 @@ and 100+ more via Apprise) and degrades gracefully: no power box, no weather sta
 no problem.
 
 > **Status: pre-alpha.** The design is done; code is starting. See [the design](docs/design.md)
-> and [the roadmap](docs/design.md#roadmap). Nothing here is installable yet.
+> and [the roadmap](docs/design.md#roadmap). Not released yet.
+>
+> What works today: `town-crier run` follows Ekos over D-Bus and records the night (sessions,
+> frames, guiding, every Ekos state change) in a local SQLite database. It sends no alerts yet.
+> To try it from a checkout, on the computer running KStars:
+>
+> ```bash
+> python -m venv .venv && . .venv/bin/activate && pip install -e .
+> town-crier run            # Ctrl-C to stop; the database is ~/.local/share/town-crier/town-crier.db
+> ```
 
 ## Planned install
 

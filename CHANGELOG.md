@@ -21,6 +21,10 @@ Semantic Versioning.
   calibration frames to the last imaging session. Closes on Scheduler finish + park, GUI End,
   Ekos gone for 10 minutes (a crash and restart doesn't split the night), or the night ending.
   Resumes an open session after a service restart. New `sessions` table (schema 2).
+- `town-crier run`: the service in the foreground. Ekos adapter → session manager → store, with a
+  clock tick for time-based session rules; SIGINT/SIGTERM stop it cleanly and everything queued
+  is written. `--db`, `-v`.
+- Fixed: stopping the writer mid-batch or before its database was open dropped queued events.
 - Project skeleton: design spec, briefing for contributors, CLI stub, CI, docs site scaffold.
 - Planned `town-crier config check` subcommand added to the CLI stub.
 - Stub commands exit with code 3 (not 2, which is argparse's usage-error code).
