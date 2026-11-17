@@ -102,7 +102,9 @@ def sexagesimal_pattern(value: float, new: float) -> tuple[re.Pattern, object]:
     """Match value as degrees and minutes (any seconds), and render new in the same style."""
     d, m = divmod(round(abs(value) * 60), 60)
     sign = "-" if value < 0 else r"\+?"
-    pat = re.compile(rf"(?<![\d.:+-]){sign}0*{d}(\s*[:°]\s*|\s+)0*{m:02d}(\s*[:']\s*|\s+)\d+(\.\d+)?")
+    pat = re.compile(
+        rf"(?<![\d.:+-]){sign}0*{d}(\s*[:°]\s*|\s+)0*{m:02d}(\s*[:']\s*|\s+)\d+(\.\d+)?"
+    )
     nd, nm = divmod(round(abs(new) * 60), 60)
     nsign = "-" if new < 0 else ""
 
@@ -123,7 +125,9 @@ def main() -> int:
     ap.add_argument("--markers", help="scenario marker NDJSON to merge in")
     ap.add_argument("--since", type=parse_when, help="drop records before this time")
     ap.add_argument("--until", type=parse_when, help="drop records after this time")
-    ap.add_argument("--keep-noise", action="store_true", help="keep non-KStars D-Bus and INDI debug")
+    ap.add_argument(
+        "--keep-noise", action="store_true", help="keep non-KStars D-Bus and INDI debug"
+    )
     args = ap.parse_args()
 
     meta, body = None, []
