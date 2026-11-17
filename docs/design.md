@@ -184,12 +184,19 @@ SQLite (WAL mode) on the rig is the source of truth; a closed session is exporte
 | sessions | id (UUID), state, start/end, site, software versions, snapshot JSON, summary JSON, synced_at |
 | targets | session_id, name, RA/Dec, sequence XML, reference FITS info, start/end |
 | setup_items | session_id, kind (polar_align, focus, calibration, trial_guide), values JSON, ts |
-| frames | session_id, target_id, ts, type, filter, exposure, HFR, star count, guide RMS, camera temp, file path |
+| frames | event_id, session_id, target_id, ts, type, filter, exposure, HFR, star count, guide RMS, camera temp, file path |
 | samples | ts, metric, value (ambient, RH, dew point, voltage, current, guide error) |
-| events | id, session_id, ts, type, priority, payload JSON |
+| events | id, session_id, ts, source, kind, priority (alerts only), data JSON |
 | outbox | event_id, sink, status, attempts, sent_at |
 | notes | session_id, ts, text |
 | calibration_runs | linked session_id, type, filter, exposure, count |
+
+`events` is append-only and holds every event as the adapters reported it (`capture.frame`,
+`mount.park`, `guide.rms`, …); `frames` and `samples` are filled from events in the same
+transaction. The database lives at `~/.local/share/town-crier/town-crier.db` (honouring
+`XDG_DATA_HOME`), in WAL mode so readers never block the writer, and its schema is versioned with
+`PRAGMA user_version` migrations. Implemented so far: `events`, `frames`, `samples`; the other
+tables arrive with the session manager, notifier and GUI.
 
 ### Export folder (written at session close)
 
