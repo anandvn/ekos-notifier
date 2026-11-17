@@ -249,12 +249,25 @@ def test_adapter_against_a_fake_server():
 
 
 def test_indi_dump_scrubs_the_location_and_lists_candidates(tmp_path):
-    stream = "".join(WEATHER) + (
-        connection("Box", True)
-        + driver("Box", "indi_mybox", 32768)
-        + numbers("Box", "POWER_SENSORS", "def", SENSOR_VOLTAGE=12.6, SENSOR_CURRENT=2.1)
-        + numbers("Box", "POWER_LIMITS", "def", MAX_VOLTAGE=15)
-        + numbers("Mount", "GEOGRAPHIC_COORD", "def", LAT=51.4778, LONG=359.9, ELEV=46)
+    stream = (
+        "".join(WEATHER)
+        + (
+            connection("Box", True)
+            + driver("Box", "indi_mybox", 32768)
+            + numbers("Box", "POWER_SENSORS", "def", SENSOR_VOLTAGE=12.6, SENSOR_CURRENT=2.1)
+            + numbers("Box", "POWER_LIMITS", "def", MAX_VOLTAGE=15)
+            + numbers("Mount", "GEOGRAPHIC_COORD", "def", LAT=51.4778, LONG=359.9, ELEV=46)
+            # False candidates seen live on the simulators:
+            + numbers(
+                "Mount",
+                "ALIGNMENT_POINTSET_CURRENT_ENTRY",
+                "def",
+                ALIGNMENT_POINTSET_CURRENT_ENTRY=0,
+            )
+            + numbers("Guide", "SIMULATOR_SETTINGS", "def", SIM_TEMPERATURE=25)
+            + '<defTextVector device="Cam" name="UPLOAD_SETTINGS">'
+            '<defText name="UPLOAD_DIR">/home/astro-jane/Pictures</defText></defTextVector>'
+        )
     )
 
     async def scenario():
@@ -268,8 +281,35 @@ def test_indi_dump_scrubs_the_location_and_lists_candidates(tmp_path):
     dump.write(dump.scrub(elements), out)
     text = out.read_text()
     assert "51.4778" not in text and "POWER_SENSORS" in text
+    assert "astro-jane" not in text and "/home/user/Pictures" in text
     lines = dump.summary(elements, load_builtin())
     assert '  candidate: "Box / POWER_SENSORS.SENSOR_VOLTAGE" = 12.6' in lines
     assert not any("WEATHER_PARAMETERS" in line for line in lines)  # recognised, not a candidate
-    assert not any("POWER_LIMITS" in line or "WEATHER_CONTROL" in line for line in lines)
+    assert not any(
+        bad in line
+        for line in lines
+        for bad in ("POWER_LIMITS", "WEATHER_CONTROL", "POINTSET", "SIM_TEMPERATURE")
+    )
+    assert '  candidate: "Box / POWER_SENSORS.SENSOR_CURRENT" = 2.1' in lines
     assert any("recognised: env.dewpoint, env.humidity, env.temperature" in line for line in lines)
+
+
+def test_a_quiet_but_connected_camera_still_counts_until_it_disconnects(tmp_path):
+    # Seen live: once the cooler settled INDI sent nothing more, and frames lost their temperature.
+    s = Store(tmp_path / "tc.db")
+    caps = {"metrics": {"camera.temperature": ["Main"]}}
+    s.append(
+        [
+            Event(1.0, "indi.capabilities", caps),
+            Event(
+                1.0, "metric", {"metric": "camera.temperature", "value": -10.0, "device": "Main"}
+            ),
+            Event(2.0, "capture.camera", {"camera": "Main"}),
+            Event(3600.0, "capture.frame", {"type": "light", "filter": "L", "exposure": 60.0}),
+            Event(3700.0, "indi.capabilities", {"metrics": {}}),
+            Event(3800.0, "capture.frame", {"type": "light", "filter": "L", "exposure": 60.0}),
+        ]
+    )
+    temps = [r[0] for r in s.db.execute("SELECT camera_temp FROM frames ORDER BY ts")]
+    assert temps == [-10.0, None]
+    s.close()

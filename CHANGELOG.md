@@ -14,6 +14,10 @@ Semantic Versioning.
   temperature, ambient, RH and dew margin, and the Capture target for manual sessions.
   `ekos-notifier indi-dump` writes every device's properties (site location removed) and lists
   candidate readings.
+- INDI fixes from the live test: a reading stays current until INDI says the device or property
+  is gone (INDI sends values only when they change, so a settled cooler goes quiet and frames had
+  lost their camera temperature); `indi-dump` also removes user names from home paths and no
+  longer lists simulator settings or "…_CURRENT_ENTRY" counters as candidates.
 - **Hourly digest** (`ekos_notifier.digest`): on the hour during a session, "HH:MM — All's
   well" (Quiet, sent silently) or "HH:MM — Attention: …" (Normal) when a problem was raised and
   not cleared, or is still open. Target, filter, job progress, lights and integration this
