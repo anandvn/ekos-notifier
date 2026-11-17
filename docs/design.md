@@ -119,6 +119,8 @@ Priorities map onto each notifier's native levels where it has them (Pushover �
 
 ### Normal — milestones
 
+"Starting session" and the session summary are sent at once rather than waiting for the digest.
+
 Starting session (with pre-flight results) · first sub saved (thumbnail) · meridian flip complete · target switched (Scheduler) · session summary at close (totals per filter, integration, median HFR, guide RMS, aborts, min battery, temperature/humidity range, sessions awaiting sync).
 
 ### Quiet

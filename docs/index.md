@@ -13,10 +13,33 @@ version 0.2.
 `town-crier run` runs the service in the foreground. On the computer running KStars, it finds
 the session bus, follows Ekos (Capture, Guide, Focus, Align, Mount, Scheduler) and records the
 night in `~/.local/share/town-crier/town-crier.db`: a session per night, every frame, guiding
-RMS and every Ekos state change. Stop it with Ctrl-C; nothing queued is lost. It doesn't send
-alerts yet, and there's no GUI or systemd service yet.
+RMS and every Ekos state change. Stop it with Ctrl-C; nothing queued is lost. There's no GUI or
+systemd service yet.
 
 | Option | Meaning |
 | --- | --- |
 | `--db PATH` | Database file to use instead of the default. |
+| `--config PATH` | Config file to use instead of `~/.config/town-crier/config.yaml`. |
 | `-v`, `--verbose` | Debug logging. |
+
+### Notifications
+
+Put your notifier in `~/.config/town-crier/config.yaml` (any
+[Apprise URL](https://github.com/caronc/apprise/wiki); see `config.example.yaml`):
+
+```yaml
+notify:
+  - "pover://USER_KEY@APP_TOKEN"   # Pushover: user key from your dashboard, token from an app
+```
+
+Then check it and send yourself a test:
+
+```bash
+town-crier config check
+town-crier test-notify              # add --emergency to try a repeating Pushover Emergency
+```
+
+Alerts so far: **Starting session**, the **session summary** when it closes, and the **Ekos
+stopped with the mount unparked** Emergency (2 minutes after Ekos stops; on Pushover it repeats
+every minute until you acknowledge it). Alerts raised while the rig is offline are kept and sent
+when the connection returns.
