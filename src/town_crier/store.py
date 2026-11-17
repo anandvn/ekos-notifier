@@ -71,6 +71,23 @@ MIGRATIONS = [
     );
     CREATE INDEX samples_metric_ts ON samples (metric, ts);
     """,
+    # 2: sessions, filled from session.* events (see town_crier.session).
+    """
+    CREATE TABLE sessions (
+        id           TEXT PRIMARY KEY,
+        state        TEXT NOT NULL,     -- setup, active, closed, abandoned
+        night        TEXT NOT NULL,     -- local date of the evening the night began
+        setup_at     REAL,
+        started_at   REAL,
+        start_reason TEXT,
+        ended_at     REAL,
+        end_reason   TEXT,
+        snapshot     TEXT,              -- JSON, taken at session start (later)
+        summary      TEXT,              -- JSON, written at close (later)
+        synced_at    REAL
+    );
+    CREATE INDEX sessions_state ON sessions (state);
+    """,
 ]
 
 # A frame's guide RMS is the last guide.rms seen at most this many seconds before it.
@@ -118,7 +135,7 @@ class Store:
 
     # -- writing -----------------------------------------------------------------------------
 
-    def append(self, events: Iterable[Event], session_id: str | None = None) -> list[int]:
+    def append(self, events: Iterable[Event]) -> list[int]:
         """Write events and their projections in one transaction; returns the event ids."""
         ids = []
         with self.db:
@@ -126,15 +143,24 @@ class Store:
                 cur = self.db.execute(
                     "INSERT INTO events (session_id, ts, source, kind, data)"
                     " VALUES (?, ?, ?, ?, ?)",
-                    (session_id, event.ts, event.source, event.kind, json.dumps(event.data)),
+                    (
+                        event.session_id,
+                        event.ts,
+                        event.source,
+                        event.kind,
+                        json.dumps(event.data),
+                    ),
                 )
                 ids.append(cur.lastrowid)
-                self._project(cur.lastrowid, event, session_id)
+                self._project(cur.lastrowid, event)
         return ids
 
-    def _project(self, event_id: int, event: Event, session_id: str | None) -> None:
+    def _project(self, event_id: int, event: Event) -> None:
         d = event.data
-        if event.kind == "guide.rms":
+        session_id = event.session_id
+        if event.kind.startswith("session."):
+            self._project_session(event)
+        elif event.kind == "guide.rms":
             total = math.hypot(d["ra"], d["dec"])
             self._guide_rms = (event.ts, total)
             self.db.executemany(
@@ -166,7 +192,51 @@ class Store:
                 ),
             )
 
+    def _project_session(self, event: Event) -> None:
+        d = event.data
+        if event.kind == "session.setup":
+            self.db.execute(
+                "INSERT INTO sessions (id, state, night, setup_at) VALUES (?, 'setup', ?, ?)",
+                (event.session_id, d["night"], event.ts),
+            )
+        elif event.kind == "session.started":
+            # A session can start straight from standby, with no setup row yet.
+            self.db.execute(
+                "INSERT INTO sessions (id, state, night, started_at, start_reason)"
+                " VALUES (?, 'active', ?, ?, ?) ON CONFLICT (id) DO UPDATE SET"
+                " state = 'active', started_at = excluded.started_at,"
+                " start_reason = excluded.start_reason",
+                (event.session_id, d["night"], event.ts, d["reason"]),
+            )
+        elif event.kind == "session.closed":
+            self.db.execute(
+                "UPDATE sessions SET state = ?, ended_at = ?, end_reason = ? WHERE id = ?",
+                (d["state"], d.get("ended_at", event.ts), d["reason"], event.session_id),
+            )
+
     # -- reading -----------------------------------------------------------------------------
+
+    def open_session(self) -> sqlite3.Row | None:
+        """The session still in setup or active, if the service stopped during one."""
+        return self.db.execute(
+            "SELECT * FROM sessions WHERE state IN ('setup', 'active')"
+            " ORDER BY COALESCE(started_at, setup_at) DESC LIMIT 1"
+        ).fetchone()
+
+    def last_imaging_session(self) -> sqlite3.Row | None:
+        """The most recent session that got as far as imaging (for calibration frames)."""
+        return self.db.execute(
+            "SELECT * FROM sessions WHERE started_at IS NOT NULL ORDER BY started_at DESC LIMIT 1"
+        ).fetchone()
+
+    def last_event_ts(self, session_id: str) -> float | None:
+        row = self.db.execute(
+            "SELECT MAX(ts) FROM events WHERE session_id = ?", (session_id,)
+        ).fetchone()
+        return row[0]
+
+    def sessions(self) -> list[sqlite3.Row]:
+        return list(self.db.execute("SELECT * FROM sessions ORDER BY setup_at, started_at"))
 
     def events_after(
         self, last_id: int = 0, kinds: Iterable[str] | None = None, limit: int = 1000
@@ -177,7 +247,7 @@ class Store:
     def events_after_with_ids(
         self, last_id: int = 0, kinds: Iterable[str] | None = None, limit: int = 1000
     ) -> list[tuple[int, Event]]:
-        sql = "SELECT id, ts, source, kind, data FROM events WHERE id > ?"
+        sql = "SELECT id, ts, source, kind, data, session_id FROM events WHERE id > ?"
         params: list[Any] = [last_id]
         if kinds is not None:
             kinds = list(kinds)
@@ -186,7 +256,10 @@ class Store:
         sql += " ORDER BY id LIMIT ?"
         params.append(limit)
         return [
-            (r["id"], Event(r["ts"], r["kind"], json.loads(r["data"]), r["source"]))
+            (
+                r["id"],
+                Event(r["ts"], r["kind"], json.loads(r["data"]), r["source"], r["session_id"]),
+            )
             for r in self.db.execute(sql, params)
         ]
 

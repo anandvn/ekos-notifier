@@ -16,6 +16,11 @@ Semantic Versioning.
   appended to `events`; `frames` (with the guide RMS at capture time) and `samples` are filled
   in the same transaction. `EventWriter` batches events from asyncio code onto the store's own
   thread and retries failed writes rather than dropping them.
+- Session manager (`town_crier.session`): Standby → Setup → Active → Closed from Ekos events;
+  tags every event with its session, attaches setup to the session it leads into and late
+  calibration frames to the last imaging session. Closes on Scheduler finish + park, GUI End,
+  Ekos gone for 10 minutes (a crash and restart doesn't split the night), or the night ending.
+  Resumes an open session after a service restart. New `sessions` table (schema 2).
 - Project skeleton: design spec, briefing for contributors, CLI stub, CI, docs site scaffold.
 - Planned `town-crier config check` subcommand added to the CLI stub.
 - Stub commands exit with code 3 (not 2, which is argparse's usage-error code).
