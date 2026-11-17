@@ -191,7 +191,7 @@ def test_resume_after_service_restart(tmp_path):
 @pytest.fixture(scope="module")
 def m31():
     _, records = replay.read(FIXTURE)
-    return list(session.run(replay.ekos_events(records), manager()))
+    return list(session.run(replay.events(records), manager()))
 
 
 def test_m31_is_one_session_closed_when_the_scheduler_finished(m31):

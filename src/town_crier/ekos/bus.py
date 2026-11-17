@@ -43,7 +43,16 @@ def candidates(
     return found
 
 
-def _kstars_bus_addresses(proc: Path, uid: int) -> list[tuple[int, str]]:
+@dataclass(frozen=True)
+class KStarsProcess:
+    pid: int
+    environ: dict[str, str]
+    root: Path  # the process's filesystem root (/proc/<pid>/root): a Flatpak's sandbox view
+
+
+def kstars_processes(proc: Path = Path("/proc"), uid: int | None = None) -> list[KStarsProcess]:
+    """Running ``kstars`` processes of this user, oldest PID first."""
+    uid = os.getuid() if uid is None else uid
     out = []
     try:
         entries = sorted((p for p in proc.iterdir() if p.name.isdigit()), key=lambda p: int(p.name))
@@ -53,10 +62,21 @@ def _kstars_bus_addresses(proc: Path, uid: int) -> list[tuple[int, str]]:
         try:
             if (entry / "comm").read_text().strip() != "kstars" or entry.stat().st_uid != uid:
                 continue
-            env = (entry / "environ").read_bytes().split(b"\0")
+            raw = (entry / "environ").read_bytes().split(b"\0")
         except OSError:  # gone, or not ours
             continue
-        for item in env:
-            if item.startswith(b"DBUS_SESSION_BUS_ADDRESS="):
-                out.append((int(entry.name), item.split(b"=", 1)[1].decode(errors="replace")))
+        env = {}
+        for item in raw:
+            key, sep, value = item.partition(b"=")
+            if sep:
+                env[key.decode(errors="replace")] = value.decode(errors="replace")
+        out.append(KStarsProcess(int(entry.name), env, entry / "root"))
     return out
+
+
+def _kstars_bus_addresses(proc: Path, uid: int) -> list[tuple[int, str]]:
+    return [
+        (k.pid, k.environ["DBUS_SESSION_BUS_ADDRESS"])
+        for k in kstars_processes(proc, uid)
+        if k.environ.get("DBUS_SESSION_BUS_ADDRESS")
+    ]

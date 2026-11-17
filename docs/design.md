@@ -202,7 +202,7 @@ SQLite (WAL mode) on the rig is the source of truth; a closed session is exporte
 | calibration_runs | linked session_id, type, filter, exposure, count |
 
 `events` is append-only and holds every event as the adapters reported it (`capture.frame`,
-`mount.park`, `guide.rms`, …); `frames` and `samples` are filled from events in the same
+`mount.park`, `guide.rms`, `phd2.step`, …); `frames` and `samples` are filled from events in the same
 transaction. The database lives at `~/.local/share/town-crier/town-crier.db` (honouring
 `XDG_DATA_HOME`), in WAL mode so readers never block the writer, and its schema is versioned with
 `PRAGMA user_version` migrations. Implemented so far: `events`, `frames`, `samples`; the other
@@ -371,6 +371,8 @@ Top priority: a new user goes from install to a test alert on their phone in und
 ## Architecture, packaging and platforms
 
 One Python process on the imaging computer: adapters feed events in, SQLite stores everything first, and every output is a consumer reading from the store.
+
+The PHD2 adapter (`town_crier.phd2`) reads PHD2's event server and sends nothing; PHD2 serves several clients, so Ekos's connection is unaffected. PHD2's connect burst (`Version` … `AppState`) is recorded as a snapshot, and the guider state (`stopped`, `looping`, `calibrating`, `guiding`, `lost_lock`, `paused`) is tracked from the events that follow. Guide steps are recorded at PHD2's rate (about one a second), about 240 bytes each in the database: some 5 MB for a 6-hour night. It reads which guider Ekos uses from the running KStars (Flatpak or native): the selected equipment profile's guider (`userdb.sqlite` `profile`, selected by `kstarsrc` `[Ekos] profile`) and the Guide module's setting (`kstarsrc` `[Guide] GuiderType`, `PHD2Host`, `PHD2Port`), which Ekos sets from the profile when it starts. If either says PHD2, it connects to that host and port. Only when both say another guider (internal or lin_guider) does it leave PHD2 alone, re-reading the settings every 30 s so a switch mid-night is picked up; the choice is recorded as an `ekos.guider` event. When it can't tell (KStars not running yet), or PHD2 isn't running, it retries quietly.
 
 ```
  Sources                  Town Crier service                Outputs

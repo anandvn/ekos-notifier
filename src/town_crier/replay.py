@@ -10,6 +10,7 @@ from typing import Any
 
 from town_crier.ekos.decode import decode_name_owner_changed, decode_signal
 from town_crier.events import Event
+from town_crier.phd2.decode import Phd2Decoder
 
 FORMAT = "town-crier-replay/0"
 
@@ -31,16 +32,37 @@ def read(path: str | Path) -> tuple[dict[str, Any], Iterator[dict[str, Any]]]:
     return meta, records()
 
 
+def events(records: Iterable[dict[str, Any]]) -> Iterator[Event]:
+    """Every source in the recording, in file order, through the live adapters' decoders."""
+    phd2 = Phd2Decoder()
+    for rec in records:
+        src = rec.get("src")
+        if src == "dbus":
+            yield from _dbus(rec)
+        elif src == "phd2" and isinstance(rec.get("msg"), dict):
+            yield from phd2.feed(rec["t"], rec["msg"])
+        elif src == "recorder" and rec.get("stream") == "phd2" and rec.get("event") != "connected":
+            yield from phd2.lost(rec["t"], rec.get("error") or "PHD2 closed the connection")
+
+
 def ekos_events(records: Iterable[dict[str, Any]]) -> Iterator[Event]:
     """Run recorded D-Bus signals through the same decoder the live adapter uses."""
     for rec in records:
-        if rec.get("src") != "dbus":
-            continue
-        msg = rec.get("msg", {})
-        if msg.get("type") != "signal":
-            continue
-        args = msg.get("payload", {}).get("data", [])
-        if msg.get("member") == "NameOwnerChanged":
-            yield from decode_name_owner_changed(rec["t"], args)
-        elif (msg.get("path") or "").startswith("/KStars"):
-            yield from decode_signal(rec["t"], msg["path"], msg.get("member", ""), args)
+        if rec.get("src") == "dbus":
+            yield from _dbus(rec)
+
+
+def phd2_events(records: Iterable[dict[str, Any]]) -> Iterator[Event]:
+    """Run recorded PHD2 messages through the same decoder the live adapter uses."""
+    return (e for e in events(records) if e.source == "phd2")
+
+
+def _dbus(rec: dict[str, Any]) -> Iterator[Event]:
+    msg = rec.get("msg", {})
+    if msg.get("type") != "signal":
+        return
+    args = msg.get("payload", {}).get("data", [])
+    if msg.get("member") == "NameOwnerChanged":
+        yield from decode_name_owner_changed(rec["t"], args)
+    elif (msg.get("path") or "").startswith("/KStars"):
+        yield from decode_signal(rec["t"], msg["path"], msg.get("member", ""), args)

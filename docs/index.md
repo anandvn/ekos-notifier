@@ -11,9 +11,12 @@ version 0.2.
 ## What works today
 
 `town-crier run` runs the service in the foreground. On the computer running KStars, it finds
-the session bus, follows Ekos (Capture, Guide, Focus, Align, Mount, Scheduler) and records the
-night in `~/.local/share/town-crier/town-crier.db`: a session per night, every frame, guiding
-RMS and every Ekos state change. Stop it with Ctrl-C; nothing queued is lost. There's no GUI or
+the session bus, follows Ekos (Capture, Guide, Focus, Align, Mount, Scheduler) and PHD2 (wherever Ekos is set
+to find it), and records the night in
+`~/.local/share/town-crier/town-crier.db`: a session per night, every frame, guiding RMS, every
+Ekos state change, and PHD2's guide steps (star SNR, mass, HFD), lost stars, settling,
+calibration and alerts. If Ekos is set to its internal guider, Town Crier leaves PHD2 alone;
+if PHD2 just isn't running yet, it keeps checking quietly. Stop it with Ctrl-C; nothing queued is lost. There's no GUI or
 systemd service yet.
 
 | Option | Meaning |

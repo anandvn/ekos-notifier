@@ -12,6 +12,14 @@ Semantic Versioning.
   those checked against a recording marked. `town_crier.replay` runs recordings through the same
   decoder. New dependency: `dbus-fast`.
 - Tests driven by the M 31 replay fixture.
+- PHD2 adapter (`town_crier.phd2`): reads PHD2's event server on localhost:4400 (read-only) and
+  records guide steps (pixels, pulses, SNR, mass, HFD), guider state, lost stars, settle
+  results, dithers, calibration and PHD2's alerts. The connect burst is marked as a snapshot;
+  reconnects with backoff and waits quietly while PHD2 isn't running. Reads which guider Ekos
+  uses from the running KStars (Flatpak or native): the selected profile's guider in
+  `userdb.sqlite` and the Guide module's setting in `kstarsrc`. Connects to the PHD2 host and
+  port Ekos uses, and doesn't contact PHD2 at all when both say internal or lin_guider. `town-crier run` starts it
+  alongside the Ekos adapter, and `replay.events()` replays both from a recording.
 - Event store (`town_crier.store`): SQLite in WAL mode with versioned migrations. Every event is
   appended to `events`; `frames` (with the guide RMS at capture time) and `samples` are filled
   in the same transaction. `EventWriter` batches events from asyncio code onto the store's own
