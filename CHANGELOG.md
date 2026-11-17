@@ -5,6 +5,13 @@ Semantic Versioning.
 
 ## Unreleased
 
+- Ekos adapter (`town_crier.ekos`): finds the session bus KStars is on, listens to Ekos signals
+  by the `org.kde.kstars` name (modules that appear later are covered), reports KStars appearing
+  and vanishing, reads current states on connect, and reconnects with backoff. Signals become
+  `Event`s (`capture.frame`, `mount.park`, `scheduler.state`, …); state codes are named, with
+  those checked against a recording marked. `town_crier.replay` runs recordings through the same
+  decoder. New dependency: `dbus-fast`.
+- Tests driven by the M 31 replay fixture.
 - Project skeleton: design spec, briefing for contributors, CLI stub, CI, docs site scaffold.
 - Planned `town-crier config check` subcommand added to the CLI stub.
 - Stub commands exit with code 3 (not 2, which is argparse's usage-error code).
