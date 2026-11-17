@@ -177,7 +177,7 @@ Every message is rendered from a template set; the style is a single config sett
 No internet never stops or degrades recording; it only silences outbound messages.
 
 - **Offline at session start:** notifier and heartbeat are skipped without warning. GUI shows "Offline — recording only".
-- **Link drops mid-session:** recording continues. Undelivered alerts queue for up to 60 min; on reconnect only still-relevant ones send (resolved conditions are dropped), and the session summary always sends.
+- **Link drops mid-session:** recording continues. An alert that can't be delivered is retried for a short window (default 10 min, `notify_expire_minutes`), then dropped rather than sent late: alerts arriving after the fact can't be acted on, and a backlog of them on reaching home is noise. This includes the session summary. Dropped alerts stay in the local record (GUI, export); the outbox marks them `dropped` with the reason.
 - **Heartbeat caveat:** an external heartbeat service can't tell a dead rig from a dead uplink and will alert either way. Mitigations: grace period configurable (default 30 min); heartbeat is a per-session toggle that defaults on only if connectivity looked solid at session start; message wording says "rig or uplink".
 - **Local truth:** everything is in the local database first; outbound delivery is a best-effort consumer of it.
 

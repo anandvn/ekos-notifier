@@ -28,8 +28,9 @@ Semantic Versioning.
 - Notifications. Rules (`town_crier.rules`) turn events into alerts stored as events: "Starting
   session" and the session summary (Normal, sent at once), and the "Ekos stopped with the mount
   unparked" Emergency (2 minutes after Ekos stops, with an all-clear when the mount parks). The
-  notifier (`town_crier.notify`) sends them through Apprise from an outbox, retrying with backoff
-  while offline; Pushover Emergencies repeat every 60 s until acknowledged (up to an hour), ntfy
+  notifier (`town_crier.notify`) sends them through Apprise from an outbox. An alert that can't
+  be delivered is retried for 10 minutes (`notify_expire_minutes`) and then dropped, not sent
+  late; it stays in the local record. Pushover Emergencies repeat every 60 s until acknowledged (up to an hour), ntfy
   gets matching priorities, other services get the priority in the title. Schema 3: `outbox`,
   `consumers`. New dependencies: `apprise`, `PyYAML`.
 - Config file (`~/.config/town-crier/config.yaml`, `notify:` so far); `town-crier run --config`.

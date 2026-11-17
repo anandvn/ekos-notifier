@@ -64,7 +64,7 @@ async def serve(
     writer_task = asyncio.create_task(writer.run(), name="store")
     writer.put(Event(clock(), "service.started", {"version": __version__}, "service"))
     if notifier is None and config.notify:
-        notifier = Notifier(db_path, config.notify)
+        notifier = Notifier(db_path, config.notify, max_age=config.notify_expire_minutes * 60)
     if notifier is None:
         log.info("no notifiers configured: recording only")
 

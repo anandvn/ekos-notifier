@@ -41,5 +41,6 @@ town-crier test-notify              # add --emergency to try a repeating Pushove
 
 Alerts so far: **Starting session**, the **session summary** when it closes, and the **Ekos
 stopped with the mount unparked** Emergency (2 minutes after Ekos stops; on Pushover it repeats
-every minute until you acknowledge it). Alerts raised while the rig is offline are kept and sent
-when the connection returns.
+every minute until you acknowledge it). If an alert can't be delivered because the rig is
+offline, it's retried for 10 minutes and then dropped, never sent late; it stays in the session
+record. Change the window with `notify_expire_minutes` in the config.
