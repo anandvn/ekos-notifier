@@ -140,6 +140,8 @@ def cmd_config_check(args: argparse.Namespace) -> int:
         else:
             problems += 1
             print(f"  notify: NOT a valid Apprise URL: {url.split(':', 1)[0]}://…", file=sys.stderr)
+    if cfg.notify:
+        print(f"  undelivered alerts dropped after {cfg.notify_expire_minutes:g} min")
     return 1 if problems else 0
 
 

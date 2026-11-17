@@ -22,6 +22,7 @@ class ConfigError(Exception):
 class Config:
     path: Path | None = None
     notify: list[str] = field(default_factory=list)
+    notify_expire_minutes: float = 10.0
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -50,4 +51,12 @@ def load(path: str | Path | None = None) -> Config:
         notify = [notify]
     if not isinstance(notify, list) or not all(isinstance(u, str) for u in notify):
         raise ConfigError(f"{path}: 'notify' must be a list of Apprise URLs (quoted strings)")
-    return Config(path=path, notify=[u.strip() for u in notify if u.strip()], raw=raw)
+    expire = raw.get("notify_expire_minutes", 10)
+    if isinstance(expire, bool) or not isinstance(expire, (int, float)) or expire < 0:
+        raise ConfigError(f"{path}: 'notify_expire_minutes' must be a number of minutes, 0 or more")
+    return Config(
+        path=path,
+        notify=[u.strip() for u in notify if u.strip()],
+        notify_expire_minutes=float(expire),
+        raw=raw,
+    )

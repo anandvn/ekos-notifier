@@ -1,9 +1,11 @@
 """Send alerts from the store through Apprise (docs/design.md, "Alerts" and "Offline behavior").
 
 The notifier is a consumer of the store: it reads ``alert`` events it hasn't seen, adds an
-``outbox`` row per alert and notifier URL, and sends pending rows. A failed send stays pending
-and is retried with backoff, so alerts raised while offline go out when the network returns;
-nothing it does can block recording.
+``outbox`` row per alert and notifier URL, and sends pending rows. A failed send is retried with
+backoff, but only while the alert is still worth acting on: one not delivered within ``max_age``
+seconds of being raised is marked ``dropped``, never sent late (a night's worth of stale alerts
+arriving when you get home helps nobody). The alert itself stays in the store for the GUI and
+the session export. Nothing the notifier does can block recording.
 
 Which alerts are sent now: Emergency and High always; Normal when marked ``immediate`` (the rest
 are held for the hourly digest, not built yet); Quiet never (in-app only).
@@ -29,7 +31,8 @@ from town_crier.store import Store
 log = logging.getLogger(__name__)
 
 CONSUMER = "notify"
-RETRY_DELAYS = (30, 60, 120, 300, 600, 900)  # then every 15 minutes, indefinitely
+MAX_AGE = 600.0  # seconds: undelivered alerts older than this are dropped
+RETRY_DELAYS = (15, 30, 60, 120)  # then every 2 minutes, until MAX_AGE
 
 PUSHOVER = {
     "emergency": {"priority": "emergency", "interval": "60", "expire": "3600"},
@@ -105,6 +108,7 @@ class Notifier:
         poll: float = 2.0,
         clock: Callable[[], float] = time.time,
         retry_delays: tuple[float, ...] = RETRY_DELAYS,
+        max_age: float = MAX_AGE,
     ) -> None:
         self.store_path = store_path
         self.urls = {sink_id(u): u for u in urls}
@@ -112,6 +116,7 @@ class Notifier:
         self.poll = poll
         self.clock = clock
         self.retry_delays = retry_delays
+        self.max_age = max_age
         self.sent = 0
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="notify")
         self._store: Store | None = None
@@ -162,13 +167,23 @@ class Notifier:
     def _send_due(self, store: Store) -> None:
         db = store.db
         rows = db.execute(
-            "SELECT o.id, o.sink, o.attempts, e.data FROM outbox o JOIN events e"
+            "SELECT o.id, o.sink, o.attempts, e.ts, e.data FROM outbox o JOIN events e"
             " ON e.id = o.event_id WHERE o.status = 'pending' AND o.next_try <= ?"
             " ORDER BY CASE e.priority WHEN 'emergency' THEN 0 WHEN 'high' THEN 1 ELSE 2 END,"
             " o.id",
             (self.clock(),),
         ).fetchall()
         for row in rows:
+            age = self.clock() - row["ts"]
+            if age > self.max_age:
+                # Too late to act on: drop it rather than deliver it late.
+                with db:
+                    db.execute(
+                        "UPDATE outbox SET status = 'dropped', last_error = ? WHERE id = ?",
+                        (f"not delivered within {self.max_age / 60:g} min", row["id"]),
+                    )
+                log.info("dropped undelivered alert (%d min old)", age // 60)
+                continue
             url = self.urls.get(row["sink"])
             if url is None:  # notifier removed from the config since this was queued
                 with db:
@@ -197,5 +212,9 @@ class Notifier:
                         (now + delay, error, row["id"]),
                     )
                     log.warning(
-                        "couldn't send %r (%s); retrying in %ds", data["title"], error, delay
+                        "couldn't send %r (%s); retrying in %ds unless it's older than %g min",
+                        data["title"],
+                        error,
+                        delay,
+                        self.max_age / 60,
                     )

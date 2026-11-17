@@ -50,3 +50,10 @@ def test_config_without_subcommand_is_usage_error():
     with pytest.raises(SystemExit) as exc:
         main(["config"])
     assert exc.value.code == 2
+
+
+def test_config_rejects_a_bad_expiry(tmp_path, capsys):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("notify_expire_minutes: soon\n")
+    assert main(["config", "check", "--config", str(cfg)]) == 1
+    assert "notify_expire_minutes" in capsys.readouterr().err

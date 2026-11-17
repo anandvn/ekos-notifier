@@ -138,7 +138,9 @@ def test_service_sends_the_m31_alerts(tmp_path):
             stop.set()
             await asyncio.Event().wait()
 
-        n = Notifier(db, [PUSHOVER], send=send, poll=0.05, clock=lambda: clock["t"])
+        # The whole night replays in a second, so to the notifier every alert looks old:
+        # this test is about routing, not expiry.
+        n = Notifier(db, [PUSHOVER], send=send, poll=0.05, clock=lambda: clock["t"], max_age=1e9)
         await serve(
             db, sources=[source], notifier=n, tick=0.005, clock=lambda: clock["t"], stop=stop
         )
@@ -149,3 +151,33 @@ def test_service_sends_the_m31_alerts(tmp_path):
         ("emergency", "Mount left unparked"),
         ("normal", "Session summary"),
     ]
+
+
+def test_undelivered_alerts_are_dropped_not_sent_late(db):
+    s = Store(db)
+    s.append([alert(100.0, "emergency", title="mount")])
+    send, now = FakeSender(fail=100), {"t": 100.0}
+    n = Notifier(db, [PUSHOVER], send=send, clock=lambda: now["t"], retry_delays=(15,), max_age=600)
+    for t in range(100, 1000, 15):  # offline the whole time
+        now["t"] = float(t)
+        n.step()
+    send.fail = 0  # back online
+    now["t"] = 2000.0
+    n.step()
+    assert send.sent == []
+    status, error = s.db.execute("SELECT status, last_error FROM outbox").fetchone()
+    assert status == "dropped" and "within 10 min" in error
+    assert [e.data["title"] for e in s.events_after(kinds=["alert"])][
+        -1
+    ] == "mount"  # still recorded
+    s.close()
+
+
+def test_alert_already_too_old_when_seen_is_dropped(db):
+    s = Store(db)
+    s.append([alert(100.0, "emergency")])
+    send = FakeSender()
+    Notifier(db, [PUSHOVER], send=send, clock=lambda: 100.0 + 3600, max_age=600).step()
+    assert send.sent == []
+    assert s.db.execute("SELECT status FROM outbox").fetchone()[0] == "dropped"
+    s.close()

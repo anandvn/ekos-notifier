@@ -9,6 +9,10 @@ notify: []
 #  - "pover://USER_KEY@APP_TOKEN"      # Pushover
 #  - "ntfy://ntfy.sh/my-rig-topic"     # ntfy
 
+# An alert that can't be delivered (no internet) is retried for this long, then dropped rather
+# than sent late. It stays in the session record. 0 = try once, never retry.
+notify_expire_minutes: 10
+
 # Wording of messages: plain | terse | olde
 style: plain
 
