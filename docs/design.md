@@ -410,7 +410,8 @@ Because outputs only read from the store, a dead notifier, network or sync targe
 - **Platforms:** StellarMate OS (including the Arch/Flatpak release), Astroberry, any Linux with KStars; x86-64 mini PCs and Raspberry Pi (ARM64).
 - **Runs where KStars runs.** Ekos is observed over the local session D-Bus, so Ekos Notifier must run on the computer running KStars/Ekos. That computer doesn't have to host the INDI server. The INDI host and port come from the active Ekos profile. A Linux laptop running KStars against a remote INDI Pi works if Ekos Notifier is on the laptop. KStars on Windows or macOS is out of scope.
 - **Session bus discovery:** `DBUS_SESSION_BUS_ADDRESS`, then `/run/user/<uid>/bus`, then the address in the running `kstars` process's environment. `doctor` reports which one worked.
-- **Start at boot:** `install-service` enables lingering for the user so the service runs without a desktop login.
+- **Start with the session:** `install-service` writes a systemd *user* unit (`~/.config/systemd/user/ekos-notifier.service`, `ExecStart=<this Python> -m ekos_notifier run`, `Restart=on-failure`, `WantedBy=default.target`), enables and starts it. It doesn't enable lingering itself: without it the service starts at login, like StellarMate's own `org.kde.kstars.service` (wanted by `graphical-session.target`); the command says how to enable lingering for a start at boot. The adapters wait for KStars, INDI and PHD2 by themselves, so start order doesn't matter.
+- **One instance per database:** `serve()` holds an `flock` on `<database>.lock` (PID inside); a second copy exits with "already running", and `install-service` enables without starting while a manual `run` holds it.
 
 | Platform | Base / Python | KStars | Notes |
 | --- | --- | --- | --- |

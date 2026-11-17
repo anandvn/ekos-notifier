@@ -29,6 +29,7 @@ from ekos_notifier.events import Event
 from ekos_notifier.indi.adapter import IndiAdapter
 from ekos_notifier.indi.decode import IndiDecoder
 from ekos_notifier.indi.presets import load_builtin
+from ekos_notifier.lock import InstanceLock
 from ekos_notifier.notify import Notifier, init_cursor
 from ekos_notifier.phd2.adapter import Phd2Adapter
 from ekos_notifier.pipeline import TICK, Pipeline
@@ -74,6 +75,23 @@ async def serve(
     """Run until ``stop`` is set (or SIGINT/SIGTERM when ``stop`` isn't given)."""
     db_path = Path(db_path)
     config = config or Config()
+    lock = InstanceLock(db_path)
+    lock.acquire()  # raises AlreadyRunning: two would send every alert twice
+    try:
+        await _serve(db_path, config, sources, notifier, tick, clock, stop)
+    finally:
+        lock.release()
+
+
+async def _serve(
+    db_path: Path,
+    config: Config,
+    sources: Iterable[Source] | None,
+    notifier: Notifier | None,
+    tick: float,
+    clock: Callable[[], float],
+    stop: asyncio.Event | None,
+) -> None:
     if sources is None:
         sources = (*SOURCES, indi_source(config))
     store = Store(db_path)  # migrates, and tells us where the last run left off

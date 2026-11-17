@@ -15,7 +15,6 @@ EXIT_NOT_IMPLEMENTED = 3
 PLANNED = {
     "doctor": "check D-Bus, PHD2, INDI, clock, disk, notifier and sync, and suggest fixes",
     "simulate": "replay a recorded night to preview alerts",
-    "install-service": "install the systemd user service",
 }
 
 CONFIG_HELP = "config file (default: ~/.config/ekos-notifier/config.yaml)"
@@ -69,6 +68,17 @@ def build_parser() -> argparse.ArgumentParser:
     dump.add_argument("--seconds", type=float, default=5.0, help="how long to listen (default 5)")
     dump.add_argument("--config", metavar="PATH", help=CONFIG_HELP)
 
+    svc = sub.add_parser(
+        "install-service",
+        help="run Ekos Notifier as a systemd user service (starts with your session)",
+        description="Install, enable and start a systemd user service running 'ekos-notifier "
+        "run' with this installation, so it starts with your session and restarts if it fails. "
+        "Logs: journalctl --user -u ekos-notifier.",
+    )
+    svc.add_argument("--no-start", action="store_true", help="enable it, but don't start it now")
+    svc.add_argument("--uninstall", action="store_true", help="stop, disable and remove it")
+    svc.add_argument("--config", metavar="PATH", help="config file for the service to use")
+
     for name, help_text in PLANNED.items():
         sub.add_parser(name, help=f"{help_text} (not yet implemented)")
 
@@ -96,6 +106,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_config_check(args)
     if args.command == "indi-dump":
         return cmd_indi_dump(args)
+    if args.command == "install-service":
+        return cmd_install_service(args)
     print(f"ekos-notifier {args.command}: not implemented yet (pre-alpha).", file=sys.stderr)
     return EXIT_NOT_IMPLEMENTED
 
@@ -119,6 +131,7 @@ def _private(url: str) -> str:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
+    from ekos_notifier.lock import AlreadyRunning
     from ekos_notifier.service import serve
     from ekos_notifier.store import default_path
 
@@ -131,6 +144,9 @@ def cmd_run(args: argparse.Namespace) -> int:
         return 1
     try:
         asyncio.run(serve(args.db or default_path(), config=cfg))
+    except AlreadyRunning as exc:
+        logging.getLogger("ekos_notifier").error("%s", exc)
+        return 1
     except Exception as exc:  # noqa: BLE001 - report, don't dump a traceback on users
         logging.getLogger("ekos_notifier").error("%s", exc, exc_info=args.verbose)
         return 1
@@ -211,6 +227,36 @@ def cmd_indi_dump(args: argparse.Namespace) -> int:
         print(line)
     print(f"\nWrote {len(elements)} properties to {out} (site location removed).")
     print("Attach it to a 'Device support' issue, or map a candidate in the config's indi.metrics.")
+    return 0
+
+
+def cmd_install_service(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from ekos_notifier import systemd
+    from ekos_notifier.lock import running_pid
+    from ekos_notifier.store import default_path
+
+    try:
+        if args.uninstall:
+            lines = systemd.uninstall()
+        else:
+            config = str(Path(args.config).resolve()) if args.config else None
+            start = not args.no_start
+            pid = running_pid(default_path())
+            if start and pid:
+                print(
+                    f"Ekos Notifier is already running (PID {pid}), probably in a terminal: "
+                    "the service will be enabled but not started. Stop that one, then run: "
+                    "systemctl --user start ekos-notifier"
+                )
+                start = False
+            lines = systemd.install(start=start, config=config)
+    except (OSError, RuntimeError) as exc:
+        print(f"install-service: {exc}", file=sys.stderr)
+        return 1
+    for line in lines:
+        print(line)
     return 0
 
 
