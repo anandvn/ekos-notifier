@@ -16,8 +16,20 @@ to find it), and records the night in
 `~/.local/share/ekos-notifier/ekos-notifier.db`: a session per night, every frame, guiding RMS, every
 Ekos state change, and PHD2's guide steps (star SNR, mass, HFD), lost stars, settling,
 calibration and alerts. If Ekos is set to its internal guider, Ekos Notifier leaves PHD2 alone;
-if PHD2 just isn't running yet, it keeps checking quietly. Stop it with Ctrl-C; nothing queued is lost. There's no GUI or
-systemd service yet.
+if PHD2 just isn't running yet, it keeps checking quietly. Stop it with Ctrl-C; nothing queued is lost. There's no GUI yet.
+
+To have it start by itself with your session (and restart if it ever fails), install it as a
+systemd user service:
+
+```bash
+ekos-notifier install-service           # write, enable and start it
+journalctl --user -u ekos-notifier -f   # its log
+ekos-notifier install-service --uninstall
+```
+
+It starts when you log in, as KStars does on StellarMate; to start at boot without a login, run
+`loginctl enable-linger`. Only one Ekos Notifier runs per database: a second one (say, `run` in a
+terminal while the service is up) refuses to start rather than send every alert twice.
 
 | Option | Meaning |
 | --- | --- |

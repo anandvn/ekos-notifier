@@ -69,8 +69,10 @@ and `CLAUDE.md` if a decision changes.
       XFCE/web desktop) it won't be. Check on Astroberry OS v3 and Raspberry Pi OS. Fallback
       design: find the running `kstars` process and read `DBUS_SESSION_BUS_ADDRESS` from its
       `/proc/<pid>/environ` (same user, so readable).
-- [ ] **Boot without login:** `Linger=no` on the VM, so a user service won't start until someone
-      logs in. `install-service` must run `loginctl enable-linger` (or tell the user to).
+- [x] **Boot without login:** `Linger=no` on the VM, so a user service starts at login. That's
+      how StellarMate runs KStars itself (`org.kde.kstars.service`, a user unit wanted by
+      `graphical-session.target`), so Ekos Notifier's unit (wanted by `default.target`) shares its
+      lifetime. `install-service` tells the user how to enable lingering rather than doing it.
 - [x] **PHD2's connect burst and event stream** (2.6.14; M 31 and IC 410 recordings, live VM
       2026-11-17): on connect PHD2 sends `Version`, then replays its current state
       (`LockPositionSet`, `StarSelected`, `CalibrationComplete`, `StartGuiding` as they apply) and

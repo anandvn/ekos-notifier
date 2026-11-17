@@ -5,6 +5,10 @@ Semantic Versioning.
 
 ## Unreleased
 
+- `ekos-notifier install-service`: a systemd user service (`ExecStart=<this Python> -m
+  ekos_notifier run`, restart on failure, wanted by `default.target`), enabled and started;
+  `--no-start`, `--uninstall`, `--config`. One Ekos Notifier per database: a second copy refuses
+  to start instead of sending every alert twice. `python -m ekos_notifier` runs the CLI.
 - **INDI adapter** (`ekos_notifier.indi`): a read-only client of the INDI server the Ekos
   profile uses. Presets (YAML, by interface or driver) map device properties to canonical
   metrics: weather stations, camera and focuser temperatures built in; anything else via
