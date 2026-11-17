@@ -323,6 +323,19 @@ class Store:
             for r in self.db.execute(sql, params)
         ]
 
+    def session_events(self, session_id: str, kinds: Iterable[str]) -> list[Event]:
+        """A session's events of these kinds, oldest first."""
+        kinds = list(kinds)
+        rows = self.db.execute(
+            "SELECT ts, source, kind, data, session_id FROM events WHERE session_id = ?"
+            f" AND kind IN ({','.join('?' * len(kinds))}) ORDER BY id",
+            (session_id, *kinds),
+        )
+        return [
+            Event(r["ts"], r["kind"], json.loads(r["data"]), r["source"], r["session_id"])
+            for r in rows
+        ]
+
     def frames(self, session_id: str | None = None) -> Iterator[sqlite3.Row]:
         if session_id is None:
             return iter(self.db.execute("SELECT * FROM frames ORDER BY ts"))

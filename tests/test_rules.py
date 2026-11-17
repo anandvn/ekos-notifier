@@ -118,3 +118,35 @@ def test_m31_night_alerts_in_order_and_on_time():
     assert "tracking" in emergency.data["body"]
     assert emergency.data["body"].splitlines()[-1] == "Park the mount or check the rig."
     assert {a.session_id for a in got} == {started.session_id}
+
+
+def test_no_summary_when_you_stopped_ekos_but_one_after_a_crash():
+    def closed(reason):
+        r = Rules()
+        r.handle(ev(0, "session.started", night="n", reason="light_frame"))
+        r.handle(ev(60, "capture.frame", type="light", filter="Ha", exposure=60.0))
+        return [
+            a.data
+            for a in r.handle(ev(900, "session.closed", night="n", state="closed", reason=reason))
+            if a.kind == "alert"
+        ]
+
+    assert closed("ekos_stopped") == []
+    (summary,) = closed("ekos_lost")
+    assert "because Ekos stopped unexpectedly" in summary["body"] and "Ha 1×60s" in summary["body"]
+
+
+def test_summary_after_a_restart_counts_the_sessions_frames():
+    # Seen live: a restart mid-session gave "No light frames" for a session with 11.
+    r = Rules()
+    frames = [{"type": "light", "filter": "OIII", "exposure": 60.0}] * 3 + [
+        {"type": "flat", "filter": "OIII", "exposure": 1.0}
+    ]
+    r.resume("s1", [], started_at=T - 1800, frames=frames)
+    (summary,) = [
+        a.data
+        for a in r.handle(ev(0, "session.closed", night="n", state="closed", reason="ekos_lost"))
+        if a.kind == "alert"
+    ]
+    assert "OIII 3×60s" in summary["body"] and "1 flat" in summary["body"]
+    assert "after 30 min" in summary["body"]

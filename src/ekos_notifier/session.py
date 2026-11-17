@@ -17,8 +17,11 @@ Rules:
   parked or not), or, without the Scheduler, Capture reports its sequence complete. Also on the
   GUI's End, when Ekos stays gone for ``grace`` seconds (a crash followed by a restart doesn't
   split the night; the close time is when Ekos went away), or when the night is over (local
-  noon). A session that closes without ever imaging is ``abandoned``. Snapshot readings never
-  close a session.
+  noon). Ekos going away closes as ``ekos_stopped`` when it was an orderly stop (Ekos logged
+  "Disconnecting INDI devices…", or the Scheduler logged it was stopping Ekos, within
+  ``ORDERLY_WINDOW`` before; the user's Stop, seen live) and as ``ekos_lost`` otherwise (KStars
+  vanished, an error, or idle with no shutdown logged: a crash). A session that closes without
+  ever imaging is ``abandoned``. Snapshot readings never close a session.
 - Calibration frames taken outside an active session go to the most recent imaging session.
 """
 
@@ -33,9 +36,12 @@ from typing import Any
 from ekos_notifier.events import Event
 
 GRACE = 600.0  # seconds Ekos may be gone before the session closes
+ORDERLY_WINDOW = 60.0  # a shutdown logged this soon before Ekos goes idle makes it orderly
+SHUTDOWN_LOGS = ("Disconnecting INDI devices", "proceeding to stop Ekos/INDI")
 CALIBRATION = {"flat", "dark", "bias"}
 SCHEDULER_BUSY = {"startup", "running", "paused", "shutdown", "loading"}
 SCHEDULER_DONE = {"idle", "aborted"}
+EKOS_KINDS = ("ekos.state", "indi.state", "kstars.vanished", "ekos.log")
 
 
 def is_snapshot(data: dict[str, Any]) -> bool:
@@ -64,6 +70,7 @@ class SessionManager:
         open_session: dict[str, Any] | None = None,
         last_imaging_id: str | None = None,
         last_activity: float | None = None,
+        ekos_lost: tuple[float, bool] | None = None,
     ) -> None:
         self.grace = grace
         self._new_id = new_id
@@ -74,6 +81,8 @@ class SessionManager:
         self.last_imaging_id = last_imaging_id
         self._last_activity = last_activity
         self._ekos_lost_at: float | None = None
+        self._lost_orderly = False  # Ekos was stopped on purpose, not lost
+        self._shutdown_at: float | None = None  # when Ekos last logged an orderly shutdown
         self._scheduler_ran = False  # this session's run is the Scheduler's
         self._scheduler_busy = False  # the Scheduler is driving Capture right now
         if open_session:  # the service restarted during a session
@@ -81,6 +90,8 @@ class SessionManager:
             self.state = open_session["state"]
             self.night = open_session["night"]
             self.started = open_session.get("started_at") is not None
+            if ekos_lost:  # Ekos went away before the restart: keep its time and kind
+                self._ekos_lost_at, self._lost_orderly = ekos_lost
 
     @classmethod
     def resume(cls, store: Any, **kwargs: Any) -> SessionManager:
@@ -91,8 +102,19 @@ class SessionManager:
             open_session=dict(row) if row else None,
             last_imaging_id=last["id"] if last else None,
             last_activity=store.last_event_ts(row["id"]) if row else None,
+            ekos_lost=cls.ekos_lost_from(store.session_events(row["id"], EKOS_KINDS))
+            if row
+            else None,
             **kwargs,
         )
+
+    @staticmethod
+    def ekos_lost_from(events: Iterable[Event]) -> tuple[float, bool] | None:
+        """(when, orderly) if Ekos was gone at the end of these events (a session's record)."""
+        m = SessionManager(open_session={"id": "x", "state": "active", "night": "n"})
+        for event in events:
+            m._ekos(event)
+        return (m._ekos_lost_at, m._lost_orderly) if m._ekos_lost_at is not None else None
 
     # -- events --------------------------------------------------------------------------
 
@@ -102,15 +124,10 @@ class SessionManager:
         state = d.get("state")
         done: str | None = None  # the imaging run ended, for this reason
 
-        if kind in ("ekos.state", "indi.state") and state == "success":
-            self._ekos_lost_at = None
-            if self.state == "standby":
-                out.append(self._open(event.ts))
-        elif (kind in ("ekos.state", "indi.state") and state in ("idle", "error")) or (
-            kind == "kstars.vanished"
-        ):
-            if self.state != "standby" and self._ekos_lost_at is None:
-                self._ekos_lost_at = event.ts
+        if kind in EKOS_KINDS:
+            opened = self._ekos(event)
+            if opened is not None:
+                out.append(opened)
         elif kind == "scheduler.state":
             self._scheduler_busy = state in SCHEDULER_BUSY
             if state == "running":
@@ -139,11 +156,36 @@ class SessionManager:
             out.append(self._close(event.ts, done))
         return out
 
+    def _ekos(self, event: Event) -> Event | None:
+        """Ekos coming and going; returns a session.setup event if one opens."""
+        kind, d = event.kind, event.data
+        state = d.get("state")
+        if kind == "ekos.log":
+            if any(s in str(d.get("text", "")) for s in SHUTDOWN_LOGS):
+                self._shutdown_at = event.ts
+        elif kind in ("ekos.state", "indi.state") and state == "success":
+            self._ekos_lost_at, self._shutdown_at = None, None
+            if self.state == "standby":
+                return self._open(event.ts)
+        elif (kind in ("ekos.state", "indi.state") and state in ("idle", "error")) or (
+            kind == "kstars.vanished"
+        ):
+            if self.state != "standby" and self._ekos_lost_at is None:
+                self._ekos_lost_at = event.ts
+                self._lost_orderly = (
+                    state != "error"
+                    and kind != "kstars.vanished"
+                    and self._shutdown_at is not None
+                    and event.ts - self._shutdown_at <= ORDERLY_WINDOW
+                )
+        return None
+
     def tick(self, now: float) -> list[Event]:
         if self.state == "standby":
             return []
         if self._ekos_lost_at is not None and now - self._ekos_lost_at >= self.grace:
-            return [self._close(now, "ekos_stopped", ended_at=self._ekos_lost_at)]
+            reason = "ekos_stopped" if self._lost_orderly else "ekos_lost"
+            return [self._close(now, reason, ended_at=self._ekos_lost_at)]
         if self.night and _night_over(self.night, now):
             return [self._close(now, "night_ended", ended_at=self._last_activity or now)]
         return []
@@ -189,7 +231,7 @@ class SessionManager:
         if self.started:
             self.last_imaging_id = self.session_id
         self.state, self.session_id, self.night, self.started = "standby", None, None, False
-        self._ekos_lost_at = None
+        self._ekos_lost_at, self._lost_orderly = None, False
         self._scheduler_ran = False
         return event
 

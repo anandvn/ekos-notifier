@@ -55,7 +55,8 @@ ekos-notifier test-notify              # add --emergency to try a repeating Push
 ```
 
 Alerts so far: **Starting session**, the **session summary** as soon as the Scheduler stops or a
-manual sequence completes (parked or not; it says whether the mount is parked), and the **Ekos
+manual sequence completes (parked or not; it says whether the mount is parked), or 10 minutes
+after Ekos crashes (if you stop Ekos yourself, the session closes quietly), and the **Ekos
 stopped with the mount unparked** Emergency (2 minutes after Ekos stops; on Pushover it repeats
 every minute until you acknowledge it), and **Guiding lost** (High) when guiding stops and
 hasn't recovered after 5 minutes (`alerts: guiding_recovery_minutes`), followed by **Guiding

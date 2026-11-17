@@ -103,6 +103,7 @@ async def _serve(
     )
     open_row = store.open_session()
     resumed_start = open_row["started_at"] if open_row else None
+    resumed_frames = [dict(f) for f in store.frames(open_row["id"])] if open_row else []
     init_cursor(store)
     store.close()
     if manager.session_id:
@@ -120,7 +121,7 @@ async def _serve(
         ),
     )
     if manager.state == "active" and manager.session_id:
-        rules.resume(manager.session_id, resumed_alerts, resumed_start)
+        rules.resume(manager.session_id, resumed_alerts, resumed_start, resumed_frames)
     pipeline = Pipeline(writer.put, manager=manager, rules=rules)
     writer_task = asyncio.create_task(writer.run(), name="store")
     writer.put(Event(clock(), "service.started", {"version": __version__}, "service"))
