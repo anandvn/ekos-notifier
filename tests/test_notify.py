@@ -146,10 +146,11 @@ def test_service_sends_the_m31_alerts(tmp_path):
         )
 
     asyncio.run(scenario())
-    assert [(p, t) for _, p, t in send.sent] == [
-        ("normal", "Starting session"),
+    # Sorted: replayed this fast, alerts minutes apart can share a step (Emergency goes first).
+    assert sorted((p, t) for _, p, t in send.sent) == [
         ("emergency", "Mount left unparked"),
         ("normal", "Session summary"),
+        ("normal", "Starting session"),
     ]
 
 

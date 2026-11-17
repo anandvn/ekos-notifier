@@ -13,10 +13,12 @@ Rules:
 - **Active** starts on the Scheduler running, the first light frame, or the GUI's Start. It can
   start straight from Standby (Town Crier started mid-night). Flats, darks and bias never start a
   session.
-- **Closed** when the Scheduler finishes with the mount parked, on the GUI's End, when Ekos stays
-  gone for ``grace`` seconds (a crash followed by a restart doesn't split the night; the close
-  time is when Ekos went away), or when the night is over (local noon). A session that closes
-  without ever imaging is ``abandoned``.
+- **Closed** when the imaging run ends: the Scheduler stops after running (finished or aborted,
+  parked or not), or, without the Scheduler, Capture reports its sequence complete. Also on the
+  GUI's End, when Ekos stays gone for ``grace`` seconds (a crash followed by a restart doesn't
+  split the night; the close time is when Ekos went away), or when the night is over (local
+  noon). A session that closes without ever imaging is ``abandoned``. Snapshot readings never
+  close a session.
 - Calibration frames taken outside an active session go to the most recent imaging session.
 """
 
@@ -32,6 +34,14 @@ from town_crier.events import Event
 
 GRACE = 600.0  # seconds Ekos may be gone before the session closes
 CALIBRATION = {"flat", "dark", "bias"}
+SCHEDULER_BUSY = {"startup", "running", "paused", "shutdown", "loading"}
+SCHEDULER_DONE = {"idle", "aborted"}
+
+
+def is_snapshot(data: dict[str, Any]) -> bool:
+    """A snapshot reading, which can't mark an end: after a restart mid-run the Scheduler's
+    snapshot has read ``idle`` while it was running."""
+    return bool(data.get("snapshot"))
 
 
 def night_of(ts: float) -> str:
@@ -64,9 +74,8 @@ class SessionManager:
         self.last_imaging_id = last_imaging_id
         self._last_activity = last_activity
         self._ekos_lost_at: float | None = None
-        self._scheduler_ran = False
-        self._scheduler_idle = False
-        self._parked = False
+        self._scheduler_ran = False  # this session's run is the Scheduler's
+        self._scheduler_busy = False  # the Scheduler is driving Capture right now
         if open_session:  # the service restarted during a session
             self.session_id = open_session["id"]
             self.state = open_session["state"]
@@ -91,6 +100,7 @@ class SessionManager:
         out = self.tick(event.ts)
         kind, d = event.kind, event.data
         state = d.get("state")
+        done: str | None = None  # the imaging run ended, for this reason
 
         if kind in ("ekos.state", "indi.state") and state == "success":
             self._ekos_lost_at = None
@@ -102,15 +112,21 @@ class SessionManager:
             if self.state != "standby" and self._ekos_lost_at is None:
                 self._ekos_lost_at = event.ts
         elif kind == "scheduler.state":
+            self._scheduler_busy = state in SCHEDULER_BUSY
             if state == "running":
-                self._scheduler_ran, self._scheduler_idle = True, False
+                self._scheduler_ran = True
                 out += self._start(event.ts, "scheduler")
-            elif state == "idle" and self._scheduler_ran:
-                self._scheduler_idle = True
-        elif kind == "mount.park":
-            self._parked = state == "parked"
+            elif state in SCHEDULER_DONE and self._scheduler_ran and not is_snapshot(d):
+                done = "scheduler_finished" if state == "idle" else "scheduler_aborted"
         elif kind == "capture.frame" and d.get("type") == "light":
             out += self._start(event.ts, "light_frame")
+        elif (
+            kind == "capture.state"
+            and state == "complete"
+            and not self._scheduler_busy
+            and not is_snapshot(d)
+        ):
+            done = "sequence_complete"
 
         if kind in ("capture.frame", "scheduler.state") and state != "idle":
             self._ekos_lost_at = None  # imaging carries on: Ekos is evidently back
@@ -119,8 +135,8 @@ class SessionManager:
         if self.state != "standby":
             self._last_activity = event.ts
 
-        if self.state == "active" and self._scheduler_idle and self._parked:
-            out.append(self._close(event.ts, "scheduler_finished"))
+        if done and self.state == "active":
+            out.append(self._close(event.ts, done))
         return out
 
     def tick(self, now: float) -> list[Event]:
@@ -162,7 +178,6 @@ class SessionManager:
             self.session_id, self.night = self._new_id(), night_of(ts)
         self.state, self.started = "active", True
         self._ekos_lost_at = None
-        self._scheduler_idle = False
         out.append(self._lifecycle(ts, "session.started", {"reason": reason}))
         return out
 
@@ -175,7 +190,7 @@ class SessionManager:
             self.last_imaging_id = self.session_id
         self.state, self.session_id, self.night, self.started = "standby", None, None, False
         self._ekos_lost_at = None
-        self._scheduler_ran = self._scheduler_idle = False
+        self._scheduler_ran = False
         return event
 
     def _lifecycle(self, ts: float, kind: str, data: dict[str, Any]) -> Event:

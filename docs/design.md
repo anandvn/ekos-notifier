@@ -30,7 +30,9 @@ A session starts automatically when the Ekos Scheduler starts (or the first Ligh
 1. **Standby** — service started at boot by systemd. Nothing is sent except the critical-battery Emergency.
 2. **Setup** — entered when Ekos connects the equipment profile. A setup log records in the background while the user focuses, polar aligns and calibrates. The GUI shows it as a live checklist.
 3. **Active** — entered on Scheduler start (or first manual Light frame, or GUI Start). Snapshot, pre-flight checks, then alerting, town crier and heartbeat begin.
-4. **Closed** — on Scheduler finish + park, GUI End, or Ekos disconnect. Summary sent, heartbeat and crier stopped, session exported for sync. If Ekos went away while the mount was unparked, the "Ekos stopped with the mount unparked" Emergency is sent too, whatever the state.
+4. **Closed** — when the imaging run ends, on GUI End, or on Ekos disconnect. Summary sent, heartbeat and crier stopped, session exported for sync. If Ekos went away while the mount was unparked, the "Ekos stopped with the mount unparked" Emergency is sent too, whatever the state.
+   - *The imaging run ends* when the Scheduler stops after running (finished or aborted), or, with no Scheduler, when Capture reports its sequence complete (with the Scheduler, Capture reports that once per job, so it's ignored). Parked or not: the summary says the mount's last known state, and the Emergency covers an unparked mount. The summary arrives within seconds of the last frame. A later run the same night starts a new session.
+   - Snapshot readings (taken when Town Crier connects) never close a session: after a restart mid-run, the Scheduler's snapshot has read `idle` while it was running.
    - *Ekos disconnect* means Ekos stays gone for a grace period (default 10 min), so a KStars crash followed by a restart doesn't split the night; the session's end time is when Ekos went away. The Emergency has its own 2-minute timer and isn't delayed by this.
    - A session still open at local noon after its night closes as `night_ended`, at its last activity.
    - A session that closes from Setup without ever imaging is recorded as `abandoned`.

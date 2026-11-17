@@ -104,13 +104,17 @@ def test_m31_night_alerts_in_order_and_on_time():
     got = [a for a in out if a.kind == "alert"]
     assert [a.data["rule"] for a in got] == [
         "session_started",
-        "ekos_stopped_mount_unparked",
         "session_summary",
+        "ekos_stopped_mount_unparked",
     ]
+    started, summary, emergency = got
+    sched_idle = next(e for e in out if e.kind == "scheduler.state" and e.data["state"] == "idle")
+    assert summary.ts == sched_idle.ts  # at once, not after Ekos's 10-minute grace
+    body = summary.data["body"]
+    assert "because the Scheduler finished." in body and "Integration 49 min" in body
+    assert body.splitlines()[-1] == "Mount: not parked (last seen tracking)."
     indi_idle = next(e for e in out if e.kind == "indi.state" and e.data["state"] == "idle")
-    emergency = got[1]
     assert 120 <= emergency.ts - indi_idle.ts <= 130  # 2 min grace, 10 s ticks
     assert "tracking" in emergency.data["body"]
     assert emergency.data["body"].splitlines()[-1] == "Park the mount or check the rig."
-    assert {a.session_id for a in got} == {got[0].session_id}
-    assert "Integration 49 min" in got[2].data["body"]
+    assert {a.session_id for a in got} == {started.session_id}
