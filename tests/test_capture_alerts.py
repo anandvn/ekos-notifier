@@ -161,54 +161,166 @@ def test_waiting_states_and_ekos_gone_are_not_stalls():
 # -- Autofocus failed --------------------------------------------------------------------------
 
 
-def focus_run(offset, *states):
-    return [ev(offset + i, "focus.state", state=s) for i, s in enumerate(states)]
+def flog(offset, text):
+    return log(offset, f"[Focuser Simulator] {text}", module="Focus")
 
 
-def test_two_failed_runs_alert_once_counting_ekos_retries_as_one():
-    events = START + [
-        ev(5, "focus.hfr", hfr=4.21, position=30000, in_autofocus=True),
-        # Ekos's retry loop: two "aborted" restarts, then the last attempt aborted + failed.
-        *focus_run(10, "in_progress", "aborted", "in_progress", "aborted", "in_progress"),
-        *focus_run(20, "aborted", "failed"),
-        *focus_run(100, "in_progress", "failed"),
-        *focus_run(200, "in_progress", "failed"),  # still failing: no second alert
+def failed_run_live(t):
+    """Tonight's shape (KStars 3.8.5): failures only in the log, Ekos restarts by itself, and
+    the run ends "aborted", never "failed"."""
+    return [
+        flog(t, "Autofocus starting..."),
+        ev(t, "focus.state", state="in_progress"),
+        flog(t + 7, "Failed to detect any stars. Reset frame and try again."),
+        flog(t + 7, "Autofocus failed, moving back to initial focus position 44,893."),
+        flog(t + 10, "Restarting autofocus process..."),
+        ev(t + 10, "focus.state", state="in_progress"),
+        flog(t + 11, "Failed to detect any stars. Aborting..."),
+        flog(t + 11, "Autofocus failed, moving back to initial focus position 44,893."),
+        ev(t + 15, "focus.state", state="aborted"),
     ]
+
+
+def failed_run_older(t):
+    """The earlier shape (open-questions): "aborted" for each attempt, then "Restarting…",
+    and the last attempt "aborted" and "failed"."""
+    out = []
+    for i in range(3):
+        out += [
+            ev(t + 10 * i, "focus.state", state="in_progress"),
+            flog(t + 10 * i + 5, "Autofocus failed, moving back to initial focus position 30,000."),
+            ev(t + 10 * i + 6, "focus.state", state="aborted"),
+        ]
+        if i < 2:
+            out.append(flog(t + 10 * i + 8, "Restarting autofocus process..."))
+    return out + [ev(t + 27, "focus.state", state="failed")]
+
+
+def test_two_failed_runs_alert_once_as_seen_live():
+    events = START + [ev(5, "focus.hfr", hfr=4.21, position=30000, in_autofocus=True)]
+    events += failed_run_live(10) + failed_run_live(100) + failed_run_live(200)
     got = alerts(events, until=300)
-    assert only(got, "autofocus_failed") == [(101, "autofocus_failed")]
-    body = got[-1][2].data["body"] if got[-1][1] == "autofocus_failed" else ""
+    assert only(got, "autofocus_failed") == [(130, "autofocus_failed")]  # ended 115, +10 s
+    body = [a for _, r, a in got if r == "autofocus_failed"][0].data["body"]
     assert "failed 2 times in a row" in body and "Last HFR measured: 4.21." in body
 
 
+def test_ekos_retry_loop_counts_once_in_the_older_shape():
+    events = START + failed_run_older(10)
+    assert only(alerts(events, until=200), "autofocus_failed") == []  # one run, not three
+    events = START + failed_run_older(10) + failed_run_older(100)
+    assert only(alerts(events, until=300), "autofocus_failed") == [(140, "autofocus_failed")]
+
+
 def test_a_success_in_between_resets_the_count():
+    events = (
+        START
+        + failed_run_live(10)
+        + [
+            ev(100, "focus.state", state="in_progress"),
+            ev(130, "focus.state", state="complete"),
+        ]
+    )
+    events += failed_run_live(200)
+    assert only(alerts(events, until=300), "autofocus_failed") == []
+
+
+def test_your_own_abort_is_not_a_failure():
     events = START + [
-        *focus_run(10, "in_progress", "failed"),
-        *focus_run(100, "in_progress", "complete"),
-        *focus_run(200, "in_progress", "failed"),
+        ev(10, "focus.state", state="in_progress"),
+        ev(20, "focus.state", state="aborted"),  # nothing failed: you pressed Stop
+        ev(30, "focus.state", state="in_progress"),
+        ev(40, "focus.state", state="aborted"),
     ]
     assert only(alerts(events, until=300), "autofocus_failed") == []
 
 
+def test_capture_reported_aborted_while_idle_is_not_an_abort():
+    # Seen live: a failed focus exposure made Ekos report Capture "aborted" while it was idle.
+    events = START + [
+        ev(5, "capture.state", state="idle"),
+        log(100, "[CCD Simulator] Autofocus failed. Aborting exposure"),
+        ev(100, "capture.state", state="aborted"),
+    ]
+    assert only(alerts(events, until=400), "capture_aborted") == []
+
+
 # -- Guiding poor ------------------------------------------------------------------------------
 
-EXCEEDED = (
-    "Guiding deviation 3.4 exceeded limit value of 2 arcsecs for 3 consecutive samples, "
-    "suspending exposure and waiting for guider up to 60 seconds."
-)
-STILL = "Guiding deviation 3.1 is still higher than limit value of 2 arcsecs."
-LOWER = "Guiding deviation 1.2 is now lower than limit value of 2 arcsecs, resuming exposure."
+
+def exceeded(dev, limit=0.5):
+    return (
+        f"[CCD Simulator] Guiding deviation {dev} exceeded limit value of {limit} arcsecs for 3 "
+        "consecutive samples, suspending exposure and waiting for guider up to 60 seconds."
+    )
 
 
-def test_ekos_enforcing_its_limit_alerts_after_the_window():
-    events = START + [ev(5, "guide.rms", ra=2.5, dec=1.0), log(100, EXCEEDED), log(400, STILL)]
-    events += [log(800, LOWER)]
-    got = alerts(events, until=900, rules=Rules(guiding_poor_window=600))
+def still(dev):
+    return f"[CCD Simulator] Guiding deviation {dev} is still higher than limit value of 2 arcsecs."
+
+
+def lower(dev):
+    return (
+        f"[CCD Simulator] Guiding deviation {dev} is now lower than limit value of 2 arcsecs, "
+        "resuming exposure."
+    )
+
+
+def flapping(t0, until):
+    """Seen live 2026-11-17 with a 0.5\u2033 limit: suspend, resume under 2\u2033, trip again
+    within seconds, so no 60 s exposure ever finishes."""
+    events = []
+    for t in range(t0, until, 12):
+        events += [
+            log(t, exceeded(3.791)),
+            ev(t, "capture.state", state="suspended"),
+            log(t + 1, still(2.72)),
+            log(t + 6, lower(1.856)),
+            ev(t + 6, "capture.state", state="capturing"),
+        ]
+    return events
+
+
+def test_ekos_suspending_over_and_over_alerts_until_a_frame_finishes():
+    events = (
+        START
+        + exposing(10)
+        + flapping(20, 700)
+        + [
+            ev(760, "capture.frame", type="light", filter="OIII", exposure=60.0),
+        ]
+    )
+    got = alerts(events, until=800, rules=Rules(guiding_poor_window=600))
     assert only(got, "guiding_poor", "guiding_poor_cleared") == [
-        (700, "guiding_poor"),
-        (800, "guiding_poor_cleared"),
+        (620, "guiding_poor"),
+        (760, "guiding_poor_cleared"),
     ]
     body = [a for _, r, a in got if r == "guiding_poor"][0].data["body"]
-    assert "holding exposures for 10 min" in body and "3.1″ is over its limit of 2″" in body
+    assert "no frame has finished since 22:00 (10 min)" in body
+    assert "Its limit is 0.5\u2033; latest deviation" in body
+
+
+def test_one_suspension_then_a_good_frame_is_silent():
+    events = (
+        START
+        + exposing(10)
+        + [
+            log(20, exceeded(1.2)),
+            log(25, lower(0.4)),
+            ev(90, "capture.frame", type="light", filter="Ha", exposure=60.0),
+        ]
+    )
+    events += flapping(100, 130)  # a short bad patch later, then frames again
+    events += [ev(200, "capture.frame", type="light", filter="Ha", exposure=60.0)]
+    got = alerts(events, until=2000, rules=Rules(guiding_poor_window=600))
+    assert only(got, "guiding_poor") == []
+
+
+def test_your_stop_while_suspended_is_silent():
+    events = START + exposing(10) + flapping(20, 60) + [ev(70, "capture.state", state="aborted")]
+    assert (
+        only(alerts(events, until=2000, rules=Rules(guiding_poor_window=600)), "guiding_poor") == []
+    )
 
 
 def test_rms_over_ekos_limit_when_ekos_does_not_enforce_it():

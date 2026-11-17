@@ -10,7 +10,10 @@ Semantic Versioning.
   `alerts.guiding_poor_minutes`, default 10), **Capture aborted** (with Ekos's reason; aborts with
   no cause are taken as the user's Stop), **Scheduler aborted**, **Capture stalled** (no progress
   for 2 × (exposure + download), at least 2 min) with "Capture running again", and **Autofocus
-  failed** (two runs in a row, Ekos's retry loop counted once).
+  failed** (two runs in a row, Ekos's retry loop counted once). Shaped by live tests: Ekos's
+  limit makes it suspend and resume over and over, so the clock runs until a frame finishes; a
+  failed autofocus ends `aborted` with the failure only in the log; Capture reported `aborted`
+  while idle isn't an abort; PHD2 warnings caused by stopping Ekos are dropped.
 - **Guiding lost** alert (High, `ekos_notifier.guiding`): guiding stopped and not back within
   `alerts.guiding_recovery_minutes` (default 5) of time when guiding was expected, then
   **Guiding recovered**. Intent-aware: slews, meridian flips, plate solving, autofocus, flats with
