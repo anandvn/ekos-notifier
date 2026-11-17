@@ -104,3 +104,39 @@ def test_m31_night_into_the_store(store):
     lights = [f for f in frames if f["type"] == "light"]
     assert all(f["guide_rms"] is not None for f in lights)
     assert len(store.events_after(0, limit=len(events) + 1)) == len(events)
+
+
+def test_writer_stopped_before_the_store_opens_still_writes(tmp_path):
+    async def scenario():
+        writer = EventWriter(tmp_path / "tc.db")
+        task = asyncio.create_task(writer.run())
+        writer.put(Event(1.0, "early", {}))
+        await asyncio.sleep(0)  # the writer has started opening, not finished
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(scenario())
+    s = Store(tmp_path / "tc.db", readonly=True)
+    assert [e.kind for e in s.events_after()] == ["early"]
+    s.close()
+
+
+def test_writer_stopped_mid_batch_writes_the_batch(tmp_path):
+    async def scenario():
+        writer = EventWriter(tmp_path / "tc.db", linger=5.0)  # long gather window
+        task = asyncio.create_task(writer.run())
+        await asyncio.sleep(0.2)  # store open, writer waiting for events
+        for i in range(300):
+            writer.put(Event(float(i), "e", {}))
+        await asyncio.sleep(0.1)  # writer has taken the batch and is lingering
+        assert writer.queue.qsize() < 300
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        return writer.written
+
+    assert asyncio.run(scenario()) == 300
+    s = Store(tmp_path / "tc.db", readonly=True)
+    assert len(s.events_after(limit=1000)) == 300
+    s.close()
