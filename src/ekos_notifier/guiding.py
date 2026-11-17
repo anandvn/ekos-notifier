@@ -23,10 +23,13 @@ resumes a Normal "Guiding recovered" follows. A session closing ends the outage 
 
 from __future__ import annotations
 
+import math
+import re
 import time
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import Any
 
+from ekos_notifier.alerts import SessionRule, make_alert, minutes
 from ekos_notifier.events import Event
 
 RECOVERY = 300.0
@@ -293,3 +296,179 @@ def _alert(
         "immediate": immediate,
     }
     return Event(ts, "alert", data, "rules", sid)
+
+
+class PoorGuidingRule(SessionRule):
+    """ "Guiding poor" (High), following Ekos's own guide-deviation limit.
+
+    - **Ekos's limit is on** for the running job: Ekos suspends exposures while guiding deviation
+      is over it, logging "Guiding deviation 3.1 exceeded limit value of 2 arcsecs …, suspending
+      exposure" and later "… is now lower than limit value of 2 arcsecs, resuming exposure".
+      Alert when Ekos has been holding exposures for ``window`` seconds, quoting its numbers.
+    - **Ekos's limit is off** (Ekos does nothing about poor guiding): watch Ekos's guide RMS,
+      total √(RA² + DEC²) in arcseconds, against Ekos's own deviation value (``limit()``, from
+      ``kstarsrc`` ``[Capture] GuideDeviation``, default 2″), and alert after ``window`` seconds
+      over it while guiding. Guiding stopping (lost star, flip, recalibration) restarts the window;
+      dithering doesn't.
+      Once Ekos is seen enforcing its limit in a session, only that path is used.
+
+    A Normal "Guiding back within limits" follows: when Ekos resumes, or after the RMS has stayed
+    under the limit for ``clear_after`` seconds. ``window`` 0 turns the rule off. Ekos logs in
+    the KStars language; the Ekos path matches the English messages only.
+    """
+
+    EXCEEDED = re.compile(
+        r"deviation (?:at capture startup )?(-?[\d.]+) (?:exceeded limit(?: value of)?|is still "
+        r"higher than limit value of) ([\d.]+) arcsecs"
+    )
+    BELOW = re.compile(
+        r"deviation (?:at capture startup )?(-?[\d.]+) (?:is now lower than|below) limit value "
+        r"of ([\d.]+) arcsecs"
+    )
+
+    def __init__(
+        self,
+        window: float = 600.0,
+        limit: Callable[[], float | None] = lambda: None,
+        clear_after: float = 120.0,
+    ) -> None:
+        super().__init__()
+        self.window = window
+        self._limit_source = limit
+        self.clear_after = clear_after
+        self.limit = DEFAULT_DEVIATION
+        self._enforced = False  # Ekos was seen enforcing its limit this session
+        self._held_since: float | None = None  # Ekos holding exposures for deviation
+        self._ekos_numbers: tuple[float, float] | None = None  # (deviation, limit) from its log
+        self._guiding = False
+        self._rms: tuple[float, float] | None = None
+        self._bad_since: float | None = None
+        self._good_since: float | None = None
+        self._alerted = False
+
+    def resume(self, session_id: str | None, alerts: Iterable[Event] = ()) -> None:
+        if session_id != self.session:
+            try:
+                self.limit = self._limit_source() or DEFAULT_DEVIATION
+            except Exception:  # noqa: BLE001 - a settings quirk must not stop the rules
+                self.limit = DEFAULT_DEVIATION
+        super().resume(session_id, alerts)
+
+    def on_event(self, event: Event) -> list[Event]:
+        if self.window <= 0:
+            return []
+        kind, d = event.kind, event.data
+        out: list[Event] = []
+        if kind == "ekos.log" and d.get("module") == "Capture" and d.get("text"):
+            text = str(d["text"])
+            if m := self.EXCEEDED.search(text):
+                self._enforced = True
+                self._ekos_numbers = (float(m.group(1)), float(m.group(2)))
+                if self._held_since is None:
+                    self._held_since = event.ts
+            elif m := self.BELOW.search(text):
+                self._enforced = True
+                self._ekos_numbers = (float(m.group(1)), float(m.group(2)))
+                self._held_since = None
+                if self._alerted:
+                    self._alerted = False
+                    out.append(self._back(event.ts))
+        elif kind == "guide.state":
+            # Dithering and Ekos's own suspensions are part of guiding: with a dither every frame
+            # or two, resetting on them would mean the window never fills.
+            self._guiding = d.get("state") in GUIDING_OK
+            if not self._guiding:
+                self._bad_since = None
+        elif kind == "guide.rms" and d.get("ra") is not None and d.get("dec") is not None:
+            self._rms = (float(d["ra"]), float(d["dec"]))
+            if self._total() > self.limit:
+                self._good_since = None
+                if self._guiding and self._bad_since is None:
+                    self._bad_since = event.ts
+            else:
+                self._bad_since = None
+                if self._good_since is None:
+                    self._good_since = event.ts
+        return out
+
+    def on_tick(self, now: float) -> list[Event]:
+        if self.window <= 0 or self._alerted and self._enforced:
+            return []
+        if self._enforced:
+            if self._held_since is not None and now - self._held_since >= self.window:
+                self._alerted = True
+                return [self._poor_ekos(now)]
+            return []
+        if self._rms is None:
+            return []
+        if not self._alerted:
+            if (
+                self._guiding
+                and self._bad_since is not None
+                and now - self._bad_since >= self.window
+            ):
+                self._alerted = True
+                return [self._poor_rms(now)]
+        elif self._good_since is not None and now - self._good_since >= self.clear_after:
+            self._alerted = False
+            return [self._back(now)]
+        return []
+
+    def on_session_closed(self) -> None:
+        self._bad_since = self._good_since = self._held_since = None
+        self._alerted = self._enforced = False
+
+    def _total(self) -> float:
+        assert self._rms is not None
+        return math.hypot(*self._rms)
+
+    def _values(self) -> str:
+        if self._rms is None:
+            return ""
+        ra, dec = self._rms
+        return f"RA {ra:.2f}\u2033, DEC {dec:.2f}\u2033 (total {self._total():.2f}\u2033)"
+
+    def _poor_ekos(self, now: float) -> Event:
+        assert self._held_since is not None
+        lines = [f"Ekos has been holding exposures for {minutes(now - self._held_since)}"]
+        if self._ekos_numbers:
+            deviation, limit = self._ekos_numbers
+            lines[0] += (
+                f": guide deviation {deviation:g}\u2033 is over its limit of {limit:g}\u2033"
+            )
+        lines[0] += "."
+        if self._rms is not None:
+            lines.append(f"Guide RMS: {self._values()}.")
+        lines.append(ADVICE)
+        return make_alert(
+            now, self.session, "guiding_poor", "high", "Guiding poor", "\n".join(lines)
+        )
+
+    def _poor_rms(self, now: float) -> Event:
+        body = (
+            f"Guide RMS has been over {self.limit:g}\u2033 (Ekos's guide deviation limit) for "
+            f"{minutes(self.window)}: {self._values()}.\n"
+            "Ekos isn't enforcing that limit for this sequence, so it keeps exposing.\n" + ADVICE
+        )
+        return make_alert(now, self.session, "guiding_poor", "high", "Guiding poor", body)
+
+    def _back(self, now: float) -> Event:
+        limit = self._ekos_numbers[1] if self._enforced and self._ekos_numbers else self.limit
+        body = f"Guiding is back under {limit:g}\u2033."
+        if self._rms is not None:
+            body += f" Guide RMS: {self._values()}."
+        return make_alert(
+            now,
+            self.session,
+            "guiding_poor_cleared",
+            "normal",
+            "Guiding back within limits",
+            body,
+            immediate=True,
+        )
+
+
+DEFAULT_DEVIATION = 2.0  # Ekos's own default (kstars.kcfg GuideDeviation)
+ADVICE = (
+    "Stars are probably trailing. Check balance, wind, seeing, cables and the guide calibration."
+)

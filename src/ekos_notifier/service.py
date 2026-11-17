@@ -23,6 +23,7 @@ from typing import Any
 from ekos_notifier import __version__
 from ekos_notifier.config import Config
 from ekos_notifier.ekos.adapter import EkosAdapter
+from ekos_notifier.ekos.settings import guide_deviation_limit
 from ekos_notifier.events import Event
 from ekos_notifier.notify import Notifier, init_cursor
 from ekos_notifier.phd2.adapter import Phd2Adapter
@@ -74,7 +75,11 @@ async def serve(
         log.info("resuming %s session %s", manager.state, manager.session_id)
 
     writer = EventWriter(db_path)
-    rules = Rules(guiding_recovery=config.guiding_recovery_minutes * 60)
+    rules = Rules(
+        guiding_recovery=config.guiding_recovery_minutes * 60,
+        guiding_poor_window=config.guiding_poor_minutes * 60,
+        deviation_limit=guide_deviation_limit,
+    )
     if manager.state == "active" and manager.session_id:
         rules.resume(manager.session_id, resumed_alerts)
     pipeline = Pipeline(writer.put, manager=manager, rules=rules)

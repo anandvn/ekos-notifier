@@ -174,3 +174,23 @@ def guider_settings(proc: Path = Path("/proc"), uid: int | None = None) -> Guide
         return UNKNOWN  # none running, or instances that disagree
     (settings,) = found
     return settings
+
+
+def guide_deviation_limit(proc: Path = Path("/proc"), uid: int | None = None) -> float | None:
+    """Ekos's default guide-deviation limit (``kstarsrc`` ``[Capture] GuideDeviation``, arcsec),
+    from the running KStars; None if it can't be read. A job in a sequence can override it, and
+    Ekos only enforces it when the job switches it on."""
+    values = set()
+    for k in kstars_processes(proc, uid):
+        system, user = config_files(k)
+        merged: dict[str, str] = {}
+        for path in [*system, user]:
+            try:
+                merged.update(parse_kconfig(path.read_text(errors="replace")).get("Capture", {}))
+            except OSError:
+                continue
+        try:
+            values.add(float(merged.get("GuideDeviation", 2.0)))
+        except ValueError:
+            return None
+    return values.pop() if len(values) == 1 else None

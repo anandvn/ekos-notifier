@@ -104,6 +104,19 @@ and `CLAUDE.md` if a decision changes.
       repeatedly lost the star ("Star lost - low mass") and warned "not able to make sufficient
       corrections in RA"; a mount that isn't tracking is now reported in the alert rather than
       treated as a planned pause.
+- [x] **Ekos's guide RMS is in arcseconds** (`Guide.newAxisSigma`): checked live against PHD2's
+      own guide steps × its pixel scale (3.09″/px). DEC agreed (5.9″ Ekos vs 6.3″ PHD2 over the
+      same 10 min); RA was 17″ vs 23″ while drifting badly, consistent with Ekos using a moving
+      window. The RMS restarts from 0 when guiding restarts.
+- [x] **Ekos's guide-deviation limit** is per sequence job (`.esq` `<GuideDeviation
+      enabled='false'>2`; default `kstarsrc` `[Capture] GuideDeviation` 2″, `GuideDeviationReps`
+      3 samples). Capture's D-Bus interface can set it (`setMaximumGuidingDeviation`) but not
+      read it. When enforced, Ekos logs "Guiding deviation %1 exceeded limit value of %2 arcsecs
+      for %4 consecutive samples, suspending exposure…", "…is still higher than limit value of %2
+      arcsecs" and "…is now lower than limit value of %2 arcsecs, resuming exposure" (strings
+      from the KStars 3.8.5 binary; not yet seen live). These are translated in other languages.
+- [ ] **What a user's own Capture Stop logs**, to confirm the "Capture aborted" rule treats it as
+      the user's (an abort with no logged reason) and not as a failure.
 - [ ] **INDI host and port:** Ekos profiles can point at a remote INDI server or a port other than
       7624. Read them from the active Ekos profile (KStars `userdb.sqlite`) and don't assume
       localhost:7624.

@@ -13,8 +13,12 @@ Rules so far:
 - **Session summary** (Normal, immediate) when a session that imaged closes: as soon as the
   Scheduler stops or a manual sequence completes, parked or not, with the mount's last known
   state in the message.
-- **Guiding lost** (High) and **Guiding recovered**, and **PHD2 warnings** (High, PHD2's own
-  warnings and errors, once per message per session): see ``ekos_notifier.guiding``.
+- **Guiding lost** (High) and **Guiding recovered**, **PHD2 warnings** (High, PHD2's own
+  warnings and errors, once per message per session), and **Guiding poor** (High, following
+  Ekos's own guide-deviation limit): see ``ekos_notifier.guiding``.
+- **Capture aborted**, **Scheduler aborted** and **Capture stalled** (High): see
+  ``ekos_notifier.capture``.
+- **Autofocus failed** (High, two failed runs in a row): see ``ekos_notifier.focus``.
 - **Ekos stopped with the mount unparked** (Emergency): Ekos or INDI stops, or KStars vanishes,
   while the last known mount state was unparked, and Ekos isn't back within ``unparked_grace``
   seconds. Uses the last known state on purpose: the mount's properties vanish with Ekos.
@@ -25,11 +29,14 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import Any
 
+from ekos_notifier.alerts import SessionRule
+from ekos_notifier.capture import CaptureRule
 from ekos_notifier.events import Event
-from ekos_notifier.guiding import RECOVERY, GuidingRule
+from ekos_notifier.focus import AutofocusRule
+from ekos_notifier.guiding import RECOVERY, GuidingRule, PoorGuidingRule
 
 UNPARKED_GRACE = 120.0
 MOVING = {"tracking", "slewing", "moving"}
@@ -60,10 +67,20 @@ def _duration(seconds: float) -> str:
 
 class Rules:
     def __init__(
-        self, *, unparked_grace: float = UNPARKED_GRACE, guiding_recovery: float = RECOVERY
+        self,
+        *,
+        unparked_grace: float = UNPARKED_GRACE,
+        guiding_recovery: float = RECOVERY,
+        guiding_poor_window: float = 600.0,
+        deviation_limit: Callable[[], float | None] = lambda: None,
     ) -> None:
         self.unparked_grace = unparked_grace
         self.guiding = GuidingRule(guiding_recovery)
+        self.session_rules: list[SessionRule] = [
+            CaptureRule(),
+            AutofocusRule(),
+            PoorGuidingRule(guiding_poor_window, deviation_limit),
+        ]
         self._park: str | None = None
         self._mount: str | None = None
         self._gone_at: float | None = None
@@ -87,9 +104,13 @@ class Rules:
             if a.data.get("rule") == "phd2_warning"
         ]
         self.guiding.resume(session_id, sent)
+        for rule in self.session_rules:
+            rule.resume(session_id, alerts)
 
     def handle(self, event: Event) -> list[Event]:
         out = self.tick(event.ts) + self.guiding.handle(event)
+        for rule in self.session_rules:
+            out += rule.handle(event)
         kind, d, sid = event.kind, event.data, event.session_id
         state = d.get("state")
 
@@ -139,7 +160,10 @@ class Rules:
         return out
 
     def tick(self, now: float) -> list[Event]:
-        return self.guiding.tick(now) + self._unparked_tick(now)
+        out = self.guiding.tick(now)
+        for rule in self.session_rules:
+            out += rule.tick(now)
+        return out + self._unparked_tick(now)
 
     def _unparked_tick(self, now: float) -> list[Event]:
         if (
