@@ -31,6 +31,12 @@ A session starts automatically when the Ekos Scheduler starts (or the first Ligh
 2. **Setup** — entered when Ekos connects the equipment profile. A setup log records in the background while the user focuses, polar aligns and calibrates. The GUI shows it as a live checklist.
 3. **Active** — entered on Scheduler start (or first manual Light frame, or GUI Start). Snapshot, pre-flight checks, then alerting, town crier and heartbeat begin.
 4. **Closed** — on Scheduler finish + park, GUI End, or Ekos disconnect. Summary sent, heartbeat and crier stopped, session exported for sync. If Ekos went away while the mount was unparked, the "Ekos stopped with the mount unparked" Emergency is sent too, whatever the state.
+   - *Ekos disconnect* means Ekos stays gone for a grace period (default 10 min), so a KStars crash followed by a restart doesn't split the night; the session's end time is when Ekos went away. The Emergency has its own 2-minute timer and isn't delayed by this.
+   - A session still open at local noon after its night closes as `night_ended`, at its last activity.
+   - A session that closes from Setup without ever imaging is recorded as `abandoned`.
+   - A session can start straight from Standby (Town Crier started mid-night, or no Ekos connect seen). After a service restart, the open session is picked up from the store.
+
+The rules are implemented in `town_crier.session.SessionManager`, which is driven only by events and the clock, so replayed nights test the same decisions as live ones.
 
 ### Setup log (recorded during Setup)
 
