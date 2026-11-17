@@ -37,7 +37,7 @@ def run_with(db, events, *, clock_after=None):
 
 def test_m31_through_the_service(tmp_path):
     _, records = replay.read(FIXTURE)
-    events = list(replay.ekos_events(records))
+    events = list(replay.events(records))
     run_with(tmp_path / "tc.db", events, clock_after=events[-1].ts + 601)
     store = Store(tmp_path / "tc.db", readonly=True)
     (session,) = store.sessions()

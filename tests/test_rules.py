@@ -100,7 +100,7 @@ def test_abandoned_session_sends_no_summary():
 def test_m31_night_alerts_in_order_and_on_time():
     _, records = replay.read(FIXTURE)
     out = []
-    simulate(replay.ekos_events(records), Pipeline(out.append))
+    simulate(replay.events(records), Pipeline(out.append))
     got = [a for a in out if a.kind == "alert"]
     assert [a.data["rule"] for a in got] == [
         "session_started",

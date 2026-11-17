@@ -95,7 +95,7 @@ def test_writer_batches_and_flushes_on_cancel(tmp_path):
 
 def test_m31_night_into_the_store(store):
     _, records = replay.read(FIXTURE)
-    events = list(replay.ekos_events(records))
+    events = list(replay.events(records))
     store.append(events)
     frames = list(store.frames())
     assert len(frames) == 140

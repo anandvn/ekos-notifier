@@ -5,9 +5,9 @@
 the writer commit everything still queued, so stopping the service loses nothing.
 
 A source is a callable taking ``emit`` and returning a coroutine that runs until cancelled
-(``EkosAdapter(emit).run()``). Events flow through ``Pipeline`` (sessions, rules) into the
-``EventWriter``; the notifier reads alerts back from the store. Everything runs on the event loop
-thread except SQLite and sending, which have their own threads.
+(``EkosAdapter(emit).run()``, ``Phd2Adapter(emit).run()``). Events flow through ``Pipeline``
+(sessions, rules) into the ``EventWriter``; the notifier reads alerts back from the store.
+Everything runs on the event loop thread except SQLite and sending, which have their own threads.
 """
 
 from __future__ import annotations
@@ -25,6 +25,7 @@ from town_crier.config import Config
 from town_crier.ekos.adapter import EkosAdapter
 from town_crier.events import Event
 from town_crier.notify import Notifier, init_cursor
+from town_crier.phd2.adapter import Phd2Adapter
 from town_crier.pipeline import TICK, Pipeline
 from town_crier.session import SessionManager
 from town_crier.store import EventWriter, Store
@@ -39,11 +40,18 @@ def ekos_source(emit: Emit) -> Coroutine[Any, Any, None]:
     return EkosAdapter(emit).run()
 
 
+def phd2_source(emit: Emit) -> Coroutine[Any, Any, None]:
+    return Phd2Adapter(emit).run()
+
+
+SOURCES: tuple[Source, ...] = (ekos_source, phd2_source)
+
+
 async def serve(
     db_path: str | Path,
     *,
     config: Config | None = None,
-    sources: Iterable[Source] = (ekos_source,),
+    sources: Iterable[Source] = SOURCES,
     notifier: Notifier | None = None,
     tick: float = TICK,
     clock: Callable[[], float] = time.time,

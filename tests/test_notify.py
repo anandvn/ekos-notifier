@@ -119,7 +119,7 @@ def test_offline_alerts_are_retried_until_they_go(db):
 
 def test_service_sends_the_m31_alerts(tmp_path):
     _, records = replay.read(FIXTURE)
-    events = list(replay.ekos_events(records))
+    events = list(replay.events(records))
     send = FakeSender()
     db = tmp_path / "tc.db"
 

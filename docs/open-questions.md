@@ -71,6 +71,30 @@ and `CLAUDE.md` if a decision changes.
       `/proc/<pid>/environ` (same user, so readable).
 - [ ] **Boot without login:** `Linger=no` on the VM, so a user service won't start until someone
       logs in. `install-service` must run `loginctl enable-linger` (or tell the user to).
+- [x] **PHD2's connect burst and event stream** (2.6.14; M 31 and IC 410 recordings, live VM
+      2026-11-17): on connect PHD2 sends `Version`, then replays its current state
+      (`LockPositionSet`, `StarSelected`, `CalibrationComplete`, `StartGuiding` as they apply) and
+      ends with `AppState`. `AppState` is never sent again, so a client tracks the state from the
+      events. While guiding, one `GuideStep` per guide exposure (2,595 in 53 min; 18,626 in the
+      IC 410 night). Ekos pauses PHD2 for flats (`Paused`/`Resumed`) and stops it for the
+      meridian flip, then recalibrates. When the Scheduler disconnects INDI, PHD2 raises `Alert`
+      warnings "INDI camera disconnected" and "INDI mount was disconnected". Not yet seen live:
+      `StarLost`, `CalibrationFailed`, a failed `SettleDone`. Ekos dithered in the M 31 run
+      ("PHD2: Dithering successful" in its log) but PHD2 sent no `GuidingDithered`; the decoder
+      follows PHD2's documented fields for these.
+- [x] **Which guider Ekos uses, and PHD2's host and port** (KStars 3.8.5 Flatpak, 2026-11-17):
+      each Ekos profile has its own guider, in `userdb.sqlite` table `profile` (`guidertype` 0
+      internal, 1 PHD2, 2 lin_guider; `guiderhost`, `guiderport`). The selected profile is
+      `kstarsrc` `[Ekos] profile` (default "Simulators"). Starting Ekos with an internal-guider
+      profile rewrote `kstarsrc` at once: `profile=` and `[Guide] GuiderType=1` were both removed
+      (KDE drops values equal to the default), so Ekos copies the profile's guider into the Guide
+      module's global `GuiderType`/`PHD2Host`/`PHD2Port` at start, internal included. Ekos has no
+      D-Bus property for the current profile; the Guide module's `guider` property is the ST4
+      device ("Telescope Simulator"), not the guider type. The Flatpak reads
+      `~/.var/app/org.kde.kstars/config/kstarsrc` and `…/data/kstars/userdb.sqlite`; an old
+      native `~/.config/kstarsrc` on the VM is stale. Town Crier reads both the profile and the
+      Guide setting through the running process's environment and `/proc/<pid>/root`; "not PHD2"
+      needs both to agree.
 - [ ] **INDI host and port:** Ekos profiles can point at a remote INDI server or a port other than
       7624. Read them from the active Ekos profile (KStars `userdb.sqlite`) and don't assume
       localhost:7624.
