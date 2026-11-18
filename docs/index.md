@@ -48,7 +48,7 @@ To have it start by itself with your session (and restart if it ever fails), ins
 systemd user service:
 
 ```bash
-ekos-notifier install-service           # write, enable and start it
+ekos-notifier install-service           # write, enable and start it (run again: restarts it)
 journalctl --user -u ekos-notifier -f   # its log
 ekos-notifier install-service --uninstall
 ```

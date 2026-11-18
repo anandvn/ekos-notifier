@@ -43,7 +43,7 @@ check '[ "$(cat "$config")" = "notify: []" ]' "an existing config is left alone"
 echo "== upgrade"
 : >"$work/calls"
 run --from "$repo"
-check 'grep -q "restart ekos-notifier.service" "$work/calls"' "an upgrade restarts the service"
+check 'grep -q "enable --now ekos-notifier.service" "$work/calls"' "an upgrade (re)starts the service"
 
 echo "== uninstall"
 run --uninstall

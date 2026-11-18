@@ -54,17 +54,41 @@ WantedBy=default.target
 """
 
 
-def install(start: bool = True, config: str | None = None, runner: Runner = run) -> list[str]:
-    """Write the unit, enable it (and start it). Returns lines to show; raises on failure."""
+def service_pid(runner: Runner = run) -> int | None:
+    """The running service's main process, or None when it isn't running."""
+    result = runner(["systemctl", "--user", "show", "-p", "MainPID", "--value", UNIT])
+    try:
+        pid = int(result.stdout.strip())
+    except ValueError:
+        return None
+    return pid or None
+
+
+def install(
+    start: bool = True,
+    config: str | None = None,
+    runner: Runner = run,
+    *,
+    restart: bool = False,
+) -> list[str]:
+    """Write the unit, enable it (and start it, or with ``restart`` restart the running service
+    so it runs the new unit and code). Returns lines to show; raises on failure."""
     path = unit_dir() / UNIT
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(unit_text(config=config))
     lines = [f"Wrote {path}"]
     _systemctl(runner, "daemon-reload")
-    _systemctl(runner, "enable", *(["--now"] if start else []), UNIT)
-    lines.append(
-        "Enabled: it starts with your user session" + (" and is running now." if start else ".")
-    )
+    if restart:
+        _systemctl(runner, "enable", UNIT)
+        _systemctl(runner, "restart", UNIT)
+        lines.append(
+            "Enabled: it starts with your user session. Restarted it, so it runs this version."
+        )
+    else:
+        _systemctl(runner, "enable", *(["--now"] if start else []), UNIT)
+        lines.append(
+            "Enabled: it starts with your user session" + (" and is running now." if start else ".")
+        )
     linger = runner(["loginctl", "show-user", os.environ.get("USER", ""), "-p", "Linger"])
     if linger.returncode == 0 and linger.stdout.strip() == "Linger=no":
         lines.append(

@@ -155,13 +155,10 @@ case ":$PATH:" in *":$BIN:"*) on_path=1 ;; esac
 # -- the service ----------------------------------------------------------------------------
 
 if service_installed; then
-    # Already set up: rewrite the unit (it names the venv's Python) and restart on the new code.
-    "$VENV/bin/ekos-notifier" install-service >/dev/null
-    if systemctl --user restart ekos-notifier.service; then
-        say "Restarted the service."
-    else
-        say "Couldn't restart the service: systemctl --user restart ekos-notifier"
-    fi
+    # Already set up: rewrite the unit (it names the venv's Python); install-service restarts
+    # the running service on the new code, or starts it if it's stopped.
+    "$VENV/bin/ekos-notifier" install-service \
+        || say "Couldn't update the service: run ekos-notifier install-service to see why."
 elif [ "$service" = "yes" ] || { [ "$service" = "ask" ] && ask "Start Ekos Notifier with your session (systemd user service)?" y; }; then
     "$VENV/bin/ekos-notifier" install-service
 fi

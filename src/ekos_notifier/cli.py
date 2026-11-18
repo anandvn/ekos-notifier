@@ -344,14 +344,19 @@ def cmd_install_service(args: argparse.Namespace) -> int:
             config = str(Path(args.config).resolve()) if args.config else None
             start = not args.no_start
             pid = running_pid(default_path())
-            if start and pid:
+            if start and pid and pid == systemd.service_pid():
+                # The running copy is the service itself (re-installing, or an upgrade):
+                # restart it on the new unit and code rather than warning about it.
+                lines = systemd.install(config=config, restart=True)
+            elif start and pid:
                 print(
                     f"Ekos Notifier is already running (PID {pid}), probably in a terminal: "
                     "the service will be enabled but not started. Stop that one, then run: "
                     "systemctl --user start ekos-notifier"
                 )
-                start = False
-            lines = systemd.install(start=start, config=config)
+                lines = systemd.install(start=False, config=config)
+            else:
+                lines = systemd.install(start=start, config=config)
     except (OSError, RuntimeError) as exc:
         print(f"install-service: {exc}", file=sys.stderr)
         return 1
