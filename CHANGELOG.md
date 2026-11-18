@@ -5,6 +5,11 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **The log says what INDI devices were recognised**, once they've settled after Ekos
+  connects them: "INDI recognised: Power Box (battery voltage, current, outputs); QHY CCD
+  (camera temperature)". Again when that changes, and "nothing recognised yet" (with a pointer
+  to `indi-dump`) when there's nothing.
+
 - **Battery low is sent at any time**, not only during a session (seen live: a LiFePO4 at
   12.0 V raised nothing with no session running), and both battery levels now count **at or
   under** the level, so exactly 12.0 V on a LiFePO4 is critical.
