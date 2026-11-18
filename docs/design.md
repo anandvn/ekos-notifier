@@ -84,6 +84,8 @@ Every alert maps to one of four priorities; Emergency and High send immediately,
 
 Priorities map onto each notifier's native levels where it has them (Pushover −2…2, ntfy 1–5); notifiers without levels prefix the title.
 
+**Choosing what's sent:** every alert below has a name and a default, and the user can set each one under `messages:` in the config: `off` (never sent or listed in the digest, still recorded), `digest` (listed in the next hourly digest only; a problem still counts in its "Attention" verdict), `quiet` (sent at once, silently), or `normal`, `high`, `emergency`. An all-clear the user hasn't set follows its problem when that's `off` or `digest`. The hourly digest is set the same way (`digest: off | quiet | normal…`; its "Attention" form is never below Normal). Settings apply as alerts are raised (`ekos_notifier.messages`), so the digest, notifier, GUI and record agree, and an alert keeps its `default_priority`. `ekos-notifier config alerts` lists every name, default and setting; an unknown name is a config error with the closest match suggested; `config check` notes a lowered Emergency. A test checks the registry against every alert the code raises. The GUI's Settings view will edit the same section.
+
 ### Emergency
 
 | Event | Default trigger |

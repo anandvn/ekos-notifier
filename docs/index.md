@@ -104,6 +104,25 @@ and integration this hour and tonight, median guide RMS, failed dithers and ever
 happened since the last one. Set it in the config's `digest:` section (`enabled`,
 `interval_minutes`, `align_to_clock`).
 
+### Choosing which messages you get
+
+Every alert can be turned off, held for the hourly digest, or sent at a different priority, in
+the config's `messages:` section:
+
+```yaml
+messages:
+  phd2_warning: digest      # list PHD2's warnings in the digest instead of sending each one
+  twilight_coming: quiet    # send it, silently
+  disk_low: emergency       # make it repeat until acknowledged
+  dew_risk: off             # never send it (it's still recorded)
+```
+
+`ekos-notifier config alerts` lists every alert with its default and your setting. Levels:
+`off`, `digest`, `quiet`, `normal`, `high`, `emergency`. All-clears (like "Guiding recovered")
+follow their problem when you've set it to `off` or `digest`. `ekos-notifier config check` points
+out a misspelt name and any Emergency you've lowered, and `ekos-notifier simulate` shows the
+effect on a whole night.
+
 ### Preview the alerts
 
 `ekos-notifier simulate` replays a night through the alert rules with your config and prints every

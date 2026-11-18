@@ -51,6 +51,7 @@ from ekos_notifier.disk import DiskRule
 from ekos_notifier.events import Event
 from ekos_notifier.focus import AutofocusRule
 from ekos_notifier.guiding import RECOVERY, GuidingRule, PoorGuidingRule
+from ekos_notifier.messages import MessageSettings
 from ekos_notifier.power import PowerRule
 from ekos_notifier.sky import SkyRule
 
@@ -99,8 +100,10 @@ class Rules:
         dew: DewRule | None = None,
         cooler: CoolerRule | None = None,
         disk: DiskRule | None = None,
+        messages: MessageSettings | None = None,
     ) -> None:
         self.unparked_grace = unparked_grace
+        self.messages = messages or MessageSettings()
         self.guiding = GuidingRule(guiding_recovery)
         self.digest = digest or DigestRule()
         self.sky = sky or SkyRule()
@@ -159,14 +162,14 @@ class Rules:
         self.digest.resume(session_id, alerts, started_at)
 
     def handle(self, event: Event) -> list[Event]:
-        out = self._handle(event)
+        out = self.messages.apply(self._handle(event))
         self.digest.note_alerts(out)
-        return out + self.digest.handle(event)
+        return out + self.messages.apply(self.digest.handle(event))
 
     def tick(self, now: float) -> list[Event]:
-        out = self._tick(now)
+        out = self.messages.apply(self._tick(now))
         self.digest.note_alerts(out)
-        return out + self.digest.tick(now)
+        return out + self.messages.apply(self.digest.tick(now))
 
     def _handle(self, event: Event) -> list[Event]:
         out = self._tick(event.ts)

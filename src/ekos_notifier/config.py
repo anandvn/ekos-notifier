@@ -14,6 +14,7 @@ from typing import Any
 import yaml
 
 from ekos_notifier.indi.decode import Mapping
+from ekos_notifier.messages import MessageSettings, SettingsError
 from ekos_notifier.power import BATTERIES
 
 
@@ -42,6 +43,7 @@ class Config:
     indi_host: str | None = None
     indi_port: int | None = None
     indi_mappings: list[Mapping] = field(default_factory=list)
+    messages: MessageSettings = field(default_factory=MessageSettings)
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -101,6 +103,13 @@ def load(path: str | Path | None = None) -> Config:
         except ValueError as exc:
             raise ConfigError(f"{path}: indi.metrics: {exc}") from None
     battery, low_volts, critical_volts = _power(path, raw.get("power"))
+    messages = raw.get("messages") or {}
+    if not isinstance(messages, dict):
+        raise ConfigError(f"{path}: 'messages' must be a section of alert: level lines")
+    try:
+        message_settings = MessageSettings.parse(messages)
+    except SettingsError as exc:
+        raise ConfigError(f"{path}: messages: {exc}") from None
     return Config(
         path=path,
         notify=[u.strip() for u in notify if u.strip()],
@@ -129,6 +138,7 @@ def load(path: str | Path | None = None) -> Config:
         indi_host=host,
         indi_port=port,
         indi_mappings=mappings,
+        messages=message_settings,
         raw=raw,
     )
 

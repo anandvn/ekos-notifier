@@ -48,6 +48,20 @@ power:
   # low_volts: 12.0        # Battery low (High), during a session, once
   # critical_volts: 11.5   # Battery critical (Emergency), at any time
 
+# Which messages you get, and how. Every alert has a default (`ekos-notifier config alerts`
+# lists them all); set any of them here to:
+#   off        never sent, and left out of the digest (still recorded in the session)
+#   digest     not sent on its own; listed in the next hourly digest
+#   quiet      sent at once, silently
+#   normal | high | emergency   sent at once at that priority (Emergency repeats on Pushover
+#              until you acknowledge it)
+# All-clears (guiding_recovered, battery_ok, …) follow their problem when that's off or digest.
+messages: {}
+#  phd2_warning: digest
+#  twilight_coming: quiet
+#  disk_low: emergency
+#  digest: normal          # the hourly digest itself (default quiet)
+
 # Alert thresholds.
 alerts:
   dew_margin_c: 2.0              # Dew risk: ambient − dew point under this (or RH > 90 %) for

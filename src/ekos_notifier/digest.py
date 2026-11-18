@@ -140,14 +140,14 @@ class DigestRule(SessionRule):
         """Alerts raised by the other rules, for "since last" and the verdict."""
         for a in alerts:
             rule = a.data.get("rule", "")
-            if rule in NOT_LISTED or a.kind != "alert":
-                continue
+            if rule in NOT_LISTED or a.kind != "alert" or a.data.get("off"):
+                continue  # turned off in messages: left out of the digest too
             self._since.append((a.ts, a.data.get("title", rule)))
             if rule in CLEARS:
                 for problem in CLEARS[rule]:
                     self._open.pop(problem, None)
                     self._raised.pop(problem, None)
-            elif a.data.get("priority") in ("emergency", "high"):
+            elif a.data.get("default_priority", a.data.get("priority")) in ("emergency", "high"):
                 self._raised[rule] = a.data.get("title", rule)
                 if rule in CLEARED_BY or rule in OPEN_UNTIL:
                     self._open[rule] = a.data.get("title", rule)
