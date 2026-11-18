@@ -17,7 +17,7 @@ mostly at dark sites with intermittent internet.
 ## Decisions already made (don't change without asking)
 
 - **License:** MIT. **Public on GitHub.** Docs and first-run experience are the top priority.
-- **Generic, not Anand-specific.** Every external dependency sits behind an adapter:
+- **Generic:** Every external dependency sits behind an adapter:
   - Notifications: **Apprise** URLs (Pushover is Anand's choice, but nothing hard-codes it).
   - Dead-man's switch: any **ping URL** (Healthchecks.io, Uptime Kuma, Cronitor). Optional.
   - Sync home: **rclone** (SFTP/SMB/USB path/S3/Drive…). No custom HTTP receiver.
