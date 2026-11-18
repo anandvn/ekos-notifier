@@ -19,6 +19,7 @@ Rules so far:
 - **Capture aborted**, **Scheduler aborted** and **Capture stalled** (High): see
   ``ekos_notifier.capture``.
 - **Autofocus failed** (High, two failed runs in a row): see ``ekos_notifier.focus``.
+- **Plate solve failed** (High): see ``ekos_notifier.align``.
 - **Twilight coming**, **Target low** (Normal), **Meridian flip soon** (Quiet), and **Meridian
   flip failed** and **Meridian flip overdue** (Emergency): see ``ekos_notifier.sky``.
 - **Disk low** (High): see ``ekos_notifier.disk``.
@@ -42,6 +43,7 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 from ekos_notifier.alerts import SessionRule
+from ekos_notifier.align import PlateSolveRule
 from ekos_notifier.capture import CaptureRule
 from ekos_notifier.conditions import CoolerRule, DewRule
 from ekos_notifier.digest import DigestRule
@@ -107,6 +109,7 @@ class Rules:
             self.sky,
             CaptureRule(),
             AutofocusRule(),
+            PlateSolveRule(),
             PoorGuidingRule(guiding_poor_window, deviation_limit),
             power or PowerRule(),
             dew or DewRule(),

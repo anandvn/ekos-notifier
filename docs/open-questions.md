@@ -299,6 +299,10 @@ These change how the Ekos adapter and alert rules must work.
 - [x] **A slew to the zenith (e.g. for flats) has a declination equal to the site latitude**, so the
       latitude leaks into INDI messages as `dd:mm:ss`. `scrub_replay.py` now scrubs sexagesimal
       forms too.
+- [ ] **A failed plate solve, live.** The Plate solve failed alert follows Align's states and its
+      failure lines as found in KStars 3.8.5's strings ("Solver Failed.", "Solver timed out after
+      %1 seconds."); only successful solves have been recorded. Record one (e.g. a 1 s solver
+      timeout on the simulators) to confirm whether a failed run ends `failed` or `aborted`.
 - [ ] **Scheduler guiding-stage timeout fired 1 s after the stage began**, ~300 s after a previous
       (stopped) job's guiding stage. Possibly a timer not reset on `stop()`. Unconfirmed.
 

@@ -5,6 +5,10 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Plate solve failed** (High): an Ekos Align run fails and no solve succeeds within 3 min,
+  saying whether it followed the meridian flip or a new Scheduler target, with Ekos's reason;
+  "Plate solve succeeded" after.
+
 - `ekos-notifier simulate`: replay a night and print every alert it would send, with your config:
   the sample night (now shipped in the package), a recording, or one of your sessions from the
   database (`--session last`, `--list`; read-only). `--brief` for titles, `--send` to send them

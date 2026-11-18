@@ -43,6 +43,7 @@ CLEARED_BY = {
     "cooler_cant_hold": "cooler_ok",
     "cooler_cant_reach": "cooler_ok",
     "disk_low": "disk_ok",
+    "plate_solve_failed": "plate_solve_ok",
     "meridian_flip_failed": "meridian_flip_done",
     "meridian_flip_overdue": "meridian_flip_done",
 }

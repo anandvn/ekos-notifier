@@ -75,6 +75,9 @@ when Ekos reports a failed flip, and **Meridian flip overdue** (Emergency) when 
 tracking on the same side of the pier 15 minutes (plus one exposure) after Ekos should have
 flipped; "Meridian flip done" follows once it has.
 
+**Plate solve failed** (High) when Ekos can't solve a frame and doesn't manage on a retry within
+3 minutes, saying whether it was after the meridian flip or a new target, with Ekos's reason.
+
 **Disk low** (High) when the disk Ekos saves to has under 10 GB free (`alerts: disk_low_gb`),
 with how many more frames fit and how long that is at tonight's pace.
 
