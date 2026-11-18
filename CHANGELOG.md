@@ -5,6 +5,11 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Fixed:** when `~/.local/bin` isn't on your `PATH`, the installer and the README now say to
+  add it to `~/.bashrc` (`~/.zshrc` for zsh), not `~/.profile`: terminals like Konsole don't
+  read `~/.profile`, and on StellarMate a `~/.bash_profile` hides it even at login. If the line
+  is already there, the installer just says to open a new terminal.
+
 ## 0.1.0 — 2026-11-19
 
 The first release: the 0.1 "Core" milestone. Ekos Notifier follows Ekos (D-Bus), PHD2 and

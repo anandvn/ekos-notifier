@@ -32,6 +32,17 @@ config="$work/home/.config/ekos-notifier/config.yaml"
 check '[ "$(stat -c %a "$config")" = 600 ]' "config.yaml is written, private"
 check '! [ -e "$work/calls" ]' "no systemctl without the service"
 
+echo "== PATH advice names the shell's own startup file, never ~/.profile"
+advice() {
+    env -i HOME="$work/home" PATH="$work/bin:/usr/local/bin:/usr/bin:/bin" SHELL="$1" USER=ci \
+        ${PYTHON:+PYTHON="$PYTHON"} sh "$repo/install.sh" --from "$repo" --no-service </dev/null
+}
+check 'advice /bin/bash | grep -q ">> ~/.bashrc"' "bash: add it to ~/.bashrc"
+check 'advice /usr/bin/zsh | grep -q ">> ~/.zshrc"' "zsh: add it to ~/.zshrc"
+echo 'export PATH="$HOME/.local/bin:$PATH"' >"$work/home/.bashrc"
+check 'advice /bin/bash | grep -q "Open a new terminal"' "already in ~/.bashrc: just a new terminal"
+check '! advice /bin/bash | grep -q "\.profile"' "never ~/.profile"
+
 echo "== again, with the service (no terminal: the default, yes)"
 echo "notify: []" >"$config"
 run --from "$repo"

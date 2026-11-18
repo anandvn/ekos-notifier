@@ -300,7 +300,7 @@ folders yourself if you don't want them.
 
 | Problem | What to do |
 | --- | --- |
-| `ekos-notifier: command not found` | `~/.local/bin` isn't on your `PATH`: run `echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile`, then open a new terminal. Or use the full path, `~/.local/bin/ekos-notifier`. |
+| `ekos-notifier: command not found` | `~/.local/bin` isn't on your `PATH`: run `echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc` (`~/.zshrc` if you use zsh), then open a new terminal. Not `~/.profile`: terminals like Konsole don't read it, and on StellarMate a `~/.bash_profile` hides it even at login. Or use the full path, `~/.local/bin/ekos-notifier`. |
 | `Python … has no venv module` | `sudo apt install python3-venv`, then run the installer again. |
 | `Config error: … not valid YAML` | Usually indentation: a tab, or a line not lined up with its neighbours. The message gives the line number. Compare with the examples above. |
 | `Config error: … unknown alert '…'` | A misspelt name under `messages:`. The message suggests the right one, and `ekos-notifier config alerts` lists them all. |
