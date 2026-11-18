@@ -84,6 +84,8 @@ def _lights(frames: Iterable[tuple[str, float]]) -> tuple[str, float]:
 
 
 class DigestRule(SessionRule):
+    SETTINGS = ("enabled", "interval", "align", "min_session")
+
     def __init__(
         self,
         *,
@@ -110,6 +112,11 @@ class DigestRule(SessionRule):
         self._camera: str | None = None  # the imaging camera, from Ekos Capture
         self._metrics: dict[tuple[str, str], float] = {}  # (metric, device) -> latest value
         self.outlook: Callable[[float], str] = lambda now: ""  # "Flip in … · Dawn in …" (sky)
+
+    def rescheduled(self, now: float) -> None:
+        """The interval settings changed (a config reload): the next digest from the new ones."""
+        if self._next is not None:
+            self._next = self._boundary_after(now)
 
     # -- session -----------------------------------------------------------------------------
 

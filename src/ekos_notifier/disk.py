@@ -53,6 +53,8 @@ def _hours(seconds: float) -> str:
 
 
 class DiskRule(SessionRule):
+    SETTINGS = ("low",)
+
     def __init__(
         self,
         low_gb: float = 10.0,

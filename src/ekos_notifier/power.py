@@ -52,6 +52,8 @@ OUTPUT_RULES = ("power_output_off", "power_output_dead")
 
 
 class PowerRule(SessionRule):
+    SETTINGS = ("low", "critical")
+
     def __init__(
         self,
         low_volts: float | None = 12.0,

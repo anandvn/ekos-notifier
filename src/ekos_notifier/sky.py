@@ -57,6 +57,8 @@ def _until(seconds: float) -> str:
 
 
 class SkyRule(SessionRule):
+    SETTINGS = ("twilight_warning", "target_low_warning")
+
     def __init__(
         self,
         *,

@@ -41,6 +41,8 @@ Documentation=https://github.com/anandvn/ekos-notifier
 [Service]
 Type=simple
 ExecStart={exec_start}
+# Edits to the config apply by themselves; `systemctl --user reload` applies them at once.
+ExecReload=/bin/kill -HUP $MAINPID
 # SIGTERM stops it cleanly: everything queued is written before it exits.
 Restart=on-failure
 RestartSec=10

@@ -142,6 +142,27 @@ class Rules:
         self._calibration: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
         self._stats: dict[str, SessionStats] = defaultdict(SessionStats)
 
+    # -- settings ----------------------------------------------------------------------------
+
+    def reconfigure(self, new: Rules, now: float) -> None:
+        """Take the settings of ``new`` (built from a reloaded config), keeping this night's
+        state: open alerts, baselines, the digest's counts."""
+        schedule = (self.digest.interval, self.digest.align)
+        self.messages = new.messages
+        self.unparked_grace = new.unparked_grace
+        self.guiding.recovery = new.guiding.recovery
+        pairs = [
+            (self.digest, new.digest),
+            *zip(self.session_rules, new.session_rules, strict=True),
+        ]
+        for old, fresh in pairs:
+            if type(old) is not type(fresh):
+                raise TypeError(f"rules differ: {type(old).__name__}, {type(fresh).__name__}")
+            for name in old.SETTINGS:
+                setattr(old, name, getattr(fresh, name))
+        if (self.digest.interval, self.digest.align) != schedule:
+            self.digest.rescheduled(now)
+
     # -- events ------------------------------------------------------------------------------
 
     def resume(

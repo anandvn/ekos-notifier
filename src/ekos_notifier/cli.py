@@ -185,7 +185,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     if cfg is None:
         return 1
     try:
-        asyncio.run(serve(args.db or default_path(), config=cfg))
+        asyncio.run(serve(args.db or default_path(), config=cfg, watch_config=True))
     except AlreadyRunning as exc:
         logging.getLogger("ekos_notifier").error("%s", exc)
         return 1

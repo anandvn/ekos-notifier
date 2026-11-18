@@ -47,7 +47,11 @@ def minutes(seconds: float) -> str:
 
 class SessionRule:
     """A rule that only alerts during an active session. Subclasses implement ``on_event`` and
-    ``on_tick``; ``session`` is the active session's id, or None."""
+    ``on_tick``; ``session`` is the active session's id, or None. ``SETTINGS`` names the
+    attributes that come from the config: a config reload copies those from a freshly built rule
+    and leaves everything the rule has learned alone."""
+
+    SETTINGS: tuple[str, ...] = ()
 
     def __init__(self) -> None:
         self.session: str | None = None
