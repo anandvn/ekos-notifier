@@ -115,3 +115,51 @@ def test_kstars_reappearing_triggers_a_snapshot():
     asyncio.run(scenario())
     assert [e.kind for e in events] == ["kstars.vanished", "kstars.appeared", "ekos.state"]
     assert events[-1].data["state"] == "idle"
+
+
+class LogBus(StubBus):
+    """Mount's logText (newest first, as Ekos keeps it)."""
+
+    def __init__(self, lines=None):
+        super().__init__({})
+        self.lines = lines
+        self.connected = True
+
+    async def call(self, msg):
+        if msg.member == "Get" and msg.body[1] == "logText":
+            if self.lines is None:
+                return Reply(error="org.freedesktop.DBus.Error.UnknownObject")
+            return Reply([Variant("as", self.lines)])
+        return await super().call(msg)
+
+
+def mount_logs(events):
+    return [e.data["text"] for e in events if e.kind == "ekos.log" and e.data["module"] == "Mount"]
+
+
+def test_mount_log_lines_become_events_but_not_its_history():
+    a, events = adapter()
+    bus = LogBus(["2026-11-18T07:07:52 Meridian flip ready to start..."])
+    asyncio.run(a.read_logs(bus))
+    assert mount_logs(events) == []  # there before we connected
+    bus.lines = [
+        "2026-11-18T07:12:00 meridian flip failed, retrying in 4 minutes",
+        "2026-11-18T07:11:59 Meridian flip failed, pier side not changed",
+        *bus.lines,
+    ]
+    asyncio.run(a.read_logs(bus))
+    assert mount_logs(events) == [
+        "Meridian flip failed, pier side not changed",
+        "meridian flip failed, retrying in 4 minutes",
+    ]
+    asyncio.run(a.read_logs(bus))
+    assert len(mount_logs(events)) == 2
+
+
+def test_mount_log_of_an_ekos_started_later_is_all_new():
+    a, events = adapter()
+    bus = LogBus(None)  # Ekos not started: no Mount object
+    asyncio.run(a.read_logs(bus))
+    bus.lines = ["2026-11-18T20:00:00 Status: inactive"]
+    asyncio.run(a.read_logs(bus))
+    assert mount_logs(events) == ["Status: inactive"]

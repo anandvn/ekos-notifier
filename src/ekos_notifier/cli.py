@@ -198,6 +198,10 @@ def cmd_config_check(args: argparse.Namespace) -> int:
         print(f"  cooler: alert {cfg.cooler_tolerance_c:g} °C over the setpoint")
     else:
         print("  cooler: off (cooler_tolerance_c is 0)")
+    if cfg.disk_low_gb > 0:
+        print(f"  disk: alert under {cfg.disk_low_gb:g} GB free where Ekos saves frames")
+    else:
+        print("  disk: off (disk_low_gb is 0)")
     if cfg.low_volts is None and cfg.critical_volts is None:
         print(f"  battery: {cfg.battery}, voltage alerts off")
     else:

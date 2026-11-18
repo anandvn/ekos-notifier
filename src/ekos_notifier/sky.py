@@ -7,6 +7,16 @@
   altitude constraint, else ``DEFAULT_MIN_ALTITUDE``. Once per target.
 - **Meridian flip soon** (Quiet, held for the digest): ``FLIP_NOTICE`` before Ekos flips (only if
   Ekos is set to flip), at its flip hour angle. Once per target.
+- **Meridian flip failed** (Emergency): Ekos logs a failed flip ("Meridian flip failed, pier side
+  not changed", "No successful Meridian Flip done, delay too long", "Post meridian flip
+  calibration error. Aborting..."), from Mount's log (polled by the Ekos adapter) or Capture's.
+- **Meridian flip overdue** (Emergency): Ekos is set to flip, the mount is still tracking the
+  target ``FLIP_GRACE`` seconds plus one exposure past the flip time (Ekos waits for the
+  exposure in progress), and the pier side is the one it had when it settled on the target
+  before the flip point. Which side is "before" depends on hemisphere and driver, so it's taken
+  from the mount, not assumed. Quotes Ekos's last "Meridian flip inactive (…)" reason if any.
+- Either is sent once until **Meridian flip done** (Normal, immediate): Ekos logs a completed flip,
+  or the pier side changes.
 
 The site is KStars's location (``site.location`` from the Ekos adapter), or the mount's
 ``GEOGRAPHIC_COORD`` from INDI when KStars's isn't known; the target is the mount's pointing
@@ -15,17 +25,30 @@ The site is KStars's location (``site.location`` from the Ekos adapter), or the 
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Iterable
 
 from ekos_notifier import ephemeris
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert
 from ekos_notifier.ekos.settings import ObservingLimits
 from ekos_notifier.events import Event
+from ekos_notifier.session import is_snapshot
 
 DEFAULT_MIN_ALTITUDE = 10.0
 FLIP_NOTICE = 900.0
 RECOMPUTE = 300.0  # seconds between recomputing a target's setting and flip times
 SAME_TARGET = 0.5  # degrees: a pointing change smaller than this is the same target
+FLIP_GRACE = 900.0
+FLIP_FAILED = re.compile(
+    r"meridian flip failed|no successful meridian flip"
+    # "…calibration error. Restarting..." is Ekos retrying (seen in a recorded night), not failing.
+    r"|post meridian flip calibration error\. abort",
+    re.I,
+)
+FLIP_DONE = re.compile(
+    r"meridian flip completed|completed the meridian flip|meridian flip is successfully", re.I
+)
+FLIP_INACTIVE = re.compile(r"Meridian flip inactive \(([^)]*)\)")
 
 
 def _until(seconds: float) -> str:
@@ -58,6 +81,12 @@ class SkyRule(SessionRule):
         self._flip: float | None = None
         self._computed_at: float | None = None
         self._warned: set[str] = set()  # "low", "flip" for the current target
+        self._pier: str | None = None
+        self._pier_before: str | None = None  # the side it settled on before the flip point
+        self._flip_at: float | None = None  # the last predicted flip for this target
+        self._flip_alert: str | None = None  # "failed" / "overdue", until a flip completes
+        self._exposure = 0.0
+        self._inactive: str | None = None  # Ekos's last "Meridian flip inactive (…)" reason
 
     # -- session -----------------------------------------------------------------------------
 
@@ -68,6 +97,11 @@ class SkyRule(SessionRule):
             except Exception:  # noqa: BLE001 - a settings quirk must not stop the rules
                 self.limits = ObservingLimits()
             self._dawn = None
+            for a in alerts:
+                if a.data.get("rule") in ("meridian_flip_failed", "meridian_flip_overdue"):
+                    self._flip_alert = a.data["rule"].removeprefix("meridian_flip_")
+                elif a.data.get("rule") == "meridian_flip_done":
+                    self._flip_alert = None
         super().resume(session_id, alerts)
 
     @property
@@ -93,6 +127,24 @@ class SkyRule(SessionRule):
             self._tracking = d.get("state") == "tracking"
             if self._tracking and self._coords is not None:
                 self._settled()
+        elif kind == "mount.pier_side" and d.get("state") in ("east", "west"):
+            changed = self._pier is not None and d["state"] != self._pier
+            self._pier = d["state"]
+            if changed and self._flip_alert and not is_snapshot(d):
+                return [self._flip_done(event.ts, "the mount is on the other side of the pier now")]
+        elif kind == "capture.frame" and d.get("exposure"):
+            self._exposure = float(d["exposure"])
+        elif kind == "ekos.log" and d.get("module") in ("Mount", "Capture"):
+            text = str(d.get("text", ""))
+            if m := FLIP_INACTIVE.search(text):
+                self._inactive = m.group(1)
+            if FLIP_DONE.search(text):
+                self._inactive = None
+                if self._flip_alert:
+                    return [self._flip_done(event.ts, f"Ekos: “{text.strip()}”")]
+            elif FLIP_FAILED.search(text) and self._flip_alert != "failed" and self.session:
+                self._flip_alert = "failed"
+                return [self._flip_failed(event.ts, text.strip())]
         elif kind == "capture.target" and d.get("target"):
             self._target_name = d["target"]
         elif kind == "ekos.log" and d.get("module") == "Scheduler":
@@ -112,6 +164,7 @@ class SkyRule(SessionRule):
             or abs((key[0] - old[0] + 12) % 24 - 12) * 15 > SAME_TARGET
         ):
             self._target_key, self._warned = key, set()
+            self._pier_before, self._flip_at = None, None
         self._computed_at = None
 
     def on_tick(self, now: float) -> list[Event]:
@@ -143,6 +196,16 @@ class SkyRule(SessionRule):
             ):
                 self._warned.add("flip")
                 out.append(self._flip_soon(now))
+            if (
+                self.limits.flip_enabled
+                and self._flip_alert is None
+                and self._flip_at is not None
+                and self._pier_before is not None
+                and self._pier == self._pier_before
+                and now - self._flip_at >= FLIP_GRACE + self._exposure
+            ):
+                self._flip_alert = "overdue"
+                out.append(self._flip_overdue(now))
         return out
 
     def outlook(self, now: float) -> str:
@@ -180,6 +243,11 @@ class SkyRule(SessionRule):
             if self.limits.flip_enabled
             else None
         )
+        if self._flip is not None and self._tracking:
+            # Still before the flip point: the side it's on now is the "before" side.
+            self._flip_at = self._flip
+            if self._pier is not None:
+                self._pier_before = self._pier
 
     def _target(self) -> str:
         return self._target_name or "The target"
@@ -204,6 +272,42 @@ class SkyRule(SessionRule):
         )
         return make_alert(
             now, self.session, "target_low", "normal", "Target low", body, immediate=True
+        )
+
+    def _flip_failed(self, now: float, text: str) -> Event:
+        body = (
+            f"Ekos at {hhmm(now)}: “{text}”\n"
+            "The mount may keep tracking into its pier limit. Check the mount, or park it."
+        )
+        return make_alert(
+            now, self.session, "meridian_flip_failed", "emergency", "Meridian flip failed", body
+        )
+
+    def _flip_overdue(self, now: float) -> Event:
+        assert self._flip_at is not None
+        late = _until(now - self._flip_at)
+        body = (
+            f"Ekos should have flipped the mount at {hhmm(self._flip_at)}, {late} ago, but it's "
+            f"still tracking {self._target().lower() if not self._target_name else self._target()}"
+            f" on the same side of the pier."
+        )
+        if self._inactive:
+            body += f" Ekos says: “Meridian flip inactive ({self._inactive})”."
+        body += "\nThe mount may run into its pier limit. Check the mount, or park it."
+        return make_alert(
+            now, self.session, "meridian_flip_overdue", "emergency", "Meridian flip overdue", body
+        )
+
+    def _flip_done(self, now: float, why: str) -> Event:
+        self._flip_alert = None
+        return make_alert(
+            now,
+            self.session,
+            "meridian_flip_done",
+            "normal",
+            "Meridian flip done",
+            f"The meridian flip has completed: {why}.",
+            immediate=True,
         )
 
     def _flip_soon(self, now: float) -> Event:
