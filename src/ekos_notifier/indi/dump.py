@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from ekos_notifier.indi.adapter import GET_PROPERTIES
-from ekos_notifier.indi.decode import IndiDecoder
+from ekos_notifier.indi.decode import OUTPUT_PROPS, IndiDecoder
 from ekos_notifier.indi.presets import INTERFACES, Preset
 
 LOCATION = {"GEOGRAPHIC_COORD"}
@@ -105,8 +105,8 @@ def summary(elements: list[ET.Element], presets: list[Preset]) -> list[str]:
             lines.append(f"  recognised: {', '.join(mine)}")
         known = {(prop, element) for _, prop, element, _ in decoder._sources(dev)}
         for prop, values in sorted(dev.numbers.items()):
-            if NOT_READINGS.search(prop):
-                continue
+            if NOT_READINGS.search(prop) or prop in OUTPUT_PROPS:
+                continue  # not a reading, or a power box output (read as power.outputs)
             for element, value in values.items():
                 if (prop, element) in known:
                     continue  # already recognised

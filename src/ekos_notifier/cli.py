@@ -190,6 +190,17 @@ def cmd_config_check(args: argparse.Namespace) -> int:
         print(f"  digest: every {cfg.digest_interval_minutes:g} min, {when}")
     else:
         print("  digest: off")
+    if cfg.low_volts is None and cfg.critical_volts is None:
+        print(f"  battery: {cfg.battery}, voltage alerts off")
+    else:
+        levels = [
+            f"{name} under {v:g} V"
+            for name, v in (("low", cfg.low_volts), ("critical", cfg.critical_volts))
+            if v is not None
+        ]
+        print(f"  battery: {cfg.battery}, {', '.join(levels)}")
+    if "preset" in (cfg.raw.get("power") or {}):
+        print("  note: 'power.preset' isn't used: power boxes are recognised automatically")
     if cfg.indi_host or cfg.indi_port:
         print(f"  indi: {cfg.indi_host or 'localhost'}:{cfg.indi_port or 7624} (set in config)")
     else:

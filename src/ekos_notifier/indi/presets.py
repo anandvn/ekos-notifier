@@ -31,6 +31,9 @@ INTERFACES = {
     "detector": 1 << 11,
     "rotator": 1 << 12,
     "aux": 1 << 15,
+    "output": 1 << 16,
+    "input": 1 << 17,
+    "power": 1 << 18,  # libindi 2.x PowerInterface (power boxes, dew controllers)
 }
 
 

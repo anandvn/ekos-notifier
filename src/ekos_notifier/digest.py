@@ -12,8 +12,8 @@ While a session is active, one status message per interval (default 60 min, on t
 
 A digest due less than ``min_session`` seconds after the session started is skipped (the
 "Starting session" message just said it all). Plain wording only for now; Terse and Olde
-English styles come with the template sets. Temperatures, battery, dew, flip and dawn times need
-the INDI adapter and the site location.
+English styles come with the template sets. From INDI: camera temperature, ambient, humidity,
+dew margin and power (voltage, its low this interval, current).
 """
 
 from __future__ import annotations
@@ -35,8 +35,14 @@ CLEARED_BY = {
     "guiding_poor": "guiding_poor_cleared",
     "capture_stalled": "capture_running",
     "ekos_stopped_mount_unparked": "mount_unparked_cleared",
+    "battery_low": "battery_ok",
+    "battery_critical": "battery_ok",
+    "power_output_off": "power_output_back",
+    "power_output_dead": "power_output_back",
 }
-CLEARS = {v: k for k, v in CLEARED_BY.items()}
+CLEARS: dict[str, tuple[str, ...]] = {}
+for _problem, _clear in CLEARED_BY.items():
+    CLEARS[_clear] = (*CLEARS.get(_clear, ()), _problem)
 # Problems with no all-clear alert of their own: open until the rig is working again (seen live:
 # "All's well" with nothing captured since an abort).
 CAPTURE_WORKING = {"capturing", "image_received", "in_progress", "changing_filter", "dithering"}
@@ -112,7 +118,8 @@ class DigestRule(SessionRule):
             for a in alerts:
                 rule = a.data.get("rule", "")
                 if rule in CLEARS:
-                    self._open.pop(CLEARS[rule], None)
+                    for problem in CLEARS[rule]:
+                        self._open.pop(problem, None)
                 elif rule in CLEARED_BY or rule in OPEN_UNTIL:
                     self._open[rule] = a.data.get("title", rule)
         super().resume(session_id, alerts)
@@ -130,8 +137,9 @@ class DigestRule(SessionRule):
                 continue
             self._since.append((a.ts, a.data.get("title", rule)))
             if rule in CLEARS:
-                self._open.pop(CLEARS[rule], None)
-                self._raised.pop(CLEARS[rule], None)
+                for problem in CLEARS[rule]:
+                    self._open.pop(problem, None)
+                    self._raised.pop(problem, None)
             elif a.data.get("priority") in ("emergency", "high"):
                 self._raised[rule] = a.data.get("title", rule)
                 if rule in CLEARED_BY or rule in OPEN_UNTIL:
@@ -174,6 +182,9 @@ class DigestRule(SessionRule):
                 self._filter = d["filter"]
         elif kind == "metric" and isinstance(d.get("value"), (int, float)):
             self._metrics[(d["metric"], d.get("device") or "")] = float(d["value"])
+            if d["metric"] == "power.voltage":
+                low = self._volts_low
+                self._volts_low = float(d["value"]) if low is None else min(low, float(d["value"]))
         elif kind == "indi.capabilities":
             available = {(m, dev) for m, devices in d.get("metrics", {}).items() for dev in devices}
             self._metrics = {k: v for k, v in self._metrics.items() if k in available}
@@ -225,7 +236,7 @@ class DigestRule(SessionRule):
         return values[0] if values else None
 
     def _conditions(self) -> str:
-        """Camera temperature, ambient, humidity and dew margin, from INDI, when available."""
+        """Camera temperature, ambient, humidity, dew margin and power, from INDI."""
         parts = []
         cameras = [dev for (m, dev) in self._metrics if m == "camera.temperature"]
         camera = (
@@ -242,6 +253,13 @@ class DigestRule(SessionRule):
             parts.append(f"RH {humidity:.0f}%")
         if ambient is not None and dew is not None:
             parts.append(f"Dew margin {ambient - dew:.1f} \u00b0C")
+        volts = self._metric("power.voltage")
+        if volts is not None:
+            power = f"Power {volts:.1f} V"
+            if self._volts_low is not None and self._volts_low <= volts - 0.1:
+                power += f" (low {self._volts_low:.1f} V)"
+            amps = self._metric("power.current")
+            parts.append(power + (f", {amps:.1f} A" if amps is not None else ""))
         return " \u00b7 ".join(parts) + "." if parts else ""
 
     def _close(self, rule: str) -> None:
@@ -257,6 +275,7 @@ class DigestRule(SessionRule):
         self._dither_fails = 0
         self._since: list[tuple[float, str]] = []
         self._raised: dict[str, str] = {}
+        self._volts_low: float | None = None  # lowest battery voltage this interval
 
     def _boundary_after(self, ts: float) -> float:
         if not self.align:

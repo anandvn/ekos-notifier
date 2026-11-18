@@ -72,6 +72,15 @@ and **Target low** 30 minutes before the target sinks below Ekos's altitude limi
 or the Scheduler's constraint). If Ekos flips, "Meridian flip soon" goes into the digest. The
 site comes from KStars's location.
 
+With a power box: **Battery critical** (Emergency, below 11.5 V for a minute, sent even outside a
+session), **Battery low** (High, below 12.0 V, once) and **Battery OK** when the voltage is back.
+Pick your battery in the config (`power: battery: agm_12v | lifepo4_12v | mains | custom`, or set
+`low_volts` / `critical_volts`); `mains` turns the voltage alerts off. Also High: **Power output
+off** when an output that was powering something switches off during a session, and **No
+current on** an output that's still on but has stopped drawing current (a fuse, a cable, the
+device), followed by **Power output back**. The box's own output names are used ("Camera",
+"Mount"). Outputs switching off as Ekos shuts down aren't reported.
+
 Every hour on the hour during a session, an **hourly digest**: "23:00 — All's well" (sent
 silently) or "23:00 — Attention: Guiding poor", with the target, filter and job progress, lights
 and integration this hour and tonight, median guide RMS, failed dithers and everything that
@@ -81,9 +90,12 @@ happened since the last one. Set it in the config's `digest:` section (`enabled`
 ### INDI devices
 
 Ekos Notifier also reads your INDI devices (read only, from the server your Ekos profile uses):
-weather stations, camera and focuser temperatures are recognised automatically, and the digest
-shows camera temperature, ambient, humidity and dew margin. For anything else (a power box, a
-USB temperature/humidity sensor), run `ekos-notifier indi-dump` with your equipment connected:
+weather stations, camera and focuser temperatures, and power boxes and dew controllers whose
+driver uses INDI's standard power interface (libindi 2.x: Pegasus PPB/PPBA/SPB/UPB/UPB3,
+SVBONY, Terrans, Celestron Dew Power, Gemini PBH, smPro, myDewControllerPro and others) are
+recognised automatically. The digest shows camera temperature, ambient, humidity, dew margin and
+power ("Power 12.4 V (low 12.1 V), 4.2 A"). For anything else (an older power box driver, a USB
+temperature/humidity sensor), run `ekos-notifier indi-dump` with your equipment connected:
 it lists your devices and the readings that could be used, and writes a file you can attach to a
 "Device support" issue. Map a reading yourself in the config:
 

@@ -21,6 +21,8 @@ Rules so far:
 - **Autofocus failed** (High, two failed runs in a row): see ``ekos_notifier.focus``.
 - **Twilight coming**, **Target low** (Normal) and **Meridian flip soon** (Quiet): see
   ``ekos_notifier.sky``.
+- **Battery critical** (Emergency, also outside a session), **Battery low**, **Power output
+  off** and **No current on an output** (High): see ``ekos_notifier.power``.
 - **Hourly digest** (Quiet, or Normal with "Attention"), which also sees every other rule's
   alerts: see ``ekos_notifier.digest``.
 - **Ekos stopped with the mount unparked** (Emergency): Ekos or INDI stops, or KStars vanishes,
@@ -42,6 +44,7 @@ from ekos_notifier.digest import DigestRule
 from ekos_notifier.events import Event
 from ekos_notifier.focus import AutofocusRule
 from ekos_notifier.guiding import RECOVERY, GuidingRule, PoorGuidingRule
+from ekos_notifier.power import PowerRule
 from ekos_notifier.sky import SkyRule
 
 UNPARKED_GRACE = 120.0
@@ -85,6 +88,7 @@ class Rules:
         deviation_limit: Callable[[], float | None] = lambda: None,
         digest: DigestRule | None = None,
         sky: SkyRule | None = None,
+        power: PowerRule | None = None,
     ) -> None:
         self.unparked_grace = unparked_grace
         self.guiding = GuidingRule(guiding_recovery)
@@ -96,6 +100,7 @@ class Rules:
             CaptureRule(),
             AutofocusRule(),
             PoorGuidingRule(guiding_poor_window, deviation_limit),
+            power or PowerRule(),
         ]
         self._park: str | None = None
         self._mount: str | None = None
