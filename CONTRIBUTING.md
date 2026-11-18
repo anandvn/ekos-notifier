@@ -16,6 +16,7 @@ python -m venv .venv && . .venv/bin/activate
 pip install -e ".[dev]"
 pytest
 ruff check . && ruff format --check .
+sh tools/check_install.sh   # install.sh end to end in a throwaway home (needs the internet)
 ```
 
 A KStars/Ekos install with the INDI simulators (telescope, CCD, focuser, filter wheel, weather)

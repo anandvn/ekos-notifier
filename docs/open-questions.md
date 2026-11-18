@@ -67,7 +67,9 @@ and `CLAUDE.md` if a decision changes.
       Host Python is 3.14.7 with `venv` and `ensurepip` in the base `python` package; a venv
       install (the dev checkout), tests, the CLI and the systemd service work, `dbus-fast`
       included. Still to try: a fresh venv from PyPI on a stock StellarMate image, and the same
-      on Raspberry Pi OS (needs `python3-venv`) and Ubuntu.
+      on Raspberry Pi OS (needs `python3-venv`) and Ubuntu. `install.sh` now exists: run
+      `curl … | sh -s -- --from main` on a real rig (StellarMate, then Astroberry) and record
+      what it says. CI covers it on Ubuntu only.
 
 ## Other platforms (Astroberry, Raspberry Pi OS, Ubuntu, AstroArch)
 

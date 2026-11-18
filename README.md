@@ -19,28 +19,31 @@ no problem.
 > **Status: pre-alpha.** The design is done; code is starting. See [the design](docs/design.md)
 > and [the roadmap](docs/design.md#roadmap). Not released yet.
 >
-> What works today: `ekos-notifier run` follows Ekos over D-Bus and records the night (sessions,
-> frames, guiding, every Ekos state change) in a local SQLite database, and sends the first
-> alerts (session start and summary, and the "mount left unparked" Emergency) to any
-> [Apprise](https://github.com/caronc/apprise/wiki) notifier, such as Pushover.
-> To try it from a checkout, on the computer running KStars:
->
-> ```bash
-> python -m venv .venv && . .venv/bin/activate && pip install -e .
-> ekos-notifier run            # Ctrl-C to stop; the database is ~/.local/share/ekos-notifier/ekos-notifier.db
-> ```
+> What works today: following Ekos (over D-Bus), PHD2 and INDI, recording each night as a
+> session in a local SQLite database, the alerts in [the docs](docs/index.md) and the hourly
+> digest, sent to any [Apprise](https://github.com/caronc/apprise/wiki) notifier, such as
+> Pushover. No GUI or sync yet.
 
-## Planned install (1.0)
+## Install
+
+On the computer running KStars, as yourself (not root):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/anandvn/ekos-notifier/main/install.sh | sh
-# installs into your home folder, offers to start the service; the first-run wizard opens in your browser
+curl -fsSL https://raw.githubusercontent.com/anandvn/ekos-notifier/main/install.sh | sh -s -- --from main
 ```
 
-No root and no extra tools: the script uses Python's own `venv`, which every supported OS ships
-(StellarMate's images have neither pipx nor pacman repositories). Already use pipx or uv? `pipx
-install ekos-notifier` or `uv tool install ekos-notifier`, then `ekos-notifier install-service`,
-works too.
+Until the first release is on PyPI, `--from main` installs the latest code from GitHub; after
+that, plain `| sh` installs the latest release. The script puts Ekos Notifier in a venv in your
+home folder (`~/.local/share/ekos-notifier/venv`), links `~/.local/bin/ekos-notifier`, writes a
+commented config to fill in (`~/.config/ekos-notifier/config.yaml`) and offers to start it with
+your session. Run it again to upgrade; `--uninstall` removes it (keeping your config and
+sessions); `--help` lists the rest.
+
+No root and no extra tools: only Python 3.10+ with its own `venv` module (StellarMate has it,
+and has neither pipx nor pacman repositories; on Debian, Ubuntu and Raspberry Pi OS it's
+`sudo apt install python3-venv`). Already use pipx or uv? `pipx install ekos-notifier` or `uv
+tool install ekos-notifier`, then `ekos-notifier install-service`, works too. To work on the
+code, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Contributing
 

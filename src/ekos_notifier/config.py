@@ -53,6 +53,29 @@ def default_path() -> Path:
     return Path(base) / "ekos-notifier" / "config.yaml"
 
 
+def example_text() -> str:
+    """The commented example config: packaged in the wheel, at the top of a checkout."""
+    from importlib import resources
+
+    packaged = resources.files("ekos_notifier") / "config.example.yaml"
+    if packaged.is_file():
+        return packaged.read_text(encoding="utf-8")
+    return (Path(__file__).resolve().parents[2] / "config.example.yaml").read_text(encoding="utf-8")
+
+
+def init(path: str | Path | None = None) -> tuple[Path, bool]:
+    """Write the example config where Ekos Notifier looks for it, readable only by you (it will
+    hold notifier keys). Never overwrites: returns (path, written)."""
+    path = Path(path) if path is not None else default_path()
+    if path.exists():
+        return path, False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(example_text().replace("# Copy to ~/.config/ekos-notifier/config.yaml. ", "# "))
+    return path, True
+
+
 def load(path: str | Path | None = None) -> Config:
     """Read the config. A missing default file is fine; a missing explicit one is an error."""
     explicit = path is not None

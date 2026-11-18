@@ -5,6 +5,13 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **`install.sh`**: installs into a venv in your home folder with no root and no extra tools
+  (`curl … | sh -s -- --from main` until the PyPI release), links `~/.local/bin/ekos-notifier`,
+  writes a commented config and offers the systemd user service. Re-run to upgrade (restarting
+  the service; rebuilding the venv after a Python upgrade); `--uninstall` keeps config and
+  sessions. **`ekos-notifier config init`** writes the commented example config (mode 600),
+  now shipped inside the package. CI runs the installer end to end.
+
 - **Clouds** (High): PHD2's guide star fading by half for 2 minutes, or two frames in a row
   losing half their stars, with the numbers; **Clouds passed** when the stars are back. A star
   lost at full brightness isn't clouds (that's Guiding lost). `alerts: clouds_drop_percent`

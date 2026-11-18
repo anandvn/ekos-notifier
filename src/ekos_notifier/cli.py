@@ -118,6 +118,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="list every alert, its default and your setting (messages: in the config)",
     )
     listing.add_argument("--config", metavar="PATH", help=CONFIG_HELP)
+    init = config_sub.add_parser(
+        "init", help="write the commented example config, if there's no config yet"
+    )
+    init.add_argument("--config", metavar="PATH", help=CONFIG_HELP)
     return parser
 
 
@@ -136,6 +140,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_test_notify(args)
     if args.command == "config" and args.config_command == "alerts":
         return cmd_config_alerts(args)
+    if args.command == "config" and args.config_command == "init":
+        return cmd_config_init(args)
     if args.command == "config":
         return cmd_config_check(args)
     if args.command == "indi-dump":
@@ -207,6 +213,18 @@ def cmd_config_alerts(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_config_init(args: argparse.Namespace) -> int:
+    from ekos_notifier import config
+
+    path, written = config.init(args.config)
+    if not written:
+        print(f"{path} already exists: left as it is.")
+        return 0
+    print(f"Wrote {path} (readable only by you).")
+    print("Add your notifier under notify:, then run `ekos-notifier config check`.")
+    return 0
+
+
 def cmd_config_check(args: argparse.Namespace) -> int:
     import apprise
 
@@ -215,7 +233,7 @@ def cmd_config_check(args: argparse.Namespace) -> int:
         return 1
     if cfg.path is None:
         print("No config file: Ekos Notifier records only and sends nothing.")
-        print("Copy config.example.yaml to ~/.config/ekos-notifier/config.yaml to set one up.")
+        print("Run `ekos-notifier config init` to write a commented one to fill in.")
         return 0
     print(f"{cfg.path}: OK")
     problems = 0

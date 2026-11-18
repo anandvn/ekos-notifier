@@ -36,6 +36,10 @@ path = "src/ekos_notifier/__init__.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/ekos_notifier"]
 
+[tool.hatch.build.targets.wheel.force-include]
+# `ekos-notifier config init` writes it; the repo keeps it at the top for people browsing.
+"config.example.yaml" = "ekos_notifier/config.example.yaml"
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
