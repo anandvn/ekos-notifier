@@ -82,4 +82,6 @@ class ConfigWatcher:
             self.failed(str(exc))
             return
         log.info("config reloaded from %s", self.path)
+        for warning in new.warnings:
+            log.warning("config: %s", warning)
         self.apply(new)

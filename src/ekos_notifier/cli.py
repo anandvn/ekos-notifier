@@ -203,6 +203,8 @@ def cmd_run(args: argparse.Namespace) -> int:
             exc,
         )
         cfg = config_module.Config(path=path)
+    for warning in cfg.warnings:
+        logger.warning("config: %s", warning)
     try:
         asyncio.run(serve(args.db or default_path(), config=cfg, watch_config=True))
     except AlreadyRunning as exc:
@@ -258,6 +260,8 @@ def cmd_config_check(args: argparse.Namespace) -> int:
         print("Run `ekos-notifier config init` to write a commented one to fill in.")
         return 0
     print(f"{cfg.path}: OK")
+    for warning in cfg.warnings:
+        print(f"  note: {warning}")
     problems = 0
     if not cfg.notify:
         print("  notify: none (recording only)")
@@ -300,13 +304,11 @@ def cmd_config_check(args: argparse.Namespace) -> int:
         print(f"  battery: {cfg.battery}, voltage alerts off")
     else:
         levels = [
-            f"{name} under {v:g} V"
+            f"{name} at or under {v:g} V"
             for name, v in (("low", cfg.low_volts), ("critical", cfg.critical_volts))
             if v is not None
         ]
         print(f"  battery: {cfg.battery}, {', '.join(levels)}")
-    if "preset" in (cfg.raw.get("power") or {}):
-        print("  note: 'power.preset' isn't used: power boxes are recognised automatically")
     for name, level in cfg.messages.levels.items():
         print(f"  message {name}: {level}")
     for name in cfg.messages.lowered_emergencies():

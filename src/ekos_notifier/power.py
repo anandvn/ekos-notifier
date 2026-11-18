@@ -5,12 +5,13 @@ standard power-interface preset, or the user's own ``indi.metrics`` mapping) and
 events (libindi's standard PowerInterface outputs, see ``ekos_notifier.indi.decode``). With none
 of them on a rig, these rules never fire.
 
-- **Battery critical** (Emergency): ``power.voltage`` under the critical level for ``SUSTAIN``
-  seconds (a slew's dip isn't a flat battery). Sent at any time, session or not: it's the one
-  alert sent in Standby.
-- **Battery low** (High): under the low level for ``SUSTAIN`` seconds during an active session,
-  once. Neither repeats until the voltage is back ``HYSTERESIS`` volts over the low level (a
-  fresh battery or a charger), which sends **Battery OK** (Normal, immediate).
+- **Battery critical** (Emergency): ``power.voltage`` at or under the critical level for
+  ``SUSTAIN`` seconds (a slew's dip isn't a flat battery).
+- **Battery low** (High): at or under the low level for ``SUSTAIN`` seconds, once.
+- Both are sent at any time, session or not: a battery draining during setup, a cloud wait or
+  after the run matters as much as during it. Neither repeats until the voltage is back
+  ``HYSTERESIS`` volts over the low level (a fresh battery or a charger), which sends **Battery
+  OK** (Normal, immediate).
 - **Power output off** (High): a DC output that was on and drawing current switches off during a
   session.
 - **No current on an output** (High): a DC output stays on, but its current falls from at least
@@ -130,7 +131,7 @@ class PowerRule(SessionRule):
             if level == "critical" and sent != "critical":
                 self._level[device] = "critical"
                 out.append(self._battery(now, device, "critical"))
-            elif level == "low" and sent is None and self.session:
+            elif level == "low" and sent is None:
                 self._level[device] = "low"
                 out.append(self._battery(now, device, "low"))
         if self.session:
@@ -153,12 +154,15 @@ class PowerRule(SessionRule):
             name = f"{device} " if several else ""
             if self.low is None and self.critical is None:
                 out.append((True, f"{name}power {volts:.1f} V"))
-            elif self.critical is not None and volts < self.critical:
+            elif self.critical is not None and volts <= self.critical:
                 out.append(
-                    (False, f"{name}battery {volts:.2f} V, under {self.critical:g} V critical")
+                    (
+                        False,
+                        f"{name}battery {volts:.2f} V, at or under {self.critical:g} V critical",
+                    )
                 )
-            elif self.low is not None and volts < self.low:
-                out.append((False, f"{name}battery {volts:.2f} V, under {self.low:g} V low"))
+            elif self.low is not None and volts <= self.low:
+                out.append((False, f"{name}battery {volts:.2f} V, at or under {self.low:g} V low"))
             else:
                 out.append((True, f"{name}battery {volts:.1f} V"))
         return out
@@ -168,7 +172,7 @@ class PowerRule(SessionRule):
     def _voltage(self, ts: float, device: str, volts: float) -> list[Event]:
         self._volts[device] = volts
         for level, threshold in (("critical", self.critical), ("low", self.low)):
-            if threshold is not None and volts < threshold:
+            if threshold is not None and volts <= threshold:
                 self._below.setdefault((device, level), ts)
             else:
                 self._below.pop((device, level), None)
@@ -195,7 +199,7 @@ class PowerRule(SessionRule):
         draw = f" with {amps:.1f} A drawn" if amps is not None else ""
         if level == "critical":
             body = (
-                f"{device} reads {volts:.2f} V{draw}, under the {self.critical:g} V critical "
+                f"{device} reads {volts:.2f} V{draw}, at or under the {self.critical:g} V critical "
                 f"level for {minutes(self.sustain)}. Equipment may shut down soon.\n"
                 "Swap or charge the battery, or park the mount."
             )
@@ -208,7 +212,7 @@ class PowerRule(SessionRule):
                 body,
                 device=device,
             )
-        body = f"{device} reads {volts:.2f} V{draw}, under the {self.low:g} V low level."
+        body = f"{device} reads {volts:.2f} V{draw}, at or under the {self.low:g} V low level."
         if self.critical is not None:
             body += f" Critical at {self.critical:g} V."
         return make_alert(

@@ -64,8 +64,8 @@ def test_config_check_shows_battery_levels(tmp_path, capsys):
     cfg.write_text("power:\n  preset: auto\n  battery: lifepo4_12v\n")
     assert main(["config", "check", "--config", str(cfg)]) == 0
     out = capsys.readouterr().out
-    assert "battery: lifepo4_12v, low under 12.8 V, critical under 12 V" in out
-    assert "'power.preset' isn't used" in out
+    assert "battery: lifepo4_12v, low at or under 12.8 V, critical at or under 12 V" in out
+    assert "'power.preset' isn't used (power boxes are recognised automatically)" in out
     cfg.write_text("power:\n  battery: mains\n")
     assert main(["config", "check", "--config", str(cfg)]) == 0
     assert "battery: mains, voltage alerts off" in capsys.readouterr().out

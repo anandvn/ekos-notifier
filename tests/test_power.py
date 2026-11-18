@@ -131,11 +131,18 @@ def test_battery_critical_is_sent_outside_a_session():
     assert alerts[0].session_id is None
 
 
-def test_battery_low_waits_for_a_session():
-    rule = PowerRule()
-    assert run(rule, [volts(0, 11.9)], until=120) == []
-    alerts = run(rule, [START], until=121)
-    assert rules_of(alerts) == ["battery_low"]
+def test_battery_low_fires_without_a_session():
+    # Seen on a live rig: a LiFePO4 at 12.0 V and no alert, because no session was running.
+    alerts = run(PowerRule(12.8, 12.0), [volts(0, 12.5)], until=120)
+    assert rules_of(alerts) == ["battery_low"] and alerts[0].session_id is None
+
+
+def test_exactly_at_a_level_counts():
+    alerts = run(PowerRule(12.8, 12.0), [volts(0, 12.0)], until=120)
+    assert rules_of(alerts) == ["battery_critical"]  # critical says it all: no low as well
+    assert "at or under the 12 V critical" in next(
+        a.data["body"] for a in alerts if a.data["rule"] == "battery_critical"
+    )
 
 
 def test_a_dip_while_slewing_is_not_a_flat_battery():

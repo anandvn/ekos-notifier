@@ -171,8 +171,9 @@ power:
   # critical_volts: 12.2
 ```
 
-**Battery low** is a High alert during a session; **Battery critical** is an Emergency at any
-time, even with no session running.
+**Battery low** (High) and **Battery critical** (Emergency) are sent when the voltage stays at
+or under their level for a minute, at any time, even with no session running. `config check`
+tells you when your own levels replace the preset's.
 
 ### Which messages you get, and how loud
 

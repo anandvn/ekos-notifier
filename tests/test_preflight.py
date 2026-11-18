@@ -56,7 +56,7 @@ def test_warnings_come_first_and_never_stop_the_session():
         ],
     )
     assert lines[1] == (
-        "Check: battery 11.84 V, under 12 V low; dew margin 1.4 °C, under 2 °C; "
+        "Check: battery 11.84 V, at or under 12 V low; dew margin 1.4 °C, under 2 °C; "
         "4.2 GB free on /data, under 10 GB."
     )
     assert len(lines) == 2  # nothing passed
@@ -72,7 +72,7 @@ def test_nothing_known_says_nothing():
 def test_battery_levels_and_mains():
     rule = PowerRule()
     rule.handle(metric(0, "power.voltage", 11.2))
-    assert rule.preflight(0) == [(False, "battery 11.20 V, under 11.5 V critical")]
+    assert rule.preflight(0) == [(False, "battery 11.20 V, at or under 11.5 V critical")]
     mains = PowerRule(None, None)
     mains.handle(metric(0, "power.voltage", 12.2))
     assert mains.preflight(0) == [(True, "power 12.2 V")]

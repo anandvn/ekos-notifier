@@ -50,8 +50,8 @@ indi:
 # critical_volts override the preset's levels (custom needs at least one).
 power:
   battery: agm_12v
-  # low_volts: 12.0        # Battery low (High), during a session, once
-  # critical_volts: 11.5   # Battery critical (Emergency), at any time
+  # low_volts: 12.0        # Battery low (High), at or under this for a minute, at any time
+  # critical_volts: 11.5   # Battery critical (Emergency), likewise
 
 # Which messages you get, and how. Every alert has a default (`ekos-notifier config alerts`
 # lists them all); set any of them here to:
