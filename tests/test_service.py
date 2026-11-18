@@ -1,13 +1,13 @@
 import asyncio
-from pathlib import Path
 
 from ekos_notifier import replay
 from ekos_notifier.cli import main
 from ekos_notifier.events import Event
+from ekos_notifier.samples import SAMPLE_NIGHT
 from ekos_notifier.service import serve
 from ekos_notifier.store import Store
 
-FIXTURE = Path(__file__).parent / "fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz"
+FIXTURE = SAMPLE_NIGHT
 
 
 def run_with(db, events, *, clock_after=None):

@@ -1,14 +1,14 @@
 import asyncio
 import sqlite3
-from pathlib import Path
 
 import pytest
 
 from ekos_notifier import replay
 from ekos_notifier.events import Event
+from ekos_notifier.samples import SAMPLE_NIGHT
 from ekos_notifier.store import MIGRATIONS, EventWriter, Store
 
-FIXTURE = Path(__file__).parent / "fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz"
+FIXTURE = SAMPLE_NIGHT
 
 
 @pytest.fixture

@@ -1,5 +1,4 @@
 import asyncio
-from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -7,10 +6,11 @@ import pytest
 from ekos_notifier import replay
 from ekos_notifier.events import Event
 from ekos_notifier.notify import Notifier, init_cursor, sink_id, with_priority
+from ekos_notifier.samples import SAMPLE_NIGHT
 from ekos_notifier.service import serve
 from ekos_notifier.store import Store
 
-FIXTURE = Path(__file__).parent / "fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz"
+FIXTURE = SAMPLE_NIGHT
 PUSHOVER = "pover://" + "u" * 30 + "@" + "t" * 30
 
 

@@ -66,6 +66,31 @@ def indi_source(config: Config) -> Source:
 SOURCES: tuple[Source, ...] = (ekos_source, phd2_source)
 
 
+def build_rules(config: Config, *, live: bool = True) -> Rules:
+    """The alert rules with the config's settings and Ekos's own limits (read from KStars's
+    settings when it runs here). ``live=False`` (simulate) leaves the disk alone: a replayed night's
+    frames aren't on this disk."""
+    return Rules(
+        guiding_recovery=config.guiding_recovery_minutes * 60,
+        guiding_poor_window=config.guiding_poor_minutes * 60,
+        deviation_limit=guide_deviation_limit,
+        sky=SkyRule(
+            twilight_warning=config.twilight_warning_minutes * 60,
+            target_low_warning=config.target_low_warning_minutes * 60,
+            limits=observing_limits,
+        ),
+        power=PowerRule(config.low_volts, config.critical_volts),
+        dew=DewRule(config.dew_margin_c),
+        cooler=CoolerRule(config.cooler_tolerance_c),
+        disk=DiskRule(config.disk_low_gb) if live else DiskRule(free=lambda path: None),
+        digest=DigestRule(
+            enabled=config.digest_enabled,
+            interval=config.digest_interval_minutes * 60,
+            align_to_clock=config.digest_align_to_clock,
+        ),
+    )
+
+
 async def serve(
     db_path: str | Path,
     *,
@@ -114,25 +139,7 @@ async def _serve(
         log.info("resuming %s session %s", manager.state, manager.session_id)
 
     writer = EventWriter(db_path)
-    rules = Rules(
-        guiding_recovery=config.guiding_recovery_minutes * 60,
-        guiding_poor_window=config.guiding_poor_minutes * 60,
-        deviation_limit=guide_deviation_limit,
-        sky=SkyRule(
-            twilight_warning=config.twilight_warning_minutes * 60,
-            target_low_warning=config.target_low_warning_minutes * 60,
-            limits=observing_limits,
-        ),
-        power=PowerRule(config.low_volts, config.critical_volts),
-        dew=DewRule(config.dew_margin_c),
-        cooler=CoolerRule(config.cooler_tolerance_c),
-        disk=DiskRule(config.disk_low_gb),
-        digest=DigestRule(
-            enabled=config.digest_enabled,
-            interval=config.digest_interval_minutes * 60,
-            align_to_clock=config.digest_align_to_clock,
-        ),
-    )
+    rules = build_rules(config)
     if manager.state == "active" and manager.session_id:
         rules.resume(manager.session_id, resumed_alerts, resumed_start, resumed_frames)
     pipeline = Pipeline(writer.put, manager=manager, rules=rules)

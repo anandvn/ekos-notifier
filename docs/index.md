@@ -101,6 +101,22 @@ and integration this hour and tonight, median guide RMS, failed dithers and ever
 happened since the last one. Set it in the config's `digest:` section (`enabled`,
 `interval_minutes`, `align_to_clock`).
 
+### Preview the alerts
+
+`ekos-notifier simulate` replays a night through the alert rules with your config and prints every
+alert it would send, with its time and priority, so you can tune the thresholds in daylight:
+
+```bash
+ekos-notifier simulate                   # the sample night that ships with Ekos Notifier
+ekos-notifier simulate --list            # your recent sessions
+ekos-notifier simulate --session last    # your last session, with today's config
+ekos-notifier simulate --brief           # titles only
+ekos-notifier simulate --send            # also send them to your phone, marked [Simulated]
+```
+
+It reads your database without changing it. With `--send`, an Emergency is sent as High so your
+phone doesn't start repeating it.
+
 ### INDI devices
 
 Ekos Notifier also reads your INDI devices (read only, from the server your Ekos profile uses):

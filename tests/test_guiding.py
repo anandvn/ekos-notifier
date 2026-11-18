@@ -1,5 +1,4 @@
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
@@ -8,8 +7,9 @@ from ekos_notifier.config import ConfigError, load
 from ekos_notifier.events import Event
 from ekos_notifier.pipeline import Pipeline, simulate
 from ekos_notifier.rules import Rules
+from ekos_notifier.samples import SAMPLE_NIGHT
 
-FIXTURE = Path(__file__).parent / "fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz"
+FIXTURE = SAMPLE_NIGHT
 T = datetime(2026, 11, 17, 22, 0).timestamp()
 
 
