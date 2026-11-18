@@ -27,8 +27,10 @@ your equipment.
 **Contents:** [What you need](#what-you-need) · [Install](#install) ·
 [Set up](#set-up-in-ten-minutes) · [Your config file](#your-config-file) ·
 [Day to day](#day-to-day) · [Upgrade and uninstall](#upgrade-and-uninstall) ·
-[Troubleshooting](#troubleshooting)
+[Troubleshooting](#troubleshooting) · Full docs:
+[anandvn.github.io/ekos-notifier](https://anandvn.github.io/ekos-notifier/)
 
+<!-- --8<-- [start:guide] -->
 ## What you need
 
 - The computer that runs KStars/Ekos: StellarMate, Astroberry, or any Linux with KStars
@@ -177,7 +179,8 @@ tells you when your own levels replace the preset's.
 
 ### Which messages you get, and how loud
 
-Every alert has a priority. See them all, with anything you've changed:
+Every alert has a priority; the [Alerts reference](https://anandvn.github.io/ekos-notifier/alerts/)
+says what sets each one off and how to tune it. See them all, with anything you've changed:
 
 ```bash
 ekos-notifier config alerts
@@ -321,6 +324,7 @@ folders yourself if you don't want them.
 
 Still stuck? [Open an issue](https://github.com/anandvn/ekos-notifier/issues) with what you ran,
 what it said, and the last lines of `journalctl --user -u ekos-notifier`.
+<!-- --8<-- [end:guide] -->
 
 ## Contributing
 
