@@ -79,10 +79,24 @@ def test_a_problem_cleared_in_the_hour_is_listed_but_all_is_well():
         ev(100, "guide.state", state="guiding"),
         ev(300, "guide.state", state="aborted"),
         ev(900, "guide.state", state="guiding"),
+        light(1500),
     ]
     (d,) = run(events, until=1810)
     assert d.data["title"] == "22:00 — All's well"
     assert "Guiding lost" in d.data["body"] and "Guiding recovered" in d.data["body"]
+
+
+def test_no_light_frames_is_not_all_is_well():
+    # Seen live: the session stayed open after capture stopped, and every digest said "All's
+    # well". Still Quiet: the Scheduler waiting for a target is no problem.
+    got = run(START + [light(600)], until=1800 + 3600 + 10)
+    assert [d.data["title"] for d in got] == [
+        "22:00 — All's well",
+        "23:00 — No light frames since 21:40",
+    ]
+    assert got[1].data["priority"] == "quiet"
+    (d,) = run(START, until=1810)
+    assert d.data["title"] == "22:00 — No light frames yet"
 
 
 def test_skipped_right_after_the_session_starts():

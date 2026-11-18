@@ -63,6 +63,9 @@ The rules are implemented in `ekos_notifier.session.SessionManager`, which is dr
 
 Camera at setpoint · guiding settled · battery and disk above threshold · dew margin · system clock plausible (NTP/GPS synced) · notifier and heartbeat reachable (skipped silently when offline; see Offline behavior). Failed checks become warnings in the Starting session message; they never block the session.
 
+- **Implemented so far:** battery against the low and critical levels (on `mains`, just the voltage), free disk space where frames are saved against `alerts.disk_low_gb`, dew margin and humidity against the dew-risk limits, and the imaging camera against its setpoint. Each check comes from the rule that alerts on it, from what the rig has reported so far, and is left out when the rig doesn't report it. Failed checks lead, as "Check: battery 11.84 V, under 12 V low; …", then the readings that passed: "Pre-flight: battery 13.1 V, dew margin 6.2 °C, RH 64%, 212 GB free." A camera still cooling is a reading, not a warning: Ekos waits for the setpoint, and "Cooler can't reach setpoint" covers a cooler that never gets there.
+- **Not yet:** guiding settled (at a Scheduler start guiding hasn't begun yet, so it needs a later check), the system clock, and the notifier and heartbeat.
+
 ### Calibration frames
 
 Darks, flats and bias never start a session. They are recorded as calibration runs linked to the most recent session.
@@ -131,6 +134,8 @@ Priorities map onto each notifier's native levels where it has them (Pushover �
 
 Starting session (with pre-flight results) · first sub saved (thumbnail) · meridian flip complete · target switched (Scheduler) · session summary at close (totals per filter, integration, median HFR, guide RMS, aborts, min battery, temperature/humidity range, sessions awaiting sync).
 
+The summary so far: lights per filter and integration, calibration frames, median HFR (when Ekos measures it) and median guide RMS, the ambient temperature, humidity and imaging camera temperature ranges, the lowest battery voltage, the problems raised (each High or Emergency alert by title, with a count when repeated, which covers aborts), and the mount's last state. After a service restart the HFR and guide RMS come from the stored frames; the ranges and problems start again from the restart. Sessions awaiting sync wait for sync.
+
 ### Quiet
 
 Meridian flip in 15 min: only when Ekos is set to flip (`[Mount] ExecuteMeridianFlip`), at its flip hour angle (`MeridianFlipOffsetDegrees`); held for the digest's "Since last".
@@ -151,7 +156,7 @@ The digest is one status message per interval (default 60 min) while a session i
 
 ### Digest
 
-- **Title carries the verdict:** "23:00 — All's well" or "23:00 — Attention: dew margin 1.4 °C".
+- **Title carries the verdict:** "23:00 — All's well" or "23:00 — Attention: dew margin 1.4 °C". With no problem and no light frame in the interval, "All's well" would mislead (seen live: a session left open after capture stopped said it every hour), so it says "23:00 — No light frames since 21:40" (or "yet"), still Quiet: the Scheduler waiting for a target is no problem.
 - **Priority:** Quiet when all's well; Normal when it says Attention.
 - **Timing:** on the clock hour, or every N minutes from session start (configurable). A digest due less than 10 minutes after the session started is skipped.
 - **Verdict:** Attention when a High or Emergency alert was raised in the interval and not cleared in it, or a problem raised earlier is still open: one with an all-clear alert until it's sent (guiding lost, guiding poor, capture stalled, mount left unparked), and capture aborted, Scheduler aborted and autofocus failed until capture, the Scheduler or focus is working again (seen live: without this, "All's well" with nothing captured since an abort). The problems are named in the title and carry over as "Still open", including across a service restart (rebuilt from the session's alerts, then closed by Ekos's snapshot if no longer true).

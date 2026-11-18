@@ -115,6 +115,28 @@ class DewRule(SessionRule):
                 ]
         return []
 
+    def preflight(self, now: float) -> list[tuple[bool, str]]:
+        if self.margin <= 0:
+            return []
+        _, margin, rh = self._worst()
+        out = []
+        if margin is not None:
+            text = f"dew margin {_c(margin)}"
+            out.append(
+                (
+                    margin >= self.margin,
+                    text + (f", under {self.margin:g} °C" if margin < self.margin else ""),
+                )
+            )
+        if rh is not None:
+            out.append(
+                (
+                    rh <= self.humidity,
+                    f"RH {rh:.0f}%" + (f", over {self.humidity:g}%" if rh > self.humidity else ""),
+                )
+            )
+        return out
+
     # -- helpers -------------------------------------------------------------------------------
 
     def _worst(self) -> tuple[str | None, float | None, float | None]:
@@ -255,6 +277,25 @@ class CoolerRule(SessionRule):
                 self._raised[dev] = "cooler_cant_reach"
                 out.append(self._alert(now, dev, "cooler_cant_reach", sp["since"]))
         return out
+
+    def preflight(self, now: float) -> list[tuple[bool, str]]:
+        """The imaging camera's temperature against its setpoint. Still cooling is a reading,
+        not a warning: Ekos waits for the setpoint, and "Cooler can't reach" covers a cooler that
+        never gets there."""
+        cameras = list(self._temp)
+        camera = self._camera if self._camera in self._temp else None
+        if camera is None and len(cameras) == 1:
+            camera = cameras[0]
+        if camera is None:
+            return []
+        temp, sp = self._temp[camera], self._setpoint.get(camera)
+        if sp is None:
+            return [(True, f"camera {_c(temp)}")]
+        if abs(temp - sp["value"]) <= self.tolerance:
+            return [(True, f"camera {_c(temp)} (at setpoint)")]
+        if sp["reached"] and temp > sp["value"] + self.tolerance:
+            return [(False, f"camera {_c(temp)}, over its {_c(sp['value'])} setpoint")]
+        return [(True, f"camera cooling, {_c(temp)} → {_c(sp['value'])}")]
 
     # -- helpers -------------------------------------------------------------------------------
 

@@ -144,6 +144,23 @@ class PowerRule(SessionRule):
                     out.append(alert)
         return out
 
+    def preflight(self, now: float) -> list[tuple[bool, str]]:
+        out = []
+        several = len(self._volts) > 1
+        for device, volts in sorted(self._volts.items()):
+            name = f"{device} " if several else ""
+            if self.low is None and self.critical is None:
+                out.append((True, f"{name}power {volts:.1f} V"))
+            elif self.critical is not None and volts < self.critical:
+                out.append(
+                    (False, f"{name}battery {volts:.2f} V, under {self.critical:g} V critical")
+                )
+            elif self.low is not None and volts < self.low:
+                out.append((False, f"{name}battery {volts:.2f} V, under {self.low:g} V low"))
+            else:
+                out.append((True, f"{name}battery {volts:.1f} V"))
+        return out
+
     # -- battery -----------------------------------------------------------------------------
 
     def _voltage(self, ts: float, device: str, volts: float) -> list[Event]:

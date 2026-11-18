@@ -5,6 +5,13 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Pre-flight checks** in "Starting session": battery, free disk space, dew margin and
+  humidity, and the camera against its setpoint; failed checks are listed first as warnings.
+  The **session summary** adds median HFR and guide RMS, temperature, humidity and camera
+  temperature ranges, the lowest battery voltage and the problems raised. The **hourly digest**
+  no longer says "All's well" when no light frame was saved in the hour ("No light frames since
+  21:40").
+
 - **Flats reminder** (Normal, with the session summary): filters with lights but no flats tonight,
   once per filter per night. **Darks reminder** (off by default): "cover the telescope" when a
   dark job starts; the Ekos adapter now reads the active Capture job's frame type (`capture.job`).

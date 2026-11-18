@@ -114,6 +114,15 @@ class DiskRule(SessionRule):
             ]
         return []
 
+    def preflight(self, now: float) -> list[tuple[bool, str]]:
+        if self.low <= 0 or (free := self._free(self._folder)) is None:
+            return []
+        if free < self.low:
+            return [
+                (False, f"{free / GB:.1f} GB free on {self._folder}, under {self.low / GB:g} GB")
+            ]
+        return [(True, f"{free / GB:.0f} GB free")]
+
     def _alert(self, now: float, free: int) -> Event:
         lines = [f"{free / GB:.1f} GB free on {self._folder} (limit {self.low / GB:g} GB)."]
         if self._sizes:

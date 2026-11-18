@@ -245,6 +245,7 @@ def test_digest_shows_power_and_battery_ok_closes_the_problem():
         volts(20, 11.9),
         volts(30, 12.5),
         ev(31, "metric", metric="power.current", value=4.2, device=BOX),
+        ev(40, "capture.frame", type="light", filter="L", exposure=60.0),
     ]:
         digest.handle(e)
     digest.note_alerts([ev(25, "alert", rule="battery_low", priority="high", title="Battery low")])
