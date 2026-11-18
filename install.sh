@@ -168,8 +168,18 @@ config="${XDG_CONFIG_HOME:-$HOME/.config}/ekos-notifier/config.yaml"
 say ""
 say "$installed is installed."
 if [ "$on_path" -eq 0 ]; then
-    say "Add $BIN to your PATH to type 'ekos-notifier' (then open a new terminal):"
-    say "    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.profile"
+    # The shell's own startup file: terminals (Konsole…) start non-login shells, which never
+    # read ~/.profile, and on Arch-based images (StellarMate) a ~/.bash_profile hides it anyway.
+    case "${SHELL##*/}" in
+        zsh) rc="$HOME/.zshrc" ;;
+        *) rc="$HOME/.bashrc" ;;
+    esac
+    if grep -qs '\.local/bin' "$rc"; then
+        say "Open a new terminal to type 'ekos-notifier' (your ${rc#"$HOME"/} adds $BIN)."
+    else
+        say "Add $BIN to your PATH to type 'ekos-notifier', then open a new terminal:"
+        say "    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/${rc#"$HOME"/}"
+    fi
 fi
 if "$VENV/bin/ekos-notifier" config check 2>/dev/null | grep -q "notify: none"; then
     say "Next: put your notifier (any Apprise URL, e.g. Pushover) under notify: in"
