@@ -81,6 +81,14 @@ current on** an output that's still on but has stopped drawing current (a fuse, 
 device), followed by **Power output back**. The box's own output names are used ("Camera",
 "Mount"). Outputs switching off as Ekos shuts down aren't reported.
 
+With a weather station or a temperature/humidity sensor: **Dew risk** (High) when the dew margin
+stays under 2 °C (`alerts: dew_margin_c`) or humidity over 90 % for 5 minutes, naming any dew
+heater that's off; "Dew risk passed" goes in the digest. With a cooled camera: **Cooler can't
+hold** (High) when it drifts more than 2 °C (`alerts: cooler_tolerance_c`) above its setpoint for
+10 minutes, and **Cooler can't reach setpoint** when it's still that far off 20 minutes after
+the setpoint was set; "Cooler at setpoint" follows. The setpoint is the one your capture job
+sets, or the temperature your camera driver reports reaching.
+
 Every hour on the hour during a session, an **hourly digest**: "23:00 — All's well" (sent
 silently) or "23:00 — Attention: Guiding poor", with the target, filter and job progress, lights
 and integration this hour and tonight, median guide RMS, failed dithers and everything that

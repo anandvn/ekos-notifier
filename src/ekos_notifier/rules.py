@@ -23,6 +23,8 @@ Rules so far:
   ``ekos_notifier.sky``.
 - **Battery critical** (Emergency, also outside a session), **Battery low**, **Power output
   off** and **No current on an output** (High): see ``ekos_notifier.power``.
+- **Dew risk**, **Cooler can't hold** and **Cooler can't reach setpoint** (High): see
+  ``ekos_notifier.conditions``.
 - **Hourly digest** (Quiet, or Normal with "Attention"), which also sees every other rule's
   alerts: see ``ekos_notifier.digest``.
 - **Ekos stopped with the mount unparked** (Emergency): Ekos or INDI stops, or KStars vanishes,
@@ -40,6 +42,7 @@ from typing import Any
 
 from ekos_notifier.alerts import SessionRule
 from ekos_notifier.capture import CaptureRule
+from ekos_notifier.conditions import CoolerRule, DewRule
 from ekos_notifier.digest import DigestRule
 from ekos_notifier.events import Event
 from ekos_notifier.focus import AutofocusRule
@@ -89,6 +92,8 @@ class Rules:
         digest: DigestRule | None = None,
         sky: SkyRule | None = None,
         power: PowerRule | None = None,
+        dew: DewRule | None = None,
+        cooler: CoolerRule | None = None,
     ) -> None:
         self.unparked_grace = unparked_grace
         self.guiding = GuidingRule(guiding_recovery)
@@ -101,6 +106,8 @@ class Rules:
             AutofocusRule(),
             PoorGuidingRule(guiding_poor_window, deviation_limit),
             power or PowerRule(),
+            dew or DewRule(),
+            cooler or CoolerRule(),
         ]
         self._park: str | None = None
         self._mount: str | None = None

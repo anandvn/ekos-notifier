@@ -30,6 +30,8 @@ class Config:
     guiding_poor_minutes: float = 10.0
     twilight_warning_minutes: float = 45.0
     target_low_warning_minutes: float = 30.0
+    dew_margin_c: float = 2.0
+    cooler_tolerance_c: float = 2.0
     digest_enabled: bool = True
     digest_interval_minutes: float = 60.0
     digest_align_to_clock: bool = True
@@ -109,6 +111,10 @@ def load(path: str | Path | None = None) -> Config:
         ),
         target_low_warning_minutes=_minutes(
             path, "alerts.target_low_warning_minutes", alerts.get("target_low_warning_minutes", 30)
+        ),
+        dew_margin_c=_number(path, "alerts.dew_margin_c", alerts.get("dew_margin_c", 2.0), "°C"),
+        cooler_tolerance_c=_number(
+            path, "alerts.cooler_tolerance_c", alerts.get("cooler_tolerance_c", 2.0), "°C"
         ),
         digest_enabled=_bool(path, "digest.enabled", digest.get("enabled", True)),
         digest_interval_minutes=interval,

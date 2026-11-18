@@ -39,6 +39,9 @@ CLEARED_BY = {
     "battery_critical": "battery_ok",
     "power_output_off": "power_output_back",
     "power_output_dead": "power_output_back",
+    "dew_risk": "dew_risk_cleared",
+    "cooler_cant_hold": "cooler_ok",
+    "cooler_cant_reach": "cooler_ok",
 }
 CLEARS: dict[str, tuple[str, ...]] = {}
 for _problem, _clear in CLEARED_BY.items():

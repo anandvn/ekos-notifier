@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from ekos_notifier import __version__
+from ekos_notifier.conditions import CoolerRule, DewRule
 from ekos_notifier.config import Config
 from ekos_notifier.digest import DigestRule
 from ekos_notifier.ekos.adapter import EkosAdapter
@@ -122,6 +123,8 @@ async def _serve(
             limits=observing_limits,
         ),
         power=PowerRule(config.low_volts, config.critical_volts),
+        dew=DewRule(config.dew_margin_c),
+        cooler=CoolerRule(config.cooler_tolerance_c),
         digest=DigestRule(
             enabled=config.digest_enabled,
             interval=config.digest_interval_minutes * 60,
