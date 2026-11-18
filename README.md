@@ -237,8 +237,15 @@ digest:
 ### Power boxes and weather stations
 
 Devices on INDI are found by themselves: power boxes using INDI's standard power interface
-(battery voltage, outputs, dew heaters), weather stations, and camera temperatures. If yours
-isn't recognised, list its properties and map the one you want:
+(battery voltage, outputs, dew heaters), weather stations, and camera temperatures. The log
+says what it found, a few seconds after Ekos connects them:
+
+```bash
+journalctl --user -u ekos-notifier | grep "INDI recognised" | tail -1
+# … INDI recognised: Power Box (battery voltage, current, outputs); QHY CCD (camera temperature)
+```
+
+If yours isn't recognised, list its properties and map the one you want:
 
 ```bash
 ekos-notifier indi-dump      # with Ekos connected: writes your devices' properties to indi-dump.xml
@@ -310,7 +317,7 @@ folders yourself if you don't want them.
 | No alerts, and the log says "Running with recording only" | The config had a mistake when the service started. The night is still recorded; fix the file (`ekos-notifier config check`) and alerts resume by themselves. |
 | The service stopped and the log says the database "has schema N" | It was written by a newer Ekos Notifier (you went back a version). Install the newer version again; the service won't keep retrying until then. |
 | It stops when you log out | Run `loginctl enable-linger` once, so your user services keep running (and start at boot). |
-| No battery, dew or power alerts | Your devices may not be recognised: see [Power boxes and weather stations](#power-boxes-and-weather-stations). |
+| No battery, dew or power alerts | Check what it recognised: `journalctl --user -u ekos-notifier \| grep "INDI recognised"` lists each device and what it reads ("Power Box (battery voltage, current, outputs)"). Not listed? See [Power boxes and weather stations](#power-boxes-and-weather-stations). |
 
 Still stuck? [Open an issue](https://github.com/anandvn/ekos-notifier/issues) with what you ran,
 what it said, and the last lines of `journalctl --user -u ekos-notifier`.

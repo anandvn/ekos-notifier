@@ -313,3 +313,62 @@ def test_a_quiet_but_connected_camera_still_counts_until_it_disconnects(tmp_path
     temps = [r[0] for r in s.db.execute("SELECT camera_temp FROM frames ORDER BY ts")]
     assert temps == [-10.0, None]
     s.close()
+
+
+def _log_of(stream: str, caplog) -> list[str]:
+    """Serve ``stream`` from a fake INDI server that stays connected, and return what the
+    adapter logged about what it recognised."""
+
+    async def scenario():
+        async def serve(reader, writer):
+            await reader.readline()
+            writer.write(stream.encode())
+            await writer.drain()
+            await asyncio.sleep(10)  # stay connected: the devices are still there
+
+        server = await asyncio.start_server(serve, "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        adapter = IndiAdapter(
+            lambda e: None, IndiDecoder(load_builtin()), port=port, server=lambda: None
+        )
+        adapter.report_after = 0.1
+        task = asyncio.create_task(adapter.run())
+        await asyncio.sleep(0.6)
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        server.close()
+
+    with caplog.at_level("INFO", logger="ekos_notifier.indi.adapter"):
+        asyncio.run(scenario())
+    return [r.getMessage() for r in caplog.records if r.getMessage().startswith("INDI")]
+
+
+def test_the_log_says_once_what_was_recognised(caplog):
+    import gzip
+    from pathlib import Path
+
+    fixture = Path(__file__).parent / "fixtures/indi/power-simulator-libindi-2.2.5.xml.gz"
+    lines = _log_of(gzip.decompress(fixture.read_bytes()).decode(), caplog)
+    assert len(lines) == 1  # one line once it settles, not one per property
+    assert lines[0].startswith("INDI recognised: Power Simulator (")
+    assert "battery voltage" in lines[0] and "outputs" in lines[0]
+
+
+def test_the_log_says_when_nothing_is_recognised(caplog):
+    lines = _log_of(numbers("Mount", "EQUATORIAL_EOD_COORD", "def", RA=1, DEC=2), caplog)
+    assert len(lines) == 1 and "recognised yet" in lines[0] and "indi-dump" in lines[0]
+
+
+def test_recognised_names_each_device_in_plain_words():
+    from ekos_notifier.indi.adapter import recognised
+
+    caps = {
+        "camera.temperature": ["QHY CCD"],
+        "env.humidity": ["Box"],
+        "power.voltage": ["Box"],
+        "something.new": ["Box"],
+    }
+    assert (
+        recognised(caps)
+        == "Box (humidity, battery voltage, something.new); QHY CCD (camera temperature)"
+    )

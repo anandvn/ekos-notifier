@@ -30,6 +30,30 @@ CONNECT_TIMEOUT = 5.0
 GET_PROPERTIES = b'<getProperties version="1.7"/>\n'
 
 
+# What the log calls each metric, for "INDI recognised: …" (anything else by its own name).
+METRIC_WORDS = {
+    "power.voltage": "battery voltage",
+    "power.current": "current",
+    "power.watts": "power",
+    "power.outputs": "outputs",
+    "env.temperature": "temperature",
+    "env.humidity": "humidity",
+    "env.dewpoint": "dew point",
+    "camera.temperature": "camera temperature",
+    "focuser.temperature": "focuser temperature",
+}
+REPORT_AFTER = 5.0  # seconds without a change before saying what's recognised
+
+
+def recognised(caps: dict[str, list[str]]) -> str:
+    """One line for the log: each device and what's read from it."""
+    by_device: dict[str, list[str]] = {}
+    for metric, devices in caps.items():
+        for device in devices:
+            by_device.setdefault(device, []).append(METRIC_WORDS.get(metric, metric))
+    return "; ".join(f"{dev} ({', '.join(words)})" for dev, words in sorted(by_device.items()))
+
+
 class IndiAdapter:
     def __init__(
         self,
@@ -44,6 +68,10 @@ class IndiAdapter:
     ) -> None:
         self._emit = emit
         self.decoder = decoder
+        self.report_after = REPORT_AFTER
+        self._caps: dict[str, list[str]] | None = None  # the latest, not yet logged
+        self._reported: dict[str, list[str]] | None = None  # the last logged (None: none yet)
+        self._report_handle: asyncio.TimerHandle | None = None
         self._host, self._port = host, port
         self._server = server
         self._clock = clock
@@ -94,7 +122,9 @@ class IndiAdapter:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         log.info("connected to INDI on %s:%d", self.host, self.port)
         self._waiting_logged = False
+        self._reported = None  # say again what this connection recognises
         self.decoder.reset()
+        self._capabilities({})  # nothing recognised so far: says so if it stays that way
         self._send("indi.connected", {"host": self.host, "port": self.port})
         reason = "the INDI server closed the connection"
         parser = ET.XMLPullParser(events=("start", "end"))
@@ -129,6 +159,9 @@ class IndiAdapter:
                     reason = f"unreadable INDI stream: {exc}"
                     break
         finally:
+            if self._report_handle is not None:  # the devices are going: nothing to report
+                self._report_handle.cancel()
+                self._report_handle = None
             ts = self._clock()
             for event in self.decoder.lost(ts):
                 self._emit(event)
@@ -144,8 +177,46 @@ class IndiAdapter:
         try:
             for event in self.decoder.feed(self._clock(), el):
                 self._emit(event)
+                if event.kind == "indi.capabilities":
+                    self._capabilities(event.data.get("metrics", {}))
         except Exception:  # noqa: BLE001
             log.exception("INDI adapter: could not decode <%s>", el.tag)
+
+    # -- what's recognised, for the log ------------------------------------------------------
+
+    def _capabilities(self, caps: dict[str, list[str]]) -> None:
+        """Devices are recognised property by property as they connect: report once it has
+        settled, so a box connecting gives one line, not a dozen."""
+        self._caps = caps
+        if self._report_handle is not None:
+            self._report_handle.cancel()
+            self._report_handle = None
+        if self.report_after <= 0:
+            self._report()
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:  # no loop (a test feeding elements by hand): say it now
+            self._report()
+            return
+        self._report_handle = loop.call_later(self.report_after, self._report)
+
+    def _report(self) -> None:
+        self._report_handle = None
+        caps = self._caps or {}
+        if caps == self._reported:
+            return
+        if caps:
+            log.info("INDI recognised: %s", recognised(caps))
+        elif self._reported:
+            log.info("INDI: no power box, weather sensor or camera temperature recognised now")
+        else:
+            log.info(
+                "INDI: no power box, weather sensor or camera temperature recognised yet; "
+                "they're picked up as Ekos connects them (not yours? see `ekos-notifier "
+                "indi-dump` and the README)"
+            )
+        self._reported = caps
 
     def _send(self, kind: str, data: dict) -> None:
         self._emit(Event(self._clock(), kind, data, SOURCE))
