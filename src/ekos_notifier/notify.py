@@ -7,8 +7,9 @@ seconds of being raised is marked ``dropped``, never sent late (a night's worth 
 arriving when you get home helps nobody). The alert itself stays in the store for the GUI and
 the session export. Nothing the notifier does can block recording.
 
-Which alerts are sent now: Emergency and High always; Normal when marked ``immediate`` (the rest
-are held for the hourly digest, not built yet); Quiet never (in-app only).
+Which alerts are sent now: Emergency and High always; Normal and Quiet when marked ``immediate``
+(the rest wait for the hourly digest); never one the user turned ``off`` (``messages:`` in the
+config, applied as alerts are raised; see ``ekos_notifier.messages``).
 
 Priorities map onto notifiers that have levels: Pushover (Emergency repeats every 60 s until
 acknowledged, for up to an hour) and ntfy. Other notifiers get the priority in the title.
@@ -94,6 +95,8 @@ def init_cursor(store: Store) -> None:
 
 
 def should_send(data: dict) -> bool:
+    if data.get("off"):
+        return False  # the user turned it off (messages:)
     priority = data.get("priority")
     # Immediate alerts go at their own priority: a Quiet "All's well" digest arrives silently.
     return priority in ("emergency", "high") or bool(data.get("immediate"))

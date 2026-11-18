@@ -5,6 +5,13 @@ Semantic Versioning.
 
 ## Unreleased
 
+- Choose which messages you get: a `messages:` section in the config sets any alert to `off`,
+  `digest`, `quiet`, `normal`, `high` or `emergency`; all-clears follow their problem when it's
+  off or held for the digest. `ekos-notifier config alerts` lists every alert with its default
+  and your setting; `config check` flags unknown names (with a suggestion) and lowered
+  Emergencies. A registry of every alert (`ekos_notifier.messages`), checked against the code by
+  a test.
+
 - **Plate solve failed** (High): an Ekos Align run fails and no solve succeeds within 3 min,
   saying whether it followed the meridian flip or a new Scheduler target, with Ekos's reason;
   "Plate solve succeeded" after.

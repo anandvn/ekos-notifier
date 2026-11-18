@@ -113,6 +113,11 @@ def build_parser() -> argparse.ArgumentParser:
     config_sub = config.add_subparsers(dest="config_command", required=True)
     check = config_sub.add_parser("check", help="validate the config file and explain any errors")
     check.add_argument("--config", metavar="PATH", help=CONFIG_HELP)
+    listing = config_sub.add_parser(
+        "alerts",
+        help="list every alert, its default and your setting (messages: in the config)",
+    )
+    listing.add_argument("--config", metavar="PATH", help=CONFIG_HELP)
     return parser
 
 
@@ -129,6 +134,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_run(args)
     if args.command == "test-notify":
         return cmd_test_notify(args)
+    if args.command == "config" and args.config_command == "alerts":
+        return cmd_config_alerts(args)
     if args.command == "config":
         return cmd_config_check(args)
     if args.command == "indi-dump":
@@ -179,6 +186,24 @@ def cmd_run(args: argparse.Namespace) -> int:
     except Exception as exc:  # noqa: BLE001 - report, don't dump a traceback on users
         logging.getLogger("ekos_notifier").error("%s", exc, exc_info=args.verbose)
         return 1
+    return 0
+
+
+def cmd_config_alerts(args: argparse.Namespace) -> int:
+    from ekos_notifier.messages import ALERTS, LEVELS
+
+    cfg = _load_config(args.config)
+    if cfg is None:
+        return 1
+    print(f"{'alert':<28} {'default':<10} {'yours':<10} what")
+    for name, alert in ALERTS.items():
+        level = cfg.messages.level(name)
+        yours = level if level != alert.default else ""
+        print(f"{name:<28} {alert.default:<10} {yours:<10} {alert.what}")
+    print()
+    print(f"Set any of them under 'messages:' in the config: {' | '.join(LEVELS)}.")
+    print("off: never sent or listed; digest: listed in the hourly digest only;")
+    print("quiet: sent silently; normal, high, emergency: sent at once at that priority.")
     return 0
 
 
@@ -242,6 +267,11 @@ def cmd_config_check(args: argparse.Namespace) -> int:
         print(f"  battery: {cfg.battery}, {', '.join(levels)}")
     if "preset" in (cfg.raw.get("power") or {}):
         print("  note: 'power.preset' isn't used: power boxes are recognised automatically")
+    for name, level in cfg.messages.levels.items():
+        print(f"  message {name}: {level}")
+    for name in cfg.messages.lowered_emergencies():
+        level = cfg.messages.level(name)
+        print(f"  note: {name} is an Emergency by default; you've set it to {level}")
     if cfg.indi_host or cfg.indi_port:
         print(f"  indi: {cfg.indi_host or 'localhost'}:{cfg.indi_port or 7624} (set in config)")
     else:

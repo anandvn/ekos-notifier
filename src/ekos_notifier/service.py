@@ -83,6 +83,7 @@ def build_rules(config: Config, *, live: bool = True) -> Rules:
         dew=DewRule(config.dew_margin_c),
         cooler=CoolerRule(config.cooler_tolerance_c),
         disk=DiskRule(config.disk_low_gb) if live else DiskRule(free=lambda path: None),
+        messages=config.messages,
         digest=DigestRule(
             enabled=config.digest_enabled,
             interval=config.digest_interval_minutes * 60,
