@@ -5,6 +5,11 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Fixed:** `ekos-notifier install-service` run while the service is up (re-installing, or
+  an installer upgrade) said another copy was "probably in a terminal" and didn't apply the new
+  unit. It now recognises the service and restarts it on the new unit and version; the warning
+  is left for a copy that really is running elsewhere.
+
 - **`install.sh`**: installs into a venv in your home folder with no root and no extra tools
   (`curl … | sh -s -- --from main` until the PyPI release), links `~/.local/bin/ekos-notifier`,
   writes a commented config and offers the systemd user service. Re-run to upgrade (restarting
