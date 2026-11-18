@@ -24,6 +24,7 @@ from ekos_notifier import __version__
 from ekos_notifier.conditions import CoolerRule, DewRule
 from ekos_notifier.config import Config
 from ekos_notifier.digest import DigestRule
+from ekos_notifier.disk import DiskRule
 from ekos_notifier.ekos.adapter import EkosAdapter
 from ekos_notifier.ekos.settings import guide_deviation_limit, observing_limits
 from ekos_notifier.events import Event
@@ -125,6 +126,7 @@ async def _serve(
         power=PowerRule(config.low_volts, config.critical_volts),
         dew=DewRule(config.dew_margin_c),
         cooler=CoolerRule(config.cooler_tolerance_c),
+        disk=DiskRule(config.disk_low_gb),
         digest=DigestRule(
             enabled=config.digest_enabled,
             interval=config.digest_interval_minutes * 60,

@@ -70,7 +70,13 @@ progress for twice the exposure plus download), and **Autofocus failed** (two ru
 Timing alerts (Normal, sent at once): **Twilight coming** 45 minutes before astronomical dawn,
 and **Target low** 30 minutes before the target sinks below Ekos's altitude limit (the mount's,
 or the Scheduler's constraint). If Ekos flips, "Meridian flip soon" goes into the digest. The
-site comes from KStars's location.
+site comes from KStars's location. If the flip goes wrong: **Meridian flip failed** (Emergency)
+when Ekos reports a failed flip, and **Meridian flip overdue** (Emergency) when the mount is still
+tracking on the same side of the pier 15 minutes (plus one exposure) after Ekos should have
+flipped; "Meridian flip done" follows once it has.
+
+**Disk low** (High) when the disk Ekos saves to has under 10 GB free (`alerts: disk_low_gb`),
+with how many more frames fit and how long that is at tonight's pace.
 
 With a power box: **Battery critical** (Emergency, below 11.5 V for a minute, sent even outside a
 session), **Battery low** (High, below 12.0 V, once) and **Battery OK** when the voltage is back.

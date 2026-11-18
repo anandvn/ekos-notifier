@@ -58,7 +58,8 @@ alerts:
                                 # the Capture module's job settings.
   cooler_tolerance_c: 2.0        # Cooler can't hold / reach: this far above the setpoint
                                  # (0 = off)
-  disk_low_gb: 10
+  disk_low_gb: 10                # Disk low: under this many GB free where Ekos saves frames
+                                 # (0 = off)
   twilight_warning_minutes: 45     # before astronomical dawn (site from KStars's location)
   target_low_warning_minutes: 30   # before the target sinks below Ekos's altitude limit
 

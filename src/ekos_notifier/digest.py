@@ -42,6 +42,9 @@ CLEARED_BY = {
     "dew_risk": "dew_risk_cleared",
     "cooler_cant_hold": "cooler_ok",
     "cooler_cant_reach": "cooler_ok",
+    "disk_low": "disk_ok",
+    "meridian_flip_failed": "meridian_flip_done",
+    "meridian_flip_overdue": "meridian_flip_done",
 }
 CLEARS: dict[str, tuple[str, ...]] = {}
 for _problem, _clear in CLEARED_BY.items():

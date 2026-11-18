@@ -5,6 +5,13 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Meridian flip failed** and **Meridian flip overdue** (Emergency), with "Meridian flip done"
+  after. Ekos's Mount module logs its flips only in its `logText` property (no `newLog` signal),
+  which the Ekos adapter now polls every 10 s, so Mount's log lines are recorded too. Overdue: the
+  mount still on its pre-flip pier side 15 min plus one exposure after the flip time.
+- **Disk low** (High): under `alerts.disk_low_gb` free where Ekos saves frames, with frames and
+  time left at tonight's pace; "Disk space OK" after. `alerts.disk_low_gb` is now read.
+
 - **Dew risk** (High): dew margin under `alerts.dew_margin_c` or humidity over 90 % for 5 min,
   naming dew heaters that are off; "Dew risk passed" in the digest. **Cooler can't hold** and
   **Cooler can't reach setpoint** (High), with "Cooler at setpoint" after: the setpoint comes from

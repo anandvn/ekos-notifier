@@ -9,6 +9,10 @@ method that changes anything.
 - On connect, when KStars (re)appears and when Ekos announces a module, the adapter reads the
   current states so the store knows where things stand without waiting for the next change.
   Snapshot events carry ``"snapshot": True``.
+- Modules whose log has no ``newLog`` signal (Mount, where the meridian flip is run and its
+  failures logged) have their ``logText`` property read every ``LOG_POLL`` seconds; new lines
+  become ``ekos.log`` events like the other modules'. The lines already there when the adapter
+  connects are history and aren't sent; after KStars restarts, every line is new.
 - ``run()`` never returns: a lost bus or a failure reconnects with backoff.
 """
 
@@ -17,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 from collections.abc import Callable, Iterable
 from typing import Any
@@ -58,6 +63,10 @@ SNAPSHOT = (
     ("Guide", "status", "guide.state", "guide"),
     ("Align", "status", "align.state", "align"),
 )
+# Modules with a logText property but no newLog signal (KStars 3.8.5): polled.
+LOG_ONLY = ("Mount",)
+LOG_POLL = 10.0
+LOG_STAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\s+")
 # Text properties, read on connect and after each saved frame (no change signal for them):
 # (module, property, event kind, data key). Sent only when the value changes.
 STRINGS = (
@@ -82,6 +91,7 @@ class EkosAdapter:
         find: Callable[[], list[Candidate]] = candidates,
         clock: Callable[[], float] = time.time,
         backoff: tuple[float, ...] = BACKOFF,
+        log_poll: float = LOG_POLL,
     ) -> None:
         self._emit = emit
         self._find = find
@@ -90,6 +100,8 @@ class EkosAdapter:
         self._bus: Any = None
         self._tasks: set[asyncio.Task] = set()
         self._strings: dict[str, str] = {}  # event kind -> last value sent
+        self._log_poll = log_poll
+        self._log_seen: dict[str, set[str] | None] = {}  # module -> lines sent (None: unread)
 
     # -- lifecycle -------------------------------------------------------------------------
 
@@ -118,6 +130,8 @@ class EkosAdapter:
             bus.add_message_handler(self.on_message)
             if kstars_running:
                 await self.snapshot(bus)
+            self._log_seen = {}
+            self._spawn(self.poll_logs(bus))
             await bus.wait_for_disconnect()
         finally:
             self._bus = None
@@ -166,6 +180,7 @@ class EkosAdapter:
                 for event in events:
                     self._emit(event)
                 if any(e.kind == "kstars.appeared" for e in events):
+                    self._log_seen = {module: set() for module in LOG_ONLY}  # a new log
                     self._spawn(self.snapshot(self._bus))
                 return None
             if not (msg.path or "").startswith("/KStars"):
@@ -206,6 +221,38 @@ class EkosAdapter:
         await self.read_strings(bus, modules)
         if modules is None:
             await self.read_location(bus)
+
+    async def poll_logs(self, bus: Any) -> None:
+        while getattr(bus, "connected", False):
+            try:
+                await self.read_logs(bus)
+            except Exception as exc:  # noqa: BLE001 - the bus went away mid-call
+                log.debug("Ekos adapter: reading logs: %s", exc)
+            await asyncio.sleep(self._log_poll)
+
+    async def read_logs(self, bus: Any) -> None:
+        """New lines in the logs of modules without a newLog signal (newest first in Ekos)."""
+        for module in LOG_ONLY:
+            reply = await self._call(
+                bus,
+                KSTARS_NAME,
+                _path(module),
+                "org.freedesktop.DBus.Properties",
+                "Get",
+                "ss",
+                [_interface(module), "logText"],
+            )
+            if reply is None or not reply.body:
+                self._log_seen[module] = set()  # not there (Ekos stopped): its log will be new
+                continue
+            lines = [str(line) for line in plain(reply.body[0]) or []]
+            seen = self._log_seen.get(module)
+            self._log_seen[module] = set(lines)
+            if seen is None:
+                continue  # history, from before we connected
+            for line in reversed(lines):
+                if line not in seen:
+                    self._send("ekos.log", {"module": module, "text": LOG_STAMP.sub("", line)})
 
     async def read_location(self, bus: Any) -> None:
         """KStars's site (``location()``: JSON with latitude, longitude, elevation, tz)."""

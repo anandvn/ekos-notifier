@@ -19,8 +19,9 @@ Rules so far:
 - **Capture aborted**, **Scheduler aborted** and **Capture stalled** (High): see
   ``ekos_notifier.capture``.
 - **Autofocus failed** (High, two failed runs in a row): see ``ekos_notifier.focus``.
-- **Twilight coming**, **Target low** (Normal) and **Meridian flip soon** (Quiet): see
-  ``ekos_notifier.sky``.
+- **Twilight coming**, **Target low** (Normal), **Meridian flip soon** (Quiet), and **Meridian
+  flip failed** and **Meridian flip overdue** (Emergency): see ``ekos_notifier.sky``.
+- **Disk low** (High): see ``ekos_notifier.disk``.
 - **Battery critical** (Emergency, also outside a session), **Battery low**, **Power output
   off** and **No current on an output** (High): see ``ekos_notifier.power``.
 - **Dew risk**, **Cooler can't hold** and **Cooler can't reach setpoint** (High): see
@@ -44,6 +45,7 @@ from ekos_notifier.alerts import SessionRule
 from ekos_notifier.capture import CaptureRule
 from ekos_notifier.conditions import CoolerRule, DewRule
 from ekos_notifier.digest import DigestRule
+from ekos_notifier.disk import DiskRule
 from ekos_notifier.events import Event
 from ekos_notifier.focus import AutofocusRule
 from ekos_notifier.guiding import RECOVERY, GuidingRule, PoorGuidingRule
@@ -94,6 +96,7 @@ class Rules:
         power: PowerRule | None = None,
         dew: DewRule | None = None,
         cooler: CoolerRule | None = None,
+        disk: DiskRule | None = None,
     ) -> None:
         self.unparked_grace = unparked_grace
         self.guiding = GuidingRule(guiding_recovery)
@@ -108,6 +111,7 @@ class Rules:
             power or PowerRule(),
             dew or DewRule(),
             cooler or CoolerRule(),
+            disk or DiskRule(free=lambda path: None),
         ]
         self._park: str | None = None
         self._mount: str | None = None

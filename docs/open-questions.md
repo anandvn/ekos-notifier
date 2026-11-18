@@ -22,6 +22,10 @@ and `CLAUDE.md` if a decision changes.
       Mount exposes `altitudeLimits`, `hourAngleLimit`, `hourAngle`, `pierSide`, `parkStatus` as
       properties (enough for the mount-near-limit rule). **Focus has no properties**: state comes
       only from getter methods and signals. Payload contents still need a recorded night.
+      **Mount has no `newLog` signal** but has a `logText` property (newest first, each line
+      prefixed with an ISO time): the meridian flip's progress and failures ("Meridian flip ready to
+      start...", "running...", "completed.", "Meridian flip failed, pier side not changed") are
+      only there, so the Ekos adapter polls it every 10 s (seen live on 3.8.5).
 - [x] How does Ekos report scheduler start/stop and job transitions (needed for automatic session start)?
       Scheduler has a `status` property (+ `newStatus` signal), `currentJobName`, `currentJobJson`
       and `jsonJobs`. Mapping the status integers to states needs a recorded scheduler run.
