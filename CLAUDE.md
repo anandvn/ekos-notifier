@@ -58,8 +58,10 @@ mostly at dark sites with intermittent internet.
 ## Platform gotcha: Flatpak StellarMate
 
 StellarMate's Arch-based release runs KStars/Ekos (and possibly PHD2/INDI) as **Flatpaks**.
-Ekos Notifier must run on the host (pipx), find KStars data under `~/.var/app/org.kde.kstars/…`
-as well as `~/.local/share/kstars/`, and reach D-Bus/ports across the sandbox.
+Ekos Notifier must run on the host, find KStars data under `~/.var/app/org.kde.kstars/…` as well
+as `~/.local/share/kstars/`, and reach D-Bus/ports across the sandbox. It installs into a venv in
+the user's home, set up by the `install.sh` that ships with 1.0 (decided 2026-11-18):
+StellarMate images have no pipx and no pacman repositories, so don't plan on pipx or the AUR.
 This is unverified — see `docs/open-questions.md`.
 
 ## Dev environment

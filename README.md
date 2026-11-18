@@ -30,13 +30,17 @@ no problem.
 > ekos-notifier run            # Ctrl-C to stop; the database is ~/.local/share/ekos-notifier/ekos-notifier.db
 > ```
 
-## Planned install
+## Planned install (1.0)
 
 ```bash
-pipx install ekos-notifier
-ekos-notifier install-service
-# the first-run wizard opens in your browser
+curl -fsSL https://raw.githubusercontent.com/anandvn/ekos-notifier/main/install.sh | sh
+# installs into your home folder, offers to start the service; the first-run wizard opens in your browser
 ```
+
+No root and no extra tools: the script uses Python's own `venv`, which every supported OS ships
+(StellarMate's images have neither pipx nor pacman repositories). Already use pipx or uv? `pipx
+install ekos-notifier` or `uv tool install ekos-notifier`, then `ekos-notifier install-service`,
+works too.
 
 ## Contributing
 

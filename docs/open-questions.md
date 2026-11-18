@@ -58,8 +58,12 @@ and `CLAUDE.md` if a decision changes.
 - [x] Are PHD2 and INDI Flatpaks too, or native packages? Record versions.
       **On the VM:** PHD2 2.6.14 is native. A native `libindi 2.2.5` is installed, but Ekos uses
       the copy bundled in the KStars Flatpak (also 2.2.5) — see above.
-- [ ] Confirm Ekos Notifier installs and runs on the host via pipx (Arch Python version, `dbus-fast` works).
-      Host Python is 3.14.7; an editable install, tests and the CLI work. pipx + `dbus-fast` not yet tried.
+- [ ] Confirm Ekos Notifier installs and runs on the host from a plain venv (the 1.0 `install.sh`;
+      StellarMate images ship no pipx and no pacman repositories, so pipx is out).
+      Host Python is 3.14.7 with `venv` and `ensurepip` in the base `python` package; a venv
+      install (the dev checkout), tests, the CLI and the systemd service work, `dbus-fast`
+      included. Still to try: a fresh venv from PyPI on a stock StellarMate image, and the same
+      on Raspberry Pi OS (needs `python3-venv`) and Ubuntu.
 
 ## Other platforms (Astroberry, Raspberry Pi OS, Ubuntu, AstroArch)
 

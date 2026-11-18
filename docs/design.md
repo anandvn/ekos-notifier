@@ -428,7 +428,12 @@ Because outputs only read from the store, a dead notifier, network or sync targe
 | AstroArch | Arch ARM, rolling | native, latest | Supported |
 | Debian 11 and older | 3.9 or older | — | Unsupported (Python < 3.10) |
 | KStars snap | any | snap | Unverified |
-- **Install:** `pipx install ekos-notifier` then `ekos-notifier install-service` (systemd user unit) and the wizard opens in the browser.
+- **Install:** an `install.sh` shipped with 1.0 (`curl -fsSL …/install.sh | sh`), because StellarMate's images have no pipx and no pacman repositories, and asking users to build pipx from the AUR is too much. It needs only Python's own `venv` and `ensurepip` (part of the base `python` package on Arch, `python3-venv` on Debian/Ubuntu/Raspberry Pi OS; checked on the StellarMate VM, Python 3.14.7). No root:
+  - creates `~/.local/share/ekos-notifier/venv` and `pip install`s `ekos-notifier` into it (a venv isn't affected by the system Python's `EXTERNALLY-MANAGED` marker);
+  - links `~/.local/bin/ekos-notifier`, and says how to add `~/.local/bin` to `PATH` if it's missing;
+  - offers `ekos-notifier install-service` (the unit runs the venv's Python, since it uses the Python that wrote it) and then the wizard;
+  - re-run, it upgrades in place, and rebuilds the venv if the system Python moved to a new version (an OS update from 3.14 to 3.15 breaks a venv's link; `doctor` detects that and says to re-run the installer); `--uninstall` removes the service, the venv and the link, keeping the config and the database.
+  - pipx or uv users can install the package themselves and run `install-service`; `ekos-notifier upgrade` comes with the script.
 - **Footprint target:** < 100 MB RAM, < 2 % CPU on a Pi 4 during a session.
 - **Quality:** simulation-replay test suite in CI (GitHub Actions), semver releases, CHANGELOG, MIT LICENSE, CONTRIBUTING and issue templates from day one.
 
@@ -441,6 +446,6 @@ Four milestones to a public 1.0; the wizard and docs land before the GUI polish 
 | 0.1 Core | Event sources (Ekos D-Bus, PHD2, INDI), canonical metrics with capability gating, `indi-dump`, SQLite store, session lifecycle, alert rules, Apprise notifier, hourly digest, simulation mode |
 | 0.2 First run | Wizard, `doctor`, config validation, Quick start + Alerts reference docs, Olde English and Terse styles |
 | 0.3 GUI + sync | Web GUI views, export folders, rclone sync and Flush, heartbeat |
-| 1.0 Public | Full docs site, power box presets, pipx packaging, reference importer, multi-setup test matrix passing in CI, field-tested on StellarMate and Astroberry |
+| 1.0 Public | Full docs site, power box presets, `install.sh` (venv, no root) and PyPI release, reference importer, multi-setup test matrix passing in CI, field-tested on StellarMate and Astroberry |
 
 Open questions are tracked in [open-questions.md](open-questions.md).

@@ -2,7 +2,7 @@
 user's session and restarts if it fails.
 
 The unit runs ``<this Python> -m ekos_notifier run``, the same installation that ran the
-command (pipx, a venv, …). It's wanted by ``default.target``: it starts when the user's systemd
+command (the install.sh venv, pipx, …). It's wanted by ``default.target``: it starts when the user's systemd
 manager does, at login (or at boot with lingering enabled), and waits for KStars by itself.
 StellarMate starts KStars as a user service too (``org.kde.kstars.service``), so they share the
 user session. Logs go to the journal: ``journalctl --user -u ekos-notifier``.
