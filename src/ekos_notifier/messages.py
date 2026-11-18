@@ -38,10 +38,13 @@ class Alert:
     immediate: bool  # a Normal or Quiet one sent at once (not just in the digest)
     what: str  # one line for `config alerts`
     clears: str | None = None  # the problem this is the all-clear for
+    off: bool = False  # off unless the user turns it on
 
     @property
     def default(self) -> str:
         """The default as a ``messages:`` level."""
+        if self.off:
+            return "off"
         if self.priority in ("emergency", "high") or self.immediate:
             return self.priority
         return "digest"
@@ -75,6 +78,8 @@ ALERTS: dict[str, Alert] = {
     "session_summary": A("normal", True, "A session ended: frames, integration, mount"),
     "twilight_coming": A("normal", True, "Astronomical dawn is near"),
     "target_low": A("normal", True, "The target sinks below the altitude limit soon"),
+    "flats_reminder": A("normal", True, "Filters with lights but no flats tonight"),
+    "darks_reminder": A("normal", True, "Darks starting: cover the telescope", off=True),
     # All-clears
     "mount_unparked_cleared": A("normal", False, "The mount is parked again",
                                 "ekos_stopped_mount_unparked"),
@@ -150,7 +155,7 @@ class MessageSettings:
         name = d.get("rule", "")
         alert = ALERTS.get(name)
         level = self.level(name)
-        if alert is None or level == alert.default:
+        if alert is None or (level == alert.default and not alert.off):
             return event  # as the rule raised it
         data = {**d, "default_priority": d.get("priority")}
         if level == "off":

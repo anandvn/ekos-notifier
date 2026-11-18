@@ -11,7 +11,12 @@ from ekos_notifier.samples import SAMPLE_NIGHT
 from ekos_notifier.service import build_rules
 from ekos_notifier.store import Store
 
-SAMPLE_RULES = ["session_started", "session_summary", "ekos_stopped_mount_unparked"]
+SAMPLE_RULES = [
+    "session_started",
+    "session_summary",
+    "flats_reminder",
+    "ekos_stopped_mount_unparked",
+]
 
 
 def rules():
@@ -90,7 +95,7 @@ def test_cli_simulate_sample_and_list(tmp_path, capsys, recorded_db):
     (tmp_path / "c.yaml").write_text("{}")
     assert main(["simulate", "--brief", "--config", str(tmp_path / "c.yaml")]) == 0
     out = capsys.readouterr().out
-    assert "Mount left unparked" in out and "3 alerts would be sent at once" in out
+    assert "Mount left unparked" in out and "4 alerts would be sent at once" in out
     path, _ = recorded_db
     assert (
         main(["simulate", "--list", "--db", str(path), "--config", str(tmp_path / "c.yaml")]) == 0

@@ -27,6 +27,8 @@ Rules so far:
   off** and **No current on an output** (High): see ``ekos_notifier.power``.
 - **Dew risk**, **Cooler can't hold** and **Cooler can't reach setpoint** (High): see
   ``ekos_notifier.conditions``.
+- **Flats reminder** (Normal, with the summary) and **Darks reminder** (off by default): see
+  ``ekos_notifier.calibration``.
 - **Hourly digest** (Quiet, or Normal with "Attention"), which also sees every other rule's
   alerts: see ``ekos_notifier.digest``.
 - **Ekos stopped with the mount unparked** (Emergency): Ekos or INDI stops, or KStars vanishes,
@@ -44,6 +46,7 @@ from typing import Any
 
 from ekos_notifier.alerts import SessionRule
 from ekos_notifier.align import PlateSolveRule
+from ekos_notifier.calibration import CalibrationRule
 from ekos_notifier.capture import CaptureRule
 from ekos_notifier.conditions import CoolerRule, DewRule
 from ekos_notifier.digest import DigestRule
@@ -113,6 +116,7 @@ class Rules:
             CaptureRule(),
             AutofocusRule(),
             PlateSolveRule(),
+            CalibrationRule(),
             PoorGuidingRule(guiding_poor_window, deviation_limit),
             power or PowerRule(),
             dew or DewRule(),

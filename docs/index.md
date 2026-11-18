@@ -104,6 +104,10 @@ and integration this hour and tonight, median guide RMS, failed dithers and ever
 happened since the last one. Set it in the config's `digest:` section (`enabled`,
 `interval_minutes`, `align_to_clock`).
 
+When a session ends, a **Flats reminder** lists the filters with lights but no flats tonight.
+A **Darks reminder** ("cover the telescope" as a dark job starts) is off unless you turn it on
+with `messages: darks_reminder: normal`.
+
 ### Choosing which messages you get
 
 Every alert can be turned off, held for the hourly digest, or sent at a different priority, in

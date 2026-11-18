@@ -61,6 +61,7 @@ messages: {}
 #  twilight_coming: quiet
 #  disk_low: emergency
 #  digest: normal          # the hourly digest itself (default quiet)
+#  darks_reminder: normal  # off by default: "cover the telescope" as darks start
 
 # Alert thresholds.
 alerts:

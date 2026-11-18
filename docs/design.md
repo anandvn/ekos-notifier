@@ -122,8 +122,8 @@ Priorities map onto each notifier's native levels where it has them (Pushover �
 | Target low | 30 min (`alerts.target_low_warning_minutes`) before the target the mount is tracking sinks below Ekos's altitude limit: the mount limit if enabled (`[Mount] MinimumAltLimit`), else the Scheduler's constraint (`[Scheduler] SchedulerAltitudeValue`), else 10°. Once per target | Immediate |
 | Twilight coming | 45 min (`alerts.twilight_warning_minutes`) before astronomical dawn (Sun rising through −18°), once per session | Immediate |
 | Sequence complete | Sequence ends; starts the parking escalation if mount still tracking | Immediate |
-| Flats reminder | Lights done for the night | Digest |
-| Darks reminder (optional, off by default) | Dark sequence started | Digest |
+| Flats reminder | A session that imaged ends: the filters with lights tonight but no flats tonight (flats from the sequence or an earlier session of the night count; each filter once per night; not when you stopped Ekos). The sample night has one: Luminance lights, flats for the other six filters only | With the summary |
+| Darks reminder (off by default: `messages: darks_reminder: normal`) | A dark job starts, known before its first frame: as Capture starts, the Ekos adapter reads the active job's frame type (`getActiveJobID`, `getJobFrameType`, read-only; checked live on 3.8.5) as `capture.job`. "Cover the telescope". Once per night, session or not | Immediate |
 
 ### Normal — milestones
 

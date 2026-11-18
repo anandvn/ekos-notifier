@@ -13,6 +13,9 @@ method that changes anything.
   failures logged) have their ``logText`` property read every ``LOG_POLL`` seconds; new lines
   become ``ekos.log`` events like the other modules'. The lines already there when the adapter
   connects are history and aren't sent; after KStars restarts, every line is new.
+- When Capture starts capturing, the active job's frame type is read (``getActiveJobID``, then
+  ``getJobFrameType``, both read-only getters) and sent as ``capture.job`` (``job``,
+  ``frame_type``) when it changes: a dark job starting is known before its first frame.
 - ``run()`` never returns: a lost bus or a failure reconnects with backoff.
 """
 
@@ -100,6 +103,7 @@ class EkosAdapter:
         self._bus: Any = None
         self._tasks: set[asyncio.Task] = set()
         self._strings: dict[str, str] = {}  # event kind -> last value sent
+        self._job: tuple[int, str] | None = None  # the active Capture job last sent
         self._log_poll = log_poll
         self._log_seen: dict[str, set[str] | None] = {}  # module -> lines sent (None: unread)
 
@@ -189,6 +193,8 @@ class EkosAdapter:
                 self._spawn(self.snapshot(self._bus, modules=[str(plain(msg.body[0]))]))
             for event in decode_signal(now, msg.path, msg.member, list(msg.body)):
                 self._emit(event)
+                if event.kind == "capture.state" and event.data.get("state") == "capturing":
+                    self._spawn(self.read_job(self._bus))
             if msg.member == "captureComplete":
                 self._spawn(self.read_strings(self._bus))
         except Exception:  # noqa: BLE001
@@ -221,6 +227,23 @@ class EkosAdapter:
         await self.read_strings(bus, modules)
         if modules is None:
             await self.read_location(bus)
+
+    async def read_job(self, bus: Any) -> None:
+        """The active Capture job's frame type, sent when the job or its type changes."""
+        if bus is None:
+            return
+        capture = (KSTARS_NAME, _path("Capture"), _interface("Capture"))
+        reply = await self._call(bus, *capture, "getActiveJobID", "", [])
+        if reply is None or not reply.body or int(reply.body[0]) < 0:
+            return
+        job = int(reply.body[0])
+        reply = await self._call(bus, *capture, "getJobFrameType", "i", [job])
+        if reply is None or not reply.body:
+            return
+        frame_type = states.name("frame_type", int(reply.body[0]))
+        if self._job != (job, frame_type):
+            self._job = (job, frame_type)
+            self._send("capture.job", {"job": job, "frame_type": frame_type})
 
     async def poll_logs(self, bus: Any) -> None:
         while getattr(bus, "connected", False):
