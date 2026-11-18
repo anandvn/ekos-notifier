@@ -85,7 +85,8 @@ every 2 s, once a save has settled), or at once with `systemctl --user reload ek
 (SIGHUP). New notifier URLs, message levels and thresholds take effect without losing the
 night's state (open alerts, the digest's counts, baselines); the INDI connection restarts if
 its settings changed. A config with a mistake is logged and ignored: the previous settings
-stay. A unit installed before this needs `ekos-notifier install-service` again for `reload`
+stay. Starting with a broken config, the service records the night with no alerts until the
+file is fixed, rather than not running at all. A unit installed before this needs `ekos-notifier install-service` again for `reload`
 (re-running the installer does it).
 
 Alerts so far: **Starting session** (with pre-flight checks: battery, free disk space, dew

@@ -70,7 +70,7 @@ class IndiAdapter:
                     )
                     self._waiting_logged = True
             except Exception as exc:  # noqa: BLE001 - supervisor: log, back off, retry
-                log.warning("INDI adapter: %s", exc)
+                log.warning("INDI adapter: %s", exc, exc_info=True)  # not a connection: a bug
             delay = self._backoff[min(failures, len(self._backoff) - 1)]
             failures += 1
             await asyncio.sleep(delay)

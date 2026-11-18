@@ -31,6 +31,7 @@ from typing import Any
 
 from dbus_fast import Message, MessageType
 from dbus_fast.aio import MessageBus
+from dbus_fast.errors import AuthError, DBusError, InvalidAddressError
 
 from ekos_notifier.ekos import states
 from ekos_notifier.ekos.bus import Candidate, candidates
@@ -66,6 +67,10 @@ SNAPSHOT = (
     ("Guide", "status", "guide.state", "guide"),
     ("Align", "status", "align.state", "align"),
 )
+CALL_TIMEOUT = 10.0  # a method call KStars doesn't answer (hung) is given up on
+# Failures that are just the bus or KStars coming and going: logged in one line. Anything else
+# is a bug, logged with its traceback.
+EXPECTED = (OSError, EOFError, asyncio.TimeoutError, AuthError, DBusError, InvalidAddressError)
 # Modules with a logText property but no newLog signal (KStars 3.8.5): polled.
 LOG_ONLY = ("Mount",)
 LOG_POLL = 10.0
@@ -99,6 +104,7 @@ class EkosAdapter:
         self._emit = emit
         self._find = find
         self._clock = clock
+        self.call_timeout = CALL_TIMEOUT
         self._backoff = backoff
         self._bus: Any = None
         self._tasks: set[asyncio.Task] = set()
@@ -118,7 +124,7 @@ class EkosAdapter:
             except asyncio.CancelledError:
                 raise
             except Exception as exc:  # noqa: BLE001 - supervisor: log, back off, retry
-                log.warning("Ekos adapter: %s", exc)
+                log.warning("Ekos adapter: %s", exc, exc_info=not isinstance(exc, EXPECTED))
             delay = self._backoff[min(failures, len(self._backoff) - 1)]
             failures += 1
             await asyncio.sleep(delay)
@@ -326,17 +332,17 @@ class EkosAdapter:
     async def _call(
         self, bus: Any, dest: str, path: str, iface: str, member: str, sig: str, body: list[Any]
     ) -> Message | None:
-        """A method call; ``None`` on an error reply (e.g. UnknownObject while Ekos is stopped)."""
-        reply = await bus.call(
-            Message(
-                destination=dest,
-                path=path,
-                interface=iface,
-                member=member,
-                signature=sig,
-                body=body,
-            )
+        """A method call; ``None`` on an error reply (e.g. UnknownObject while Ekos is stopped)
+        or no reply within ``call_timeout`` (KStars hung: the caller gives up rather than wait
+        forever, so tasks can't pile up)."""
+        message = Message(
+            destination=dest, path=path, interface=iface, member=member, signature=sig, body=body
         )
+        try:
+            reply = await asyncio.wait_for(bus.call(message), self.call_timeout)
+        except asyncio.TimeoutError:
+            log.debug("%s %s.%s: no reply in %gs", path, iface, member, self.call_timeout)
+            return None
         if reply is None or reply.message_type == MessageType.ERROR:
             log.debug("%s %s.%s: %s", path, iface, member, getattr(reply, "error_name", "no reply"))
             return None

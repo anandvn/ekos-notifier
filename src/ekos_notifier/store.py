@@ -127,6 +127,10 @@ def default_path() -> Path:
     return Path(base) / "ekos-notifier" / "ekos-notifier.db"
 
 
+class IncompatibleDatabase(RuntimeError):
+    """The database is from a newer Ekos Notifier. Worded for the user; retrying won't help."""
+
+
 class Store:
     def __init__(self, path: str | Path, *, readonly: bool = False) -> None:
         self.path = Path(path)
@@ -154,7 +158,9 @@ class Store:
     def _migrate(self) -> None:
         version = self.schema_version
         if version > len(MIGRATIONS):
-            raise RuntimeError(
+            # Written by a newer Ekos Notifier (this is a downgrade): refuse rather than write
+            # to a schema this version doesn't know.
+            raise IncompatibleDatabase(
                 f"{self.path} has schema {version}; this Ekos Notifier knows up to "
                 f"{len(MIGRATIONS)}. Upgrade Ekos Notifier, or use a different database."
             )

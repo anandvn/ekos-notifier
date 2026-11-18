@@ -12,6 +12,7 @@ from ekos_notifier import __version__
 
 # Distinct from argparse's usage-error code (2) so scripts can tell them apart.
 EXIT_NOT_IMPLEMENTED = 3
+EXIT_FATAL = 78  # EX_CONFIG: an error retrying won't fix; the unit doesn't restart on it
 
 PLANNED = {
     "doctor": "check D-Bus, PHD2, INDI, clock, disk, notifier and sync, and suggest fixes",
@@ -181,16 +182,37 @@ def cmd_run(args: argparse.Namespace) -> int:
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    cfg = _load_config(args.config)
-    if cfg is None:
-        return 1
+    from pathlib import Path
+
+    from ekos_notifier import config as config_module
+    from ekos_notifier.store import IncompatibleDatabase
+
+    logger = logging.getLogger("ekos_notifier")
+    try:
+        cfg = config_module.load(args.config)
+    except config_module.ConfigError as exc:
+        path = Path(args.config) if args.config else config_module.default_path()
+        if not path.exists():  # `--config` naming a file that isn't there: a typo, say so
+            print(f"Config error: {exc}", file=sys.stderr)
+            return 1
+        # A mistake in the file mustn't cost the night: record it, send nothing, and pick up
+        # the file as soon as it's fixed (the config watcher).
+        logger.error(
+            "Config error: %s. Running with recording only, no alerts, until it's fixed: "
+            "fix the file (ekos-notifier config check) and it's picked up by itself.",
+            exc,
+        )
+        cfg = config_module.Config(path=path)
     try:
         asyncio.run(serve(args.db or default_path(), config=cfg, watch_config=True))
     except AlreadyRunning as exc:
-        logging.getLogger("ekos_notifier").error("%s", exc)
+        logger.error("%s", exc)
         return 1
+    except IncompatibleDatabase as exc:
+        logger.error("%s", exc)
+        return EXIT_FATAL
     except Exception as exc:  # noqa: BLE001 - report, don't dump a traceback on users
-        logging.getLogger("ekos_notifier").error("%s", exc, exc_info=args.verbose)
+        logger.error("%s", exc, exc_info=args.verbose)
         return 1
     return 0
 
