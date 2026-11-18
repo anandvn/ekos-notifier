@@ -150,9 +150,7 @@ class Rules:
         return out + self.digest.tick(now)
 
     def _handle(self, event: Event) -> list[Event]:
-        out = self._tick(event.ts) + self.guiding.handle(event)
-        for rule in self.session_rules:
-            out += rule.handle(event)
+        out = self._tick(event.ts)
         kind, d, sid = event.kind, event.data, event.session_id
         state = d.get("state")
 
@@ -205,6 +203,11 @@ class Rules:
                 self._calibration.pop(sid, None)
             else:
                 out.append(self._summary(event, sid))
+        # The other rules after this one, so "Starting session" comes before what it leads to
+        # (seen live: "Twilight coming" arrived just before "Starting session").
+        out += self.guiding.handle(event)
+        for rule in self.session_rules:
+            out += rule.handle(event)
         return out
 
     def _tick(self, now: float) -> list[Event]:

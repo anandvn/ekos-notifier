@@ -87,14 +87,12 @@ class SkyRule(SessionRule):
                 self._site_from_kstars = self._site_from_kstars or from_kstars
         elif kind == "mount.coords" and "ra" in d and "dec" in d:
             self._coords = (float(d["ra"]), float(d["dec"]))
-            key = self._coords
-            if self._target_key is None or (
-                abs(key[1] - self._target_key[1]) > SAME_TARGET
-                or abs((key[0] - self._target_key[0] + 12) % 24 - 12) * 15 > SAME_TARGET
-            ):
-                self._target_key, self._warned, self._computed_at = key, set(), None
+            if self._tracking:
+                self._settled()
         elif kind == "mount.state":
             self._tracking = d.get("state") == "tracking"
+            if self._tracking and self._coords is not None:
+                self._settled()
         elif kind == "capture.target" and d.get("target"):
             self._target_name = d["target"]
         elif kind == "ekos.log" and d.get("module") == "Scheduler":
@@ -103,6 +101,19 @@ class SkyRule(SessionRule):
                 self._target_name = text[5 : text.index("'", 5)]
         return []
 
+    def _settled(self) -> None:
+        """The mount is tracking here: a new target if it's somewhere else than the last one.
+        Positions passed through while slewing don't count (seen live: a meridian flip swung
+        the pointing through the pole and back, and "Target low" was sent again)."""
+        assert self._coords is not None
+        key, old = self._coords, self._target_key
+        if old is None or (
+            abs(key[1] - old[1]) > SAME_TARGET
+            or abs((key[0] - old[0] + 12) % 24 - 12) * 15 > SAME_TARGET
+        ):
+            self._target_key, self._warned = key, set()
+        self._computed_at = None
+
     def on_tick(self, now: float) -> list[Event]:
         if self._site is None:
             return []
@@ -110,7 +121,9 @@ class SkyRule(SessionRule):
         out: list[Event] = []
         if (
             self._dawn is not None
-            and self._dawn_warned != self._dawn
+            # Once per night, not per session: each recomputation lands a fraction of a second
+            # apart, so the same dawn has to be recognised (seen live: re-sent every session).
+            and (self._dawn_warned is None or abs(self._dawn - self._dawn_warned) > 600)
             and 0 < self._dawn - now <= self.twilight_warning
         ):
             self._dawn_warned = self._dawn

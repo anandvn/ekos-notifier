@@ -150,3 +150,15 @@ def test_summary_after_a_restart_counts_the_sessions_frames():
     ]
     assert "OIII 3×60s" in summary["body"] and "1 flat" in summary["body"]
     assert "after 30 min" in summary["body"]
+
+
+def test_starting_session_comes_first():
+    # Seen live: "Twilight coming" and "Target low" arrived just before "Starting session".
+    from ekos_notifier.ekos.settings import ObservingLimits
+    from ekos_notifier.sky import SkyRule
+
+    r = Rules(sky=SkyRule(twilight_warning=86400, limits=lambda: ObservingLimits()))
+    r.handle(ev(0, "site.location", latitude=51.5, longitude=0.0, via="kstars"))
+    out = r.handle(ev(1, "session.started", night="n", reason="light_frame"))
+    titles = [a.data["title"] for a in out if a.kind == "alert"]
+    assert titles[0] == "Starting session" and "Twilight coming" in titles
