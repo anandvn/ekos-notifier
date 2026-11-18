@@ -5,6 +5,11 @@ Semantic Versioning.
 
 ## Unreleased
 
+## 0.1.1 — 2026-11-19
+
+Fixes from the first live rig: battery alerts that didn't fire, a way to see which INDI devices
+were recognised, config settings that silently did nothing, and the installer's PATH advice.
+
 - **The log says what INDI devices were recognised**, once they've settled after Ekos
   connects them: "INDI recognised: Power Box (battery voltage, current, outputs); QHY CCD
   (camera temperature)". Again when that changes, and "nothing recognised yet" (with a pointer
