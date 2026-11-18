@@ -1,19 +1,23 @@
 # Ekos Notifier configuration — example
 # Copy to ~/.config/ekos-notifier/config.yaml. Every key is optional; defaults are shown.
-# The first-run wizard writes this file for you, so most people never edit it by hand.
+# `ekos-notifier config init` (and install.sh) writes this file for you to fill in.
 # PRE-ALPHA: keys may change before 1.0.
+#
+# YAML in two lines: indent with spaces (never tabs), and keep a setting lined up with the ones
+# around it. To use an example, delete the "#" and nothing else. After saving, check it with
+# `ekos-notifier config check`; the running service applies it by itself within seconds.
 
 # Where to send alerts. Any Apprise URL works: https://github.com/caronc/apprise/wiki
 # Uncomment a line (or add your own) to turn alerts on; with none, Ekos Notifier only records.
 notify:
-#  - "pover://USER_KEY@APP_TOKEN"      # Pushover
-#  - "ntfy://ntfy.sh/my-rig-topic"     # ntfy
+  # - "pover://USER_KEY@APP_TOKEN"      # Pushover
+  # - "ntfys://ntfy.sh/my-rig-topic"    # ntfy
 
 # An alert that can't be delivered (no internet) is retried for this long, then dropped rather
 # than sent late. It stays in the session record. 0 = try once, never retry.
 notify_expire_minutes: 10
 
-# Wording of messages: plain | terse | olde
+# Wording of messages: plain | terse | olde. NOT USED YET: every message is plain for now.
 style: plain
 
 # Hourly status digest while a session is running.
@@ -24,6 +28,7 @@ digest:
 
 # Optional dead-man's switch: a URL pinged every minute during a session.
 # If pings stop, the service (e.g. Healthchecks.io) alerts you. Leave empty to disable.
+# NOT USED YET (version 0.3).
 heartbeat:
   url: ""
   grace_minutes: 30
@@ -35,10 +40,10 @@ heartbeat:
 indi:
   host: ""
   port: 0
-  metrics: {}
-  #  power.voltage: "My Old Box / VOLTAGE.VALUE"   # power boxes on INDI's standard power
-                                                  # interface are recognised without this
-  #  env.humidity: "My Sensor / HUMIDITY.VALUE"
+  metrics:
+    # power.voltage: "My Old Box / VOLTAGE.VALUE"   # power boxes on INDI's standard power
+    #                                               # interface are recognised without this
+    # env.humidity: "My Sensor / HUMIDITY.VALUE"
 
 # Battery alerts, from your power box's input voltage. battery: agm_12v (low 12.0 V, critical
 # 11.5 V) | lifepo4_12v (12.8 V, 12.0 V) | mains (voltage alerts off) | custom. low_volts and
@@ -56,12 +61,12 @@ power:
 #   normal | high | emergency   sent at once at that priority (Emergency repeats on Pushover
 #              until you acknowledge it)
 # All-clears (guiding_recovered, battery_ok, …) follow their problem when that's off or digest.
-messages: {}
-#  phd2_warning: digest
-#  twilight_coming: quiet
-#  disk_low: emergency
-#  digest: normal          # the hourly digest itself (default quiet)
-#  darks_reminder: normal  # off by default: "cover the telescope" as darks start
+messages:
+  # phd2_warning: digest
+  # twilight_coming: quiet
+  # disk_low: emergency
+  # digest: normal          # the hourly digest itself (default quiet)
+  # darks_reminder: normal  # off by default: "cover the telescope" as darks start
 
 # Alert thresholds.
 alerts:
@@ -82,20 +87,23 @@ alerts:
   target_low_warning_minutes: 30   # before the target sinks below Ekos's altitude limit
 
 # Carry data home with rclone. dest is any rclone remote:path or a local path (USB drive).
+# NOT USED YET (version 0.3).
 sync:
   dest: ""                 # e.g. "nas:astro/sessions" or "/run/media/me/USB/astro"
   include_fits: false
   auto_when_reachable: true
 
-# Local web dashboard (LAN only).
+# Local web dashboard (LAN only). NOT USED YET (version 0.2).
 gui:
   port: 8765
   night_mode: auto
 
+# NOT USED YET.
 units:
   temperature: C           # C | F
   guide_error: arcsec      # arcsec | px
   clock: 24h               # 24h | 12h
 
+# NOT USED YET.
 privacy:
   round_site_coordinates: false

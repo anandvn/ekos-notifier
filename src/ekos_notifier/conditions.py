@@ -46,6 +46,8 @@ def _c(value: float) -> str:
 
 
 class DewRule(SessionRule):
+    SETTINGS = ("margin", "humidity")
+
     def __init__(
         self,
         margin: float = 2.0,
@@ -202,6 +204,8 @@ class DewRule(SessionRule):
 
 
 class CoolerRule(SessionRule):
+    SETTINGS = ("tolerance",)
+
     def __init__(
         self,
         tolerance: float = 2.0,

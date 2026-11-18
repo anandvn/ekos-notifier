@@ -80,6 +80,14 @@ ekos-notifier config check
 ekos-notifier test-notify              # add --emergency to try a repeating Pushover Emergency
 ```
 
+The running service applies a saved config by itself within a few seconds (checking the file
+every 2 s, once a save has settled), or at once with `systemctl --user reload ekos-notifier`
+(SIGHUP). New notifier URLs, message levels and thresholds take effect without losing the
+night's state (open alerts, the digest's counts, baselines); the INDI connection restarts if
+its settings changed. A config with a mistake is logged and ignored: the previous settings
+stay. A unit installed before this needs `ekos-notifier install-service` again for `reload`
+(re-running the installer does it).
+
 Alerts so far: **Starting session** (with pre-flight checks: battery, free disk space, dew
 margin and humidity, and camera temperature against its setpoint, whatever your rig reports;
 a failed check is a warning, never a stop), the **session summary** (frames, integration,

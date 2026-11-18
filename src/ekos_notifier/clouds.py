@@ -49,6 +49,8 @@ def _median(values: Iterable[float]) -> float | None:
 
 
 class CloudsRule(SessionRule):
+    SETTINGS = ("drop", "below")
+
     def __init__(self, drop: float = DROP, *, sustain: float = SUSTAIN) -> None:
         super().__init__()
         self.drop = drop

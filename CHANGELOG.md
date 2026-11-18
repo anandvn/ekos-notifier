@@ -11,6 +11,14 @@ Semantic Versioning.
   the service; rebuilding the venv after a Python upgrade); `--uninstall` keeps config and
   sessions. **`ekos-notifier config init`** writes the commented example config (mode 600),
   now shipped inside the package. CI runs the installer end to end.
+- **Config reload**: the running service applies an edited config by itself within seconds
+  (or at once with `systemctl --user reload ekos-notifier`): new notifier URLs, message
+  levels and thresholds take effect without losing the night's state, and the INDI connection
+  restarts if its settings changed. A config with a mistake is logged and ignored.
+- **README**: a step-by-step install and setup guide (notifier URLs, editing the config,
+  messages, thresholds, devices, troubleshooting). The example config's commented examples can
+  now be used by deleting the `#` (under `messages: {}` that made invalid YAML), and settings
+  not used yet are marked so.
 
 - **Clouds** (High): PHD2's guide star fading by half for 2 minutes, or two frames in a row
   losing half their stars, with the numbers; **Clouds passed** when the stars are back. A star

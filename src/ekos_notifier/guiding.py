@@ -345,6 +345,8 @@ class PoorGuidingRule(SessionRule):
     Ekos logs in the KStars language; the Ekos path matches the English messages only.
     """
 
+    SETTINGS = ("window",)
+
     # "exceeded" names the limit that suspends exposures; "still higher" and "now lower" name the
     # separate, usually looser, limit Ekos resumes at (2" when the trip limit was 0.5", live).
     EXCEEDED = re.compile(
