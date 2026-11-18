@@ -1,12 +1,18 @@
 site_name: Ekos Notifier
 site_description: Alerts, hourly digests and session records for KStars/Ekos rigs
+site_url: https://anandvn.github.io/ekos-notifier/
 repo_url: https://github.com/anandvn/ekos-notifier
 theme:
   name: material
   palette:
     - scheme: slate
       primary: red
+markdown_extensions:
+  - pymdownx.snippets:
+      check_paths: true  # a missing README section fails the build
 nav:
   - Home: index.md
+  - Quick start: quickstart.md
+  - Alerts reference: alerts.md
   - Design: design.md
   - Open questions: open-questions.md

@@ -5,6 +5,11 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Docs site** at https://anandvn.github.io/ekos-notifier/, published from main: a **Quick
+  start** page (the README's install and setup guide, included rather than copied) and an
+  **Alerts reference**: every alert with its config name, default, what sets it off and how to
+  tune it, checked against the code by a test.
+
 ## 0.1.1 — 2026-11-19
 
 Fixes from the first live rig: battery alerts that didn't fire, a way to see which INDI devices

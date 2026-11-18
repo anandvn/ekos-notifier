@@ -5,8 +5,8 @@
 Ekos Notifier watches a KStars/Ekos imaging night, alerts you when something needs you, sends an
 hourly "all's well" digest, records the whole night, and brings the data home.
 
-It is in **pre-alpha**. Start with the [design](design.md); the Quick start guide arrives with
-version 0.2.
+It is in **pre-alpha**. New here? Start with the [Quick start](quickstart.md); every alert is in
+the [Alerts reference](alerts.md), and how it all works in the [design](design.md).
 
 ## Install
 
