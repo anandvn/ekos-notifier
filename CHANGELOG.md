@@ -5,6 +5,8 @@ Semantic Versioning.
 
 ## Unreleased
 
+- Install plan: an `install.sh` (a venv in your home folder, no root, no pipx) ships with 1.0,
+  since StellarMate's images have neither pipx nor pacman repositories. Docs updated.
 - **Power boxes, whatever the brand:** a preset for libindi 2.x's standard power interface
   (Pegasus PPB/PPBA/SPB/UPB/UPB3, SVBONY, Terrans, Celestron Dew Power, Gemini PBH, smPro, …):
   input voltage, current and power as metrics, and each output's on/off, current and label
