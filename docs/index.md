@@ -82,6 +82,11 @@ flipped; "Meridian flip done" follows once it has.
 **Plate solve failed** (High) when Ekos can't solve a frame and doesn't manage on a retry within
 3 minutes, saying whether it was after the meridian flip or a new target, with Ekos's reason.
 
+**Clouds** (High) when the guide star fades by half (PHD2's SNR) for 2 minutes, or two frames
+in a row lose half their stars (when Ekos counts stars in frames), with the numbers then and
+now; **Clouds passed** when the stars are back. `alerts: clouds_drop_percent` sets how far is a
+fade (0 turns it off). Its numbers are a first guess until it has seen real clouds.
+
 **Disk low** (High) when the disk Ekos saves to has under 10 GB free (`alerts: disk_low_gb`),
 with how many more frames fit and how long that is at tonight's pace.
 
