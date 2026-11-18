@@ -70,7 +70,7 @@ work through `docs/open-questions.md` and record findings there and in `docs/des
 
 ## Package name
 
-Renamed from Town Crier / `ekos-towncrier` on 2026-11-17 (Anand's decision): GitHub repo and PyPI
+Renamed from Town Crier / `ekos-towncrier` on 2026-11-17: GitHub repo and PyPI
 distribution **`ekos-notifier`** (free on PyPI as of Nov 2026), CLI command `ekos-notifier`,
 Python package `ekos_notifier`. The hourly digest is plain "hourly digest" (config `digest:`);
 the Olde English message style stays as an option. Old recordings (`town-crier-replay/0`) and
