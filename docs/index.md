@@ -13,11 +13,11 @@ version 0.2.
 On the computer running KStars, as yourself (not root):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/anandvn/ekos-notifier/main/install.sh | sh -s -- --from main
+curl -fsSL https://raw.githubusercontent.com/anandvn/ekos-notifier/main/install.sh | sh
 ```
 
-Until the first release is on PyPI, `--from main` installs the latest code from GitHub; after
-that, plain `| sh` installs the latest release (`--from 1.0.0` a given one). It needs only
+That installs the latest release from PyPI; `| sh -s -- --from 0.1.0` installs a given version,
+and `--from main` the latest code from GitHub. It needs only
 Python 3.10+ with its `venv` module (on Debian, Ubuntu and Raspberry Pi OS: `sudo apt install
 python3-venv`), and:
 

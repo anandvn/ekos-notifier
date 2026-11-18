@@ -134,8 +134,7 @@ esac
 
 if [ "$upgrading" -eq 1 ]; then say "Upgrading Ekos Notifier ($spec)"; else say "Installing Ekos Notifier ($spec)"; fi
 "$VENV/bin/python" -m pip install --quiet --disable-pip-version-check --upgrade "$spec" \
-    || fail "pip couldn't install $spec. Is the internet up?$(
-        [ -n "$from" ] || printf '\nBefore the first release is on PyPI, install the latest code: --from main')"
+    || fail "pip couldn't install $spec. Is the internet up?"
 installed="$("$VENV/bin/ekos-notifier" --version 2>/dev/null || true)"
 [ -n "$installed" ] || fail "the install finished but ekos-notifier doesn't run"
 

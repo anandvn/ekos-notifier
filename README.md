@@ -22,7 +22,7 @@ your equipment.
 > **Status: pre-alpha.** It runs and alerts today, but hasn't had a season on real rigs yet,
 > and settings may change before 1.0. Not yet built: the web dashboard, carrying data home
 > (sync), the dead-man's switch, and the Terse and Olde English message styles. See
-> [the design](docs/design.md) and [the roadmap](docs/design.md#roadmap).
+> [the design](https://github.com/anandvn/ekos-notifier/blob/main/docs/design.md) and [the roadmap](https://github.com/anandvn/ekos-notifier/blob/main/docs/design.md#roadmap).
 
 **Contents:** [What you need](#what-you-need) · [Install](#install) ·
 [Set up](#set-up-in-ten-minutes) · [Your config file](#your-config-file) ·
@@ -45,11 +45,11 @@ Open a terminal on the imaging computer (on the desktop, or over SSH) and run, a
 (not with `sudo`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/anandvn/ekos-notifier/main/install.sh | sh -s -- --from main
+curl -fsSL https://raw.githubusercontent.com/anandvn/ekos-notifier/main/install.sh | sh
 ```
 
-> `--from main` installs the latest code from GitHub. Once the first release is on PyPI, leave
-> it off (`… | sh`) to get the latest release.
+> That installs the latest release from [PyPI](https://pypi.org/project/ekos-notifier/). For a
+> given version add `-s -- --from 0.1.0`; for the latest code from GitHub, `-s -- --from main`.
 
 The installer:
 
@@ -317,8 +317,8 @@ what it said, and the last lines of `journalctl --user -u ekos-notifier`.
 ## Contributing
 
 Device presets, message styles and docs are the easiest ways in. See
-[CONTRIBUTING.md](CONTRIBUTING.md) to set up a development checkout.
+[CONTRIBUTING.md](https://github.com/anandvn/ekos-notifier/blob/main/CONTRIBUTING.md) to set up a development checkout.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/anandvn/ekos-notifier/blob/main/LICENSE).

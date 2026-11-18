@@ -29,3 +29,18 @@ and PHD2's simulator camera is enough to develop against. No real equipment is r
 - Nothing may assume a specific device, notifier or network: use the adapter interfaces.
 - User-visible changes update the docs in the same pull request.
 - Add a changelog entry under "Unreleased" in `CHANGELOG.md`.
+
+## Releasing (maintainers)
+
+1. On a branch: set `__version__` in `src/ekos_notifier/__init__.py`, and turn CHANGELOG's
+   "Unreleased" into `## X.Y.Z — YYYY-MM-DD` (keep an empty "Unreleased" above it). Merge it.
+2. Tag main and push the tag:
+
+   ```bash
+   git checkout main && git pull
+   git tag -a vX.Y.Z -m "Ekos Notifier X.Y.Z" && git push origin vX.Y.Z
+   ```
+
+3. The Release workflow checks the tag matches the version, builds and checks the package,
+   publishes it to PyPI (trusted publishing: no token), and creates the GitHub release from the
+   CHANGELOG section. A PyPI version can never be uploaded twice: a mistake means a new version.

@@ -1,0 +1,74 @@
+name: Release
+
+# Pushing a tag like v0.1.0 builds the package, publishes it to PyPI and creates the GitHub
+# release with that version's CHANGELOG section. PyPI trusts this workflow directly (trusted
+# publishing): no API token is stored anywhere.
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: The tag matches the package version
+        run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/ekos_notifier/__init__.py)
+          echo "package $version, tag $GITHUB_REF_NAME"
+          test "v$version" = "$GITHUB_REF_NAME"
+      - name: The CHANGELOG has this version
+        run: grep -q "^## ${GITHUB_REF_NAME#v} " CHANGELOG.md
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check --strict dist/*
+      - name: The wheel installs and runs
+        run: |
+          python -m venv /tmp/check
+          /tmp/check/bin/pip install dist/*.whl
+          /tmp/check/bin/ekos-notifier --version
+          HOME=/tmp/home /tmp/check/bin/ekos-notifier config init
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/ekos-notifier/
+    permissions:
+      id-token: write  # trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    needs: pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Notes from the CHANGELOG
+        run: |
+          awk -v v="${GITHUB_REF_NAME#v}" '
+            /^## / { if (p) exit; if ($2 == v) { p = 1; next } }
+            p' CHANGELOG.md > notes.md
+          test -s notes.md
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file notes.md
