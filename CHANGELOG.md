@@ -5,6 +5,15 @@ Semantic Versioning.
 
 ## Unreleased
 
+## 0.1.0 — 2026-11-19
+
+The first release: the 0.1 "Core" milestone. Ekos Notifier follows Ekos (D-Bus), PHD2 and
+INDI, records each night as a session in a local SQLite database, and sends alerts, an hourly
+digest and a session summary to any Apprise notifier. Installed with `install.sh` (a venv in
+your home folder, no root). Pre-alpha: not yet field-tested on real rigs, and settings may
+change before 1.0. Not yet built: the setup wizard, `doctor`, the web dashboard, sync, the
+heartbeat, and the Terse and Olde English styles.
+
 - **Hardening, from a pre-release review:**
   - The notifier survives a failed pass (the database busy, a notifier library raising): it
     logs the traceback, backs off and carries on, instead of stopping the service.
@@ -22,7 +31,7 @@ Semantic Versioning.
   is left for a copy that really is running elsewhere.
 
 - **`install.sh`**: installs into a venv in your home folder with no root and no extra tools
-  (`curl … | sh -s -- --from main` until the PyPI release), links `~/.local/bin/ekos-notifier`,
+  (`curl -fsSL …/install.sh | sh`), links `~/.local/bin/ekos-notifier`,
   writes a commented config and offers the systemd user service. Re-run to upgrade (restarting
   the service; rebuilding the venv after a Python upgrade); `--uninstall` keeps config and
   sessions. **`ekos-notifier config init`** writes the commented example config (mode 600),
