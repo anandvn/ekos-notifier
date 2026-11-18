@@ -8,6 +8,32 @@ hourly "all's well" digest, records the whole night, and brings the data home.
 It is in **pre-alpha**. Start with the [design](design.md); the Quick start guide arrives with
 version 0.2.
 
+## Install
+
+On the computer running KStars, as yourself (not root):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/anandvn/ekos-notifier/main/install.sh | sh -s -- --from main
+```
+
+Until the first release is on PyPI, `--from main` installs the latest code from GitHub; after
+that, plain `| sh` installs the latest release (`--from 1.0.0` a given one). It needs only
+Python 3.10+ with its `venv` module (on Debian, Ubuntu and Raspberry Pi OS: `sudo apt install
+python3-venv`), and:
+
+- puts Ekos Notifier in a venv in `~/.local/share/ekos-notifier/venv` and links
+  `~/.local/bin/ekos-notifier` (it tells you if `~/.local/bin` isn't on your `PATH`);
+- writes a commented config to fill in, `~/.config/ekos-notifier/config.yaml`, readable only by
+  you (`ekos-notifier config init` does the same; an existing config is never touched);
+- offers to start Ekos Notifier with your session (the systemd user service below; `--service`
+  or `--no-service` answers for you).
+
+Run it again to upgrade: it restarts the service on the new version, and rebuilds the venv if
+an OS update moved Python to a new version. `sh install.sh --uninstall` (or `| sh -s --
+--uninstall`) removes the service, the venv and the command, and keeps your config and
+sessions. Using pipx or uv instead works too: install `ekos-notifier`, then run `ekos-notifier
+install-service`.
+
 ## What works today
 
 `ekos-notifier run` runs the service in the foreground. On the computer running KStars, it finds

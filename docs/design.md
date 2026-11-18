@@ -442,6 +442,7 @@ Because outputs only read from the store, a dead notifier, network or sync targe
   - offers `ekos-notifier install-service` (the unit runs the venv's Python, since it uses the Python that wrote it) and then the wizard;
   - re-run, it upgrades in place, and rebuilds the venv if the system Python moved to a new version (an OS update from 3.14 to 3.15 breaks a venv's link; `doctor` detects that and says to re-run the installer); `--uninstall` removes the service, the venv and the link, keeping the config and the database.
   - pipx or uv users can install the package themselves and run `install-service`; `ekos-notifier upgrade` comes with the script.
+  - **Implemented** (`install.sh`, checked end to end in CI by `tools/check_install.sh` under dash): `--from` (a version, `main` for GitHub's latest until the PyPI release, a checkout, any pip spec), `--service`/`--no-service` (asked otherwise, on the terminal even under `curl | sh`; yes without one), `--uninstall`; writes the commented config (`ekos-notifier config init`, mode 600, never overwriting); an upgrade rewrites the unit and restarts the service. Not yet: `ekos-notifier upgrade`, `doctor`'s broken-venv check, and the wizard (the script says what to fill in instead).
 - **Footprint target:** < 100 MB RAM, < 2 % CPU on a Pi 4 during a session.
 - **Quality:** simulation-replay test suite in CI (GitHub Actions), semver releases, CHANGELOG, MIT LICENSE, CONTRIBUTING and issue templates from day one.
 

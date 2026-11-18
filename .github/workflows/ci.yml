@@ -30,3 +30,13 @@ jobs:
           python-version: "3.13"
       - run: pip install -e ".[dev]"
       - run: mkdocs build --strict
+
+  install:
+    # install.sh end to end in a throwaway home (Ubuntu's sh is dash: a strict POSIX check).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: PYTHON="$(command -v python)" sh tools/check_install.sh
