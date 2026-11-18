@@ -5,6 +5,10 @@ Semantic Versioning.
 
 ## Unreleased
 
+- Fixes from the live sky test: "Starting session" now comes before the alerts it leads to;
+  "Twilight coming" is sent once per night, not again with every short session; a meridian flip
+  (the mount swinging through the pole and back) no longer counts as a new target, so "Target
+  low" isn't repeated. Confirmed live: Ekos flipped at 07:07:53, predicted 07:07.
 - **Twilight coming** and **Target low** (Normal, immediate) and **Meridian flip soon** (Quiet,
   for the digest), from a small pure-Python ephemeris (`ekos_notifier.ephemeris`: sidereal time,
   Sun, altitudes, crossings). Site from KStars's `location()` (or the mount's INDI

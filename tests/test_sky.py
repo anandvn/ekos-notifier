@@ -131,3 +131,59 @@ def test_warning_minutes_in_config(tmp_path):
     f.write_text("alerts:\n  twilight_warning_minutes: 60\n  target_low_warning_minutes: 20\n")
     cfg = load(f)
     assert (cfg.twilight_warning_minutes, cfg.target_low_warning_minutes) == (60.0, 20.0)
+
+
+def test_twilight_once_per_night_across_sessions():
+    # Seen live: short sequences closed and opened a session every 5 minutes, and "Twilight
+    # coming" was sent again with each one.
+    start = utc(2026, 11, 17, 0)
+    rules = Rules(sky=SkyRule(twilight_warning=86400), digest=DigestRule(enabled=False))
+    out = []
+    for i in range(3):
+        t = start + 300 * i
+        out += rules.handle(Event(t, "session.started", {"night": "n"}, "session", f"s{i}"))
+        if i == 0:
+            out += rules.handle(
+                ev(t, "site.location", latitude=51.4778, longitude=0.0, via="kstars")
+            )
+        out += rules.tick(t + 10)
+        out += rules.handle(
+            Event(
+                t + 200, "session.closed", {"night": "n", "state": "abandoned"}, "session", f"s{i}"
+            )
+        )
+    assert [a.data["rule"] for a in out if a.kind == "alert"].count("twilight_coming") == 1
+
+
+def test_a_meridian_flip_is_not_a_new_target():
+    # Seen live: the flip slew went through the pole and back; "Target low" was sent twice.
+    start = utc(2026, 11, 17, 0)
+    events = session(start, 5.0, 10.0)
+    events += [ev(start + 600, "mount.state", state="slewing")]
+    events += [ev(start + 600 + i, "mount.coords", ra=(5.0 + i) % 24, dec=-60.0) for i in range(10)]
+    events += [
+        ev(start + 620, "mount.coords", ra=5.0, dec=10.0),
+        ev(start + 621, "mount.state", state="tracking"),
+    ]
+    got = run(
+        events,
+        start,
+        start + 1800,
+        target_low_warning=86400,
+        limits=lambda: ObservingLimits(min_altitude=20),
+    )
+    assert [a.data["rule"] for a in got].count("target_low") == 1
+    # A real new target does get its own.
+    events += [
+        ev(start + 900, "mount.state", state="slewing"),
+        ev(start + 930, "mount.coords", ra=7.0, dec=20.0),
+        ev(start + 931, "mount.state", state="tracking"),
+    ]
+    got = run(
+        events,
+        start,
+        start + 1800,
+        target_low_warning=86400,
+        limits=lambda: ObservingLimits(min_altitude=20),
+    )
+    assert [a.data["rule"] for a in got].count("target_low") == 2
