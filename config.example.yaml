@@ -36,15 +36,17 @@ indi:
   host: ""
   port: 0
   metrics: {}
-  #  power.voltage: "Pegasus PPBA / POWER_SENSORS.SENSOR_VOLTAGE"
+  #  power.voltage: "My Old Box / VOLTAGE.VALUE"   # power boxes on INDI's standard power
+                                                  # interface are recognised without this
   #  env.humidity: "My Sensor / HUMIDITY.VALUE"
 
-# Power. preset: auto | none | mains | <preset name from presets/>
+# Battery alerts, from your power box's input voltage. battery: agm_12v (low 12.0 V, critical
+# 11.5 V) | lifepo4_12v (12.8 V, 12.0 V) | mains (voltage alerts off) | custom. low_volts and
+# critical_volts override the preset's levels (custom needs at least one).
 power:
-  preset: auto
-  battery: lifepo4_12v     # lifepo4_12v | agm_12v | custom
-  low_volts: 12.0
-  critical_volts: 11.5
+  battery: agm_12v
+  # low_volts: 12.0        # Battery low (High), during a session, once
+  # critical_volts: 11.5   # Battery critical (Emergency), at any time
 
 # Alert thresholds.
 alerts:

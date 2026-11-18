@@ -57,3 +57,15 @@ def test_config_rejects_a_bad_expiry(tmp_path, capsys):
     cfg.write_text("notify_expire_minutes: soon\n")
     assert main(["config", "check", "--config", str(cfg)]) == 1
     assert "notify_expire_minutes" in capsys.readouterr().err
+
+
+def test_config_check_shows_battery_levels(tmp_path, capsys):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("power:\n  preset: auto\n  battery: lifepo4_12v\n")
+    assert main(["config", "check", "--config", str(cfg)]) == 0
+    out = capsys.readouterr().out
+    assert "battery: lifepo4_12v, low under 12.8 V, critical under 12 V" in out
+    assert "'power.preset' isn't used" in out
+    cfg.write_text("power:\n  battery: mains\n")
+    assert main(["config", "check", "--config", str(cfg)]) == 0
+    assert "battery: mains, voltage alerts off" in capsys.readouterr().out

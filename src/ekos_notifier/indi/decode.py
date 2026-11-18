@@ -18,6 +18,13 @@ Kinds:
   formula) for a device that has temperature and humidity but no dew point of its own.
 - ``indi.capabilities``: ``metrics`` = {metric: [devices]}, whenever that set changes (devices
   connecting and disconnecting during the night), for "not available on this rig".
+- ``power.output``: ``device``, ``output`` (the element, e.g. ``POWER_CHANNEL_1``), ``kind`` (``dc``
+  or ``dew``), ``label`` (the box's own name for it, e.g. "Camera"), ``on``, ``current`` (A) and
+  ``duty`` (%, dew), each None when the box doesn't report it. From libindi's standard
+  PowerInterface properties (``POWER_CHANNELS``/``POWER_CURRENTS``/``POWER_LABELS`` and the
+  ``DEW_*`` set). Sent when the switch, label or duty changes, the current moves past
+  ``DEADBAND``, or for an update ``HEARTBEAT`` seconds after the last. A box with outputs adds
+  ``power.outputs`` to ``indi.capabilities``.
 - ``mount.coords`` (``ra`` hours, ``dec`` degrees, JNow, from a mount's EQUATORIAL_EOD_COORD) on a
   move of more than ~3' or once a minute; ``site.location`` (``latitude``, ``longitude`` east,
   ``elevation``, ``via`` "indi") from its GEOGRAPHIC_COORD when it changes.
@@ -38,7 +45,21 @@ from ekos_notifier.indi.presets import INTERFACES, Preset
 
 SOURCE = "indi"
 HEARTBEAT = 60.0
-DEADBAND = {"temperature": 0.1, "humidity": 0.5, "dewpoint": 0.1, "voltage": 0.05, "current": 0.05}
+DEADBAND = {
+    "temperature": 0.1,
+    "humidity": 0.5,
+    "dewpoint": 0.1,
+    "voltage": 0.05,
+    "current": 0.05,
+    "watts": 0.5,
+}
+# libindi PowerInterface outputs: kind -> (switches, currents, labels, duty cycles). Elements are
+# named per output (POWER_CHANNEL_1, DEW_CHANNEL_2, …) and shared across the four properties.
+OUTPUTS = {
+    "dc": ("POWER_CHANNELS", "POWER_CURRENTS", "POWER_LABELS", None),
+    "dew": ("DEW_CHANNELS", "DEW_CURRENTS", "DEW_LABELS", "DEW_DUTY_CYCLES"),
+}
+OUTPUT_PROPS = {p: kind for kind, props in OUTPUTS.items() for p in props if p}
 SEXAGESIMAL = re.compile(r"^\s*(-?)(\d+)[:\s](\d+)(?:[:\s](\d+(?:\.\d*)?))?\s*$")
 
 
@@ -67,6 +88,13 @@ class Device:
     interfaces: int = 0
     connected: bool | None = None
     numbers: dict[str, dict[str, float]] = field(default_factory=dict)  # property -> element -> v
+    switches: dict[str, dict[str, bool]] = field(default_factory=dict)  # outputs' on/off only
+    texts: dict[str, dict[str, str]] = field(default_factory=dict)  # outputs' labels only
+
+    def clear(self) -> None:
+        self.numbers.clear()
+        self.switches.clear()
+        self.texts.clear()
 
 
 def number(text: str | None) -> float | None:
@@ -110,11 +138,13 @@ class IndiDecoder:
         self._capabilities: dict[str, list[str]] = {}
         self._pointing: dict[str, tuple[float, float, float]] = {}  # device -> ts, ra, dec
         self._site: dict[str, tuple[float, float, float | None]] = {}
+        self._outputs: dict[tuple[str, str], tuple[float, tuple]] = {}  # (device, output) -> ts, s
 
     def lost(self, ts: float) -> list[Event]:
         """The server went away: every metric is gone with it."""
         self.devices.clear()
         self._last.clear()
+        self._outputs.clear()
         return self._capabilities_changed(ts)
 
     # -- feeding -------------------------------------------------------------------------------
@@ -135,12 +165,26 @@ class IndiDecoder:
                 self._forget(name)
             else:
                 dev.numbers.pop(prop, None)
+                dev.switches.pop(prop, None)
+                dev.texts.pop(prop, None)
                 self._forget(name, prop)
             return out + self._capabilities_changed(ts)
         if tag.endswith("TextVector") and prop == "DRIVER_INFO" and tag[:3] in ("def", "set"):
             out += self._driver_info(ts, dev, el)
         elif tag.endswith("SwitchVector") and prop == "CONNECTION" and tag[:3] in ("def", "set"):
             out += self._connection(ts, dev, el)
+        elif prop in OUTPUT_PROPS and tag[:3] in ("def", "set") and tag.endswith("SwitchVector"):
+            dev.switches.setdefault(prop, {}).update(
+                {one.get("name"): (one.text or "").strip() == "On" for one in el if one.get("name")}
+            )
+            out += self._output_events(ts, dev, OUTPUT_PROPS[prop])
+            if tag.startswith("def"):
+                out += self._capabilities_changed(ts)
+        elif prop in OUTPUT_PROPS and tag[:3] in ("def", "set") and tag.endswith("TextVector"):
+            dev.texts.setdefault(prop, {}).update(
+                {one.get("name"): (one.text or "").strip() for one in el if one.get("name")}
+            )
+            out += self._output_events(ts, dev, OUTPUT_PROPS[prop])
         elif tag.endswith("NumberVector") and tag[:3] in ("def", "set") and prop:
             values = {
                 one.get("name"): number(one.text)
@@ -151,6 +195,8 @@ class IndiDecoder:
                 {k: v for k, v in values.items() if v is not None}
             )
             out += self._metrics(ts, dev, prop)
+            if prop in OUTPUT_PROPS:
+                out += self._output_events(ts, dev, OUTPUT_PROPS[prop])
             if dev.interfaces & INTERFACES["telescope"]:
                 out += self._mount(ts, dev, prop)
             if tag.startswith("def"):
@@ -183,7 +229,7 @@ class IndiDecoder:
         # driver is known (DRIVER_INFO does it then).
         out = [self._device_event(ts, dev)] if dev.driver is not None else []
         if not connected:
-            dev.numbers.clear()  # its readings are gone (INDI deletes them too)
+            dev.clear()  # its readings are gone (INDI deletes them too)
             self._forget(dev.name)
             out += self._capabilities_changed(ts)
         return out
@@ -220,6 +266,8 @@ class IndiDecoder:
         }
         if "env.dewpoint" not in have and (dev.name, "env.dewpoint") in self._last:
             have["env.dewpoint"] = "derived"  # only once a dew point could actually be worked out
+        if any(dev.switches.get(p) or dev.numbers.get(p) for p in OUTPUT_PROPS):
+            have["power.outputs"] = "power interface"
         return have
 
     def _metrics(self, ts: float, dev: Device, prop: str) -> list[Event]:
@@ -240,6 +288,41 @@ class IndiDecoder:
                     out += self._emit(ts, dev.name, "env.dewpoint", round(dp, 2), "derived")
                     if first:
                         out += self._capabilities_changed(ts)
+        return out
+
+    def _output_events(self, ts: float, dev: Device, kind: str) -> list[Event]:
+        """``power.output`` for each of this kind's outputs whose state is news."""
+        switches, currents, labels, duties = OUTPUTS[kind]
+        sw = dev.switches.get(switches, {})
+        amps = dev.numbers.get(currents, {})
+        names = dev.texts.get(labels, {})
+        duty = dev.numbers.get(duties, {}) if duties else {}
+        out = []
+        for output in sorted({*sw, *amps}):
+            state = (sw.get(output), names.get(output), amps.get(output), duty.get(output))
+            key = (dev.name, output)
+            last = self._outputs.get(key)
+            if last is not None and ts - last[0] < HEARTBEAT:
+                was = last[1]
+                moved = (
+                    state[2] is not None
+                    and was[2] is not None
+                    and abs(state[2] - was[2]) >= DEADBAND["current"]
+                ) or ((state[2] is None) != (was[2] is None))
+                if not moved and (state[0], state[1], state[3]) == (was[0], was[1], was[3]):
+                    continue
+            self._outputs[key] = (ts, state)
+            on, label, current, dc = state
+            data = {
+                "device": dev.name,
+                "output": output,
+                "kind": kind,
+                "label": label or output,
+                "on": on,
+                "current": None if current is None else round(current, 3),
+                "duty": dc,
+            }
+            out.append(Event(ts, "power.output", data, SOURCE))
         return out
 
     def _mount(self, ts: float, dev: Device, prop: str) -> list[Event]:
@@ -275,6 +358,9 @@ class IndiDecoder:
         return [Event(ts, "metric", data, SOURCE)]
 
     def _forget(self, device: str, prop: str | None = None) -> None:
+        if prop is None or prop in OUTPUT_PROPS:
+            for key in [k for k in self._outputs if k[0] == device]:
+                del self._outputs[key]
         for key in [k for k in self._last if k[0] == device]:
             if prop is None or any(
                 metric == key[1] and p == prop for metric, p, *_ in self._all_sources(device)

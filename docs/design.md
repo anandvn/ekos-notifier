@@ -90,7 +90,7 @@ Priorities map onto each notifier's native levels where it has them (Pushover �
 | --- | --- |
 | Mount nearing a limit with nothing capturing | Tracking within 15 min of meridian/pier limit or horizon after sequence end |
 | Meridian flip failed | Flip error, or past hour-angle limit without flipping |
-| Battery critical | < 11.5 V (12 V LiFePO4/AGM preset) |
+| Battery critical | `power.voltage` under the battery preset's critical level (AGM 12 V: 11.5 V; LiFePO4 12 V: 12.0 V) for 1 min (a slew's dip doesn't count). Sent at any time, session or not. Once until the voltage is back 0.3 V over the low level, which sends "Battery OK" (Normal, immediate). |
 | Ekos stopped with the mount unparked | Ekos stops or disconnects INDI (Scheduler finish/abort, crash, or user) while the last known mount state was unparked, and Ekos hasn't reconnected within 2 min. Uses the last known `parkStatus`, since the mount's properties vanish with Ekos. Clears when the mount is seen parked again. |
 | Rig or uplink silent | External heartbeat missed past grace period (sent by the heartbeat service, not the rig) |
 
@@ -107,8 +107,8 @@ Priorities map onto each notifier's native levels where it has them (Pushover �
 | Autofocus failed | 2 consecutive failed runs. On KStars 3.8.5 a failed run ends `aborted`, not `failed`, with "Autofocus failed, moving back to initial focus position…" in its log (seen live); a run counts as failed if it ends `failed`, or `aborted` with that line. Ekos's own retries ("Restarting autofocus process…") are part of the run, so a failed ending is counted 10 s later unless a restart follows; a run whose retry completes is a success and resets the count. An `aborted` with no failure logged is the user's Abort. |
 | Plate solve failed | After a flip or target change |
 | Dew risk | Ambient − dew point < 2 °C, or RH > 90 %; flags dew heaters off or low while humid |
-| Battery low | < 12.0 V, once, with runtime estimate |
-| Power port fault | Overcurrent or port fault reported by power box |
+| Battery low | Under the low level (AGM 12 V: 12.0 V; LiFePO4 12 V: 12.8 V, since LiFePO4 holds ~13 V until nearly empty) for 1 min during a session; once, re-armed like Battery critical. Says the current drawn. Runtime estimate: not yet. |
+| Power port fault | libindi's standard power interface reports no faults, so: **Power output off**, a DC output that was on and drawing current (≥ 0.1 A) switches off during a session; **No current on** an output, one that stays on but drops under 0.02 A for 30 s (boxes with per-output current). Held 10 s and dropped if Ekos shuts down meanwhile, and not raised for 60 s after a shutdown starts (a box set to power off on disconnect switches its outputs off as Ekos disconnects). Once per output per session; "Power output back" (Normal, immediate) when it's on and drawing again. Dew outputs are left to Dew risk. |
 | Cooler can't hold | > 2 °C off setpoint for 10 min |
 | Clouds | Star lost + HFR jump + star count drop together; one alert, one all-clear |
 | Disk low | < 10 GB free |
@@ -303,8 +303,8 @@ Adapters translate device properties into canonical names; rules never see devic
 
 | Metric | Used by | Fallback |
 | --- | --- | --- |
-| `power.voltage`, `power.current` | Battery low/critical, runtime estimate | None: battery alerts off |
-| `power.port_fault` | Port fault | None |
+| `power.voltage`, `power.current`, `power.watts` | Battery low/critical, digest | None: battery alerts off |
+| `power.outputs` (`power.output` events) | Power output off / no current | None |
 | `env.temperature`, `env.humidity` | Dew risk, digest | Any INDI weather device or USB temp/RH sensor |
 | `env.dewpoint` | Dew risk | Derived from temperature + humidity (Magnus formula) |
 | `power.dew_heater` | Dew heater check | Check skipped |
@@ -322,9 +322,10 @@ When several devices report the same metric, a configurable priority order picks
 - **Client:** read-only. It sends `getProperties` only (no `new*`, BLOBs never enabled), to the INDI server of the active Ekos profile (`userdb.sqlite` `profile` `host`/`port`; empty means local mode on localhost:7624; `indi.host`/`indi.port` in config override it). It retries quietly while the server is down (it only runs while Ekos is connected).
 - **Metrics:** presets match devices by INDI interface bits (`DRIVER_INTERFACE`: 2 camera, 8 focuser, 128 weather, …, checked against the simulators) or driver executable, and map `PROPERTY.ELEMENT` to canonical metrics. Built-in and verified on the simulators: weather stations (`WEATHER_PARAMETERS` temperature, humidity, dew point), camera temperature (`CCD_TEMPERATURE`) and focuser temperature. Anything else is mapped in config, `metric: "Device / PROPERTY.ELEMENT"`. The dew point is derived (Magnus) for a device with temperature and humidity but none of its own.
 - **Events:** `metric` (`metric`, `value`, `device`, `via`) when a value moves past a small deadband or at least once a minute; `indi.device` on connect/disconnect; `indi.capabilities` (metric → devices) whenever the set changes, which it does as Ekos connects and disconnects equipment. Samples are stored with their source device (schema 4), and each frame gets the imaging camera's temperature (Ekos Capture's `camera`, or the name in its log lines).
-- **Digest:** camera temperature, ambient, RH and dew margin.
+- **Power boxes:** a built-in preset for libindi 2.x's standard power interface (`DRIVER_INTERFACE` bit 18), whatever the brand: `POWER_SENSORS` voltage, current and power as metrics, and each output from `POWER_CHANNELS` (on/off), `POWER_CURRENTS` and `POWER_LABELS` (the box's own names: "Camera", "Mount"), and the `DEW_*` equivalents with `DEW_DUTY_CYCLES`, as `power.output` events. Verified with a test driver built on libindi 2.2.5's `INDI::PowerInterface` (`tools/indi_power_simulator`; its recorded stream is a test fixture); 15 installed drivers use the interface. Older drivers, with their own property names, are mapped in config. Battery presets: `agm_12v` (default), `lifepo4_12v`, `mains` (voltage alerts off), `custom`, with `power.low_volts`/`power.critical_volts` overriding.
+- **Digest:** camera temperature, ambient, RH, dew margin, and power ("Power 12.4 V (low 12.1 V), 4.2 A").
 - **`ekos-notifier indi-dump`:** every device's properties to a file, site location removed, with what's recognised and the readings that could be mapped.
-- **Not yet:** power-box presets (need `indi-dump` output from real devices), heuristic detection with confirmation (needs the wizard), stale-metric notices, and the alerts that use the metrics (dew risk, battery, cooler).
+- **Not yet:** confirming the power interface on a real box (an `indi-dump` from one), presets for power boxes whose drivers predate it, heuristic detection with confirmation (needs the wizard), stale-metric notices, a battery runtime estimate, and the dew-risk and cooler alerts.
 
 ### Presets as data
 

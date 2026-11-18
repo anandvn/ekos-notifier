@@ -33,6 +33,7 @@ from ekos_notifier.lock import InstanceLock
 from ekos_notifier.notify import Notifier, init_cursor
 from ekos_notifier.phd2.adapter import Phd2Adapter
 from ekos_notifier.pipeline import TICK, Pipeline
+from ekos_notifier.power import PowerRule
 from ekos_notifier.rules import Rules
 from ekos_notifier.session import SessionManager
 from ekos_notifier.sky import SkyRule
@@ -120,6 +121,7 @@ async def _serve(
             target_low_warning=config.target_low_warning_minutes * 60,
             limits=observing_limits,
         ),
+        power=PowerRule(config.low_volts, config.critical_volts),
         digest=DigestRule(
             enabled=config.digest_enabled,
             interval=config.digest_interval_minutes * 60,

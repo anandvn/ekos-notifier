@@ -5,6 +5,16 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Power boxes, whatever the brand:** a preset for libindi 2.x's standard power interface
+  (Pegasus PPB/PPBA/SPB/UPB/UPB3, SVBONY, Terrans, Celestron Dew Power, Gemini PBH, smPro, …):
+  input voltage, current and power as metrics, and each output's on/off, current and label
+  (`power.output` events). **Battery critical** (Emergency, also outside a session), **Battery
+  low** (High, once) and **Battery OK**, with `power.battery` presets (`agm_12v`, `lifepo4_12v`,
+  `mains`, `custom`) and `low_volts`/`critical_volts`. **Power output off** and **No current on**
+  an output (High) during a session, not when Ekos shuts down; **Power output back**. The digest
+  shows "Power 12.4 V (low 12.1 V), 4.2 A". `indi-dump` no longer lists a box's outputs as
+  candidates. Verified against a test driver built on libindi 2.2.5's `INDI::PowerInterface`.
+
 - Fixes from the live sky test: "Starting session" now comes before the alerts it leads to;
   "Twilight coming" is sent once per night, not again with every short session; a meridian flip
   (the mount swinging through the pole and back) no longer counts as a new target, so "Target

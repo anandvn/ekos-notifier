@@ -14,6 +14,7 @@ from typing import Any
 import yaml
 
 from ekos_notifier.indi.decode import Mapping
+from ekos_notifier.power import BATTERIES
 
 
 class ConfigError(Exception):
@@ -32,6 +33,9 @@ class Config:
     digest_enabled: bool = True
     digest_interval_minutes: float = 60.0
     digest_align_to_clock: bool = True
+    battery: str = "agm_12v"
+    low_volts: float | None = 12.0  # None: battery alerts off (mains)
+    critical_volts: float | None = 11.5
     indi_host: str | None = None
     indi_port: int | None = None
     indi_mappings: list[Mapping] = field(default_factory=list)
@@ -93,6 +97,7 @@ def load(path: str | Path | None = None) -> Config:
             mappings.append(Mapping.parse(str(metric), str(target)))
         except ValueError as exc:
             raise ConfigError(f"{path}: indi.metrics: {exc}") from None
+    battery, low_volts, critical_volts = _power(path, raw.get("power"))
     return Config(
         path=path,
         notify=[u.strip() for u in notify if u.strip()],
@@ -110,11 +115,37 @@ def load(path: str | Path | None = None) -> Config:
         digest_align_to_clock=_bool(
             path, "digest.align_to_clock", digest.get("align_to_clock", True)
         ),
+        battery=battery,
+        low_volts=low_volts,
+        critical_volts=critical_volts,
         indi_host=host,
         indi_port=port,
         indi_mappings=mappings,
         raw=raw,
     )
+
+
+def _power(path: Path, power: object) -> tuple[str, float | None, float | None]:
+    """The battery preset, and its low and critical volts unless set explicitly."""
+    power = power or {}
+    if not isinstance(power, dict):
+        raise ConfigError(f"{path}: 'power' must be a section of settings (key: value)")
+    battery = power.get("battery") or "agm_12v"
+    if battery not in BATTERIES and battery != "custom":
+        names = " | ".join([*BATTERIES, "custom"])
+        raise ConfigError(f"{path}: 'power.battery' must be one of {names}")
+    low, critical = BATTERIES.get(battery, (None, None))
+    if battery == "mains":
+        return battery, None, None
+    if power.get("low_volts") is not None:
+        low = _number(path, "power.low_volts", power["low_volts"], "volts")
+    if power.get("critical_volts") is not None:
+        critical = _number(path, "power.critical_volts", power["critical_volts"], "volts")
+    if battery == "custom" and low is None and critical is None:
+        raise ConfigError(f"{path}: 'power.battery: custom' needs low_volts or critical_volts")
+    if low is not None and critical is not None and critical >= low:
+        raise ConfigError(f"{path}: 'power.critical_volts' must be below 'power.low_volts'")
+    return battery, low, critical
 
 
 def _bool(path: Path, key: str, value: object) -> bool:
