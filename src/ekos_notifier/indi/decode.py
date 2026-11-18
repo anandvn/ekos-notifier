@@ -25,6 +25,10 @@ Kinds:
   ``DEW_*`` set). Sent when the switch, label or duty changes, the current moves past
   ``DEADBAND``, or for an update ``HEARTBEAT`` seconds after the last. A box with outputs adds
   ``power.outputs`` to ``indi.capabilities``.
+- ``camera.cooler``: ``device``, ``state`` (``busy`` cooling or warming toward its setpoint,
+  ``ok`` there, within the driver's ramp threshold; ``alert`` the driver refused or failed;
+  ``idle``) and ``temperature``, when a camera's ``CCD_TEMPERATURE`` changes state (seen on the
+  CCD simulator). INDI never sends the setpoint itself to other clients.
 - ``mount.coords`` (``ra`` hours, ``dec`` degrees, JNow, from a mount's EQUATORIAL_EOD_COORD) on a
   move of more than ~3' or once a minute; ``site.location`` (``latitude``, ``longitude`` east,
   ``elevation``, ``via`` "indi") from its GEOGRAPHIC_COORD when it changes.
@@ -139,12 +143,14 @@ class IndiDecoder:
         self._pointing: dict[str, tuple[float, float, float]] = {}  # device -> ts, ra, dec
         self._site: dict[str, tuple[float, float, float | None]] = {}
         self._outputs: dict[tuple[str, str], tuple[float, tuple]] = {}  # (device, output) -> ts, s
+        self._cooler: dict[str, str] = {}  # camera -> CCD_TEMPERATURE state
 
     def lost(self, ts: float) -> list[Event]:
         """The server went away: every metric is gone with it."""
         self.devices.clear()
         self._last.clear()
         self._outputs.clear()
+        self._cooler.clear()
         return self._capabilities_changed(ts)
 
     # -- feeding -------------------------------------------------------------------------------
@@ -197,6 +203,8 @@ class IndiDecoder:
             out += self._metrics(ts, dev, prop)
             if prop in OUTPUT_PROPS:
                 out += self._output_events(ts, dev, OUTPUT_PROPS[prop])
+            if prop == "CCD_TEMPERATURE" and dev.interfaces & INTERFACES["ccd"]:
+                out += self._cooler_state(ts, dev, (el.get("state") or "").lower())
             if dev.interfaces & INTERFACES["telescope"]:
                 out += self._mount(ts, dev, prop)
             if tag.startswith("def"):
@@ -325,6 +333,14 @@ class IndiDecoder:
             out.append(Event(ts, "power.output", data, SOURCE))
         return out
 
+    def _cooler_state(self, ts: float, dev: Device, state: str) -> list[Event]:
+        if not state or self._cooler.get(dev.name) == state:
+            return []
+        self._cooler[dev.name] = state
+        temperature = dev.numbers.get("CCD_TEMPERATURE", {}).get("CCD_TEMPERATURE_VALUE")
+        data = {"device": dev.name, "state": state, "temperature": temperature}
+        return [Event(ts, "camera.cooler", data, SOURCE)]
+
     def _mount(self, ts: float, dev: Device, prop: str) -> list[Event]:
         """A mount's pointing (EQUATORIAL_EOD_COORD) and site (GEOGRAPHIC_COORD)."""
         values = dev.numbers.get(prop, {})
@@ -358,6 +374,8 @@ class IndiDecoder:
         return [Event(ts, "metric", data, SOURCE)]
 
     def _forget(self, device: str, prop: str | None = None) -> None:
+        if prop is None or prop == "CCD_TEMPERATURE":
+            self._cooler.pop(device, None)
         if prop is None or prop in OUTPUT_PROPS:
             for key in [k for k in self._outputs if k[0] == device]:
                 del self._outputs[key]

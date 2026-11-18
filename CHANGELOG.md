@@ -5,6 +5,11 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Dew risk** (High): dew margin under `alerts.dew_margin_c` or humidity over 90 % for 5 min,
+  naming dew heaters that are off; "Dew risk passed" in the digest. **Cooler can't hold** and
+  **Cooler can't reach setpoint** (High), with "Cooler at setpoint" after: the setpoint comes from
+  Ekos Capture's log, or from the camera driver reporting it reached its target (new
+  `camera.cooler` events). `alerts.dew_margin_c` and `alerts.cooler_tolerance_c` are now read.
 - Install plan: an `install.sh` (a venv in your home folder, no root, no pipx) ships with 1.0,
   since StellarMate's images have neither pipx nor pacman repositories. Docs updated.
 - **Power boxes, whatever the brand:** a preset for libindi 2.x's standard power interface

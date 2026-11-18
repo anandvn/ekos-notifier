@@ -69,3 +69,11 @@ def test_config_check_shows_battery_levels(tmp_path, capsys):
     cfg.write_text("power:\n  battery: mains\n")
     assert main(["config", "check", "--config", str(cfg)]) == 0
     assert "battery: mains, voltage alerts off" in capsys.readouterr().out
+
+
+def test_config_check_shows_dew_and_cooler(tmp_path, capsys):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("alerts:\n  dew_margin_c: 3\n  cooler_tolerance_c: 0\n")
+    assert main(["config", "check", "--config", str(cfg)]) == 0
+    out = capsys.readouterr().out
+    assert "dew risk: margin under 3 °C" in out and "cooler: off" in out

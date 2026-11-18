@@ -190,6 +190,14 @@ def cmd_config_check(args: argparse.Namespace) -> int:
         print(f"  digest: every {cfg.digest_interval_minutes:g} min, {when}")
     else:
         print("  digest: off")
+    if cfg.dew_margin_c > 0:
+        print(f"  dew risk: margin under {cfg.dew_margin_c:g} °C or RH over 90% for 5 min")
+    else:
+        print("  dew risk: off (dew_margin_c is 0)")
+    if cfg.cooler_tolerance_c > 0:
+        print(f"  cooler: alert {cfg.cooler_tolerance_c:g} °C over the setpoint")
+    else:
+        print("  cooler: off (cooler_tolerance_c is 0)")
     if cfg.low_volts is None and cfg.critical_volts is None:
         print(f"  battery: {cfg.battery}, voltage alerts off")
     else:
