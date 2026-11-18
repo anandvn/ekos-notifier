@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from ekos_notifier import __version__
+from ekos_notifier.clouds import CloudsRule
 from ekos_notifier.conditions import CoolerRule, DewRule
 from ekos_notifier.config import Config
 from ekos_notifier.digest import DigestRule
@@ -83,6 +84,7 @@ def build_rules(config: Config, *, live: bool = True) -> Rules:
         dew=DewRule(config.dew_margin_c),
         cooler=CoolerRule(config.cooler_tolerance_c),
         disk=DiskRule(config.disk_low_gb) if live else DiskRule(free=lambda path: None),
+        clouds=CloudsRule(min(config.clouds_drop_percent, 100) / 100),
         messages=config.messages,
         digest=DigestRule(
             enabled=config.digest_enabled,

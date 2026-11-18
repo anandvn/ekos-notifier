@@ -5,6 +5,11 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Clouds** (High): PHD2's guide star fading by half for 2 minutes, or two frames in a row
+  losing half their stars, with the numbers; **Clouds passed** when the stars are back. A star
+  lost at full brightness isn't clouds (that's Guiding lost). `alerts: clouds_drop_percent`
+  (default 50, 0 = off). Thresholds to be tuned on a real cloudy night.
+
 - **Pre-flight checks** in "Starting session": battery, free disk space, dew margin and
   humidity, and the camera against its setpoint; failed checks are listed first as warnings.
   The **session summary** adds median HFR and guide RMS, temperature, humidity and camera

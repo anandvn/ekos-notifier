@@ -279,6 +279,11 @@ These change how the Ekos adapter and alert rules must work.
 - [x] **A manual autofocus failure ran three attempts**, the third logged as both "aborted" and
       "failed", and Capture then aborted its exposure ("Autofocus failed. Aborting exposure").
       Confirms the retry-loop note above; the rule must also not count "aborted" twice.
+- [ ] **Clouds on a real night.** The Clouds alert's thresholds (guide SNR falling by half for
+      2 min; frames losing half their stars) are guesses: neither simulator clouds over by itself.
+      Record a night with passing cloud and check when it fires and clears, and whether thin
+      cloud or the moon rising trips it. PHD2's simulator camera has a clouds setting that could
+      exercise the guide-star path before that.
 - [ ] **`captureComplete` reports `hfr = -1` and `starCount = 0` for every light frame**, with
       stars plainly present (guiding and plate solving worked). Find out whether Capture only
       measures HFR when an option is on; the session summary's median HFR depends on it.

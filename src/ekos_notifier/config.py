@@ -34,6 +34,7 @@ class Config:
     dew_margin_c: float = 2.0
     cooler_tolerance_c: float = 2.0
     disk_low_gb: float = 10.0
+    clouds_drop_percent: float = 50.0
     digest_enabled: bool = True
     digest_interval_minutes: float = 60.0
     digest_align_to_clock: bool = True
@@ -127,6 +128,9 @@ def load(path: str | Path | None = None) -> Config:
             path, "alerts.cooler_tolerance_c", alerts.get("cooler_tolerance_c", 2.0), "°C"
         ),
         disk_low_gb=_number(path, "alerts.disk_low_gb", alerts.get("disk_low_gb", 10), "GB"),
+        clouds_drop_percent=_number(
+            path, "alerts.clouds_drop_percent", alerts.get("clouds_drop_percent", 50), "percent"
+        ),
         digest_enabled=_bool(path, "digest.enabled", digest.get("enabled", True)),
         digest_interval_minutes=interval,
         digest_align_to_clock=_bool(
