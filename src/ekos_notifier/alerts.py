@@ -75,3 +75,8 @@ class SessionRule:
 
     def on_session_closed(self) -> None:
         pass
+
+    def preflight(self, now: float) -> list[tuple[bool, str]]:
+        """Pre-flight checks for "Starting session": (passed, words) for what this rule can see
+        of the rig right now. Nothing when it can't tell."""
+        return []

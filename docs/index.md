@@ -54,7 +54,11 @@ ekos-notifier config check
 ekos-notifier test-notify              # add --emergency to try a repeating Pushover Emergency
 ```
 
-Alerts so far: **Starting session**, the **session summary** as soon as the Scheduler stops or a
+Alerts so far: **Starting session** (with pre-flight checks: battery, free disk space, dew
+margin and humidity, and camera temperature against its setpoint, whatever your rig reports;
+a failed check is a warning, never a stop), the **session summary** (frames, integration,
+median HFR and guide RMS, temperature and humidity range, lowest battery, the problems raised)
+as soon as the Scheduler stops or a
 manual sequence completes (parked or not; it says whether the mount is parked), or 10 minutes
 after Ekos crashes (if you stop Ekos yourself, the session closes quietly), and the **Ekos
 stopped with the mount unparked** Emergency (2 minutes after Ekos stops; on Pushover it repeats
@@ -99,7 +103,8 @@ the setpoint was set; "Cooler at setpoint" follows. The setpoint is the one your
 sets, or the temperature your camera driver reports reaching.
 
 Every hour on the hour during a session, an **hourly digest**: "23:00 — All's well" (sent
-silently) or "23:00 — Attention: Guiding poor", with the target, filter and job progress, lights
+silently), "23:00 — No light frames since 21:40" (also silent) or "23:00 — Attention: Guiding
+poor", with the target, filter and job progress, lights
 and integration this hour and tonight, median guide RMS, failed dithers and everything that
 happened since the last one. Set it in the config's `digest:` section (`enabled`,
 `interval_minutes`, `align_to_clock`).

@@ -4,7 +4,9 @@ While a session is active, one status message per interval (default 60 min, on t
 
 - **Title carries the verdict:** "23:00 — All's well" (Quiet: sent silently) or "23:00 —
   Attention: Guiding poor" (Normal) when a problem was raised in the interval and not cleared
-  in it, or a problem raised earlier is still open (e.g. guiding lost, not yet recovered).
+  in it, or a problem raised earlier is still open (e.g. guiding lost, not yet recovered). With
+  no problem and no light frame in the interval it says so instead of "All's well" ("No light
+  frames since 22:14", still Quiet: the Scheduler waiting for a target is no problem).
 - **Body:** target · filter · job progress; lights this interval and tonight (per filter,
   integration); calibration frames; guide RMS (median) and failed dithers; median HFR when Ekos
   measures it; and everything since the last digest: alerts (sent or held) and milestones such
@@ -98,6 +100,7 @@ class DigestRule(SessionRule):
         self._next: float | None = None
         self._open: dict[str, str] = {}  # problem rule -> title, until cleared
         self._tonight: list[tuple[str, float]] = []
+        self._last_light: float | None = None
         self._reset_interval(None)
         self._target: str | None = None
         self._filter: str | None = None
@@ -119,6 +122,7 @@ class DigestRule(SessionRule):
             self._started = started_at  # a restart mid-session knows the real start
             self._next = None
             self._tonight = []
+            self._last_light = None
             self._open = {}
             # Problems still open from before the restart; Ekos's snapshot on reconnect closes
             # the ones that aren't (capture running again, focus complete…).
@@ -178,6 +182,7 @@ class DigestRule(SessionRule):
                 frame = (d.get("filter") or "no filter", float(d.get("exposure") or 0))
                 self._frames.append(frame)
                 self._tonight.append(frame)
+                self._last_light = event.ts
                 if isinstance(d.get("hfr"), (int, float)) and d["hfr"] > 0:
                     self._hfr.append(float(d["hfr"]))
                 if self._job and (frame[0], frame[1]) == self._job[:2]:
@@ -297,9 +302,15 @@ class DigestRule(SessionRule):
 
     def _digest(self, due: float, now: float) -> Event:
         problems = list(dict.fromkeys([*self._raised.values(), *self._open.values()]))
-        title = f"{hhmm(due)} — " + (
-            "Attention: " + ", ".join(problems) if problems else "All's well"
-        )
+        if problems:
+            verdict = "Attention: " + ", ".join(problems)
+        elif self._frames:
+            verdict = "All's well"
+        elif self._last_light is not None:  # seen live: "All's well" with capture long stopped
+            verdict = f"No light frames since {hhmm(self._last_light)}"
+        else:
+            verdict = "No light frames yet"
+        title = f"{hhmm(due)} — {verdict}"
         lines = []
         where = [p for p in (self._target or self._capture_target, self._filter) if p]
         if self._job:

@@ -9,10 +9,11 @@ Alert data: ``rule``, ``priority`` (emergency | high | normal | quiet), ``title`
 
 Rules so far:
 
-- **Starting session** (Normal, immediate) when a session starts.
+- **Starting session** (Normal, immediate) when a session starts, with each rule's pre-flight
+  checks (``SessionRule.preflight``): warnings first, then the readings that passed.
 - **Session summary** (Normal, immediate) when a session that imaged closes: as soon as the
-  Scheduler stops or a manual sequence completes, parked or not, with the mount's last known
-  state in the message.
+  Scheduler stops or a manual sequence completes, parked or not, with the night's numbers
+  (``ekos_notifier.stats``) and the mount's last known state in the message.
 - **Guiding lost** (High) and **Guiding recovered**, **PHD2 warnings** (High, PHD2's own
   warnings and errors, once per message per session), and **Guiding poor** (High, following
   Ekos's own guide-deviation limit): see ``ekos_notifier.guiding``.
@@ -57,6 +58,7 @@ from ekos_notifier.guiding import RECOVERY, GuidingRule, PoorGuidingRule
 from ekos_notifier.messages import MessageSettings
 from ekos_notifier.power import PowerRule
 from ekos_notifier.sky import SkyRule
+from ekos_notifier.stats import SessionStats
 
 UNPARKED_GRACE = 120.0
 MOVING = {"tracking", "slewing", "moving"}
@@ -134,6 +136,7 @@ class Rules:
             lambda: defaultdict(int)
         )
         self._calibration: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        self._stats: dict[str, SessionStats] = defaultdict(SessionStats)
 
     # -- events ------------------------------------------------------------------------------
 
@@ -155,6 +158,8 @@ class Rules:
                 self._lights[session_id][key] += 1
             elif f["type"]:
                 self._calibration[session_id][f["type"]] += 1
+        self._stats[session_id].frames(frames)
+        self._stats[session_id].alerts(alerts)
         sent = [
             a.data.get("message") or a.data.get("body", "").split("\n")[0]
             for a in alerts
@@ -168,17 +173,21 @@ class Rules:
     def handle(self, event: Event) -> list[Event]:
         out = self.messages.apply(self._handle(event))
         self.digest.note_alerts(out)
+        self._note_alerts(out)
         return out + self.messages.apply(self.digest.handle(event))
 
     def tick(self, now: float) -> list[Event]:
         out = self.messages.apply(self._tick(now))
         self.digest.note_alerts(out)
+        self._note_alerts(out)
         return out + self.messages.apply(self.digest.tick(now))
 
     def _handle(self, event: Event) -> list[Event]:
         out = self._tick(event.ts)
         kind, d, sid = event.kind, event.data, event.session_id
         state = d.get("state")
+        if sid:
+            self._stats[sid].note(event)
 
         if kind == "mount.park":
             self._park = state
@@ -217,16 +226,20 @@ class Rules:
                     "normal",
                     "Starting session",
                     f"Night of {d['night']}: session started at {_clock(event.ts)} "
-                    f"because {START_REASONS.get(d.get('reason'), d.get('reason'))}.",
+                    f"because {START_REASONS.get(d.get('reason'), d.get('reason'))}."
+                    + self._preflight(event.ts),
                     immediate=True,
                 )
             )
+        elif kind == "session.closed" and d.get("state") != "closed":
+            self._stats.pop(sid, None)  # abandoned: nothing to sum up
         elif kind == "session.closed" and d.get("state") == "closed":
             if d.get("reason") in QUIET_ENDS:
                 # You stopped Ekos yourself: you're at the rig and know. Forget the counts.
                 self._started.pop(sid, None)
                 self._lights.pop(sid, None)
                 self._calibration.pop(sid, None)
+                self._stats.pop(sid, None)
             else:
                 out.append(self._summary(event, sid))
         # The other rules after this one, so "Starting session" comes before what it leads to
@@ -266,6 +279,27 @@ class Rules:
         return []
 
     # -- helpers -------------------------------------------------------------------------------
+
+    def _note_alerts(self, alerts: list[Event]) -> None:
+        for a in alerts:
+            if a.kind == "alert" and a.session_id in self._stats:
+                self._stats[a.session_id].alerts([a])
+
+    def _preflight(self, now: float) -> str:
+        """The pre-flight checks for "Starting session": what each rule can tell of the rig
+        right now. Warnings first; they never stop the session."""
+        readings: list[str] = []
+        warnings: list[str] = []
+        for rule in self.session_rules:
+            for ok, text in rule.preflight(now):
+                (readings if ok else warnings).append(text)
+        out = ""
+        if warnings:
+            out += "\nCheck: " + "; ".join(warnings) + "."
+        if readings:
+            text = ", ".join(readings) + "."
+            out += "\nPre-flight: " + text
+        return out
 
     @staticmethod
     def _ekos_gone(kind: str, state: Any) -> bool:
@@ -308,6 +342,7 @@ class Rules:
                 + ", ".join(f"{n} {t}" for t, n in sorted(calibration.items()))
                 + "."
             )
+        lines += self._stats.pop(sid, SessionStats()).lines() if sid else []
         mount = self._mount_line()
         if mount:
             lines.append(mount)
