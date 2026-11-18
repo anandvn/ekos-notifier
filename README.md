@@ -125,7 +125,9 @@ ekos-notifier test-notify --emergency   # Pushover: a repeating Emergency (ackno
 
 The running service picks up your saved changes by itself within a few seconds: no restart
 needed. (To apply them at once: `systemctl --user reload ekos-notifier`.) If the file has a
-mistake, the service keeps its previous settings and logs why; `config check` shows it too.
+mistake, the service keeps its previous settings and logs why (starting up with a broken file,
+it records the night without sending alerts until it's fixed); `config check` shows the
+mistake.
 
 Start a session in Ekos (run the Scheduler, or capture a light frame) and you'll get
 **Starting session**, with a pre-flight check of your rig.
@@ -304,6 +306,8 @@ folders yourself if you don't want them.
 | `Config error: … unknown alert '…'` | A misspelt name under `messages:`. The message suggests the right one, and `ekos-notifier config alerts` lists them all. |
 | No messages arrive | `ekos-notifier config check` (is your URL there, and valid?), then `ekos-notifier test-notify`. If the test arrives but alerts don't, check the service is running and look at its log (above). |
 | Changed the config, nothing happened | Run `ekos-notifier config check`: a file with a mistake is ignored, and the service keeps its previous settings. The log says so too (`journalctl --user -u ekos-notifier`). |
+| No alerts, and the log says "Running with recording only" | The config had a mistake when the service started. The night is still recorded; fix the file (`ekos-notifier config check`) and alerts resume by themselves. |
+| The service stopped and the log says the database "has schema N" | It was written by a newer Ekos Notifier (you went back a version). Install the newer version again; the service won't keep retrying until then. |
 | It stops when you log out | Run `loginctl enable-linger` once, so your user services keep running (and start at boot). |
 | No battery, dew or power alerts | Your devices may not be recognised: see [Power boxes and weather stations](#power-boxes-and-weather-stations). |
 

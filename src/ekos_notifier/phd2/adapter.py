@@ -76,7 +76,7 @@ class Phd2Adapter:
                     log.info("PHD2 not reachable on %s:%d (%s); will keep trying", *self._addr, exc)
                     self._waiting_logged = True
             except Exception as exc:  # noqa: BLE001 - supervisor: log, back off, retry
-                log.warning("PHD2 adapter: %s", exc)
+                log.warning("PHD2 adapter: %s", exc, exc_info=True)  # not a connection: a bug
             delay = self._backoff[min(failures, len(self._backoff) - 1)]
             failures += 1
             await asyncio.sleep(delay)

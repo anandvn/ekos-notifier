@@ -5,6 +5,17 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Hardening, from a pre-release review:**
+  - The notifier survives a failed pass (the database busy, a notifier library raising): it
+    logs the traceback, backs off and carries on, instead of stopping the service.
+  - Calls to KStars over D-Bus give up after 10 s, so a hung KStars can't pile up tasks.
+  - An unexpected error in the Ekos, PHD2 or INDI source is logged with its traceback (a
+    connection coming and going is still one line).
+  - A broken config at startup no longer stops the service: it records the night without
+    alerts, and the fixed file is picked up by itself.
+  - A database from a newer version stops the service with exit code 78, which the unit no
+    longer restarts on (`RestartPreventExitStatus=78`), instead of retrying every 10 s.
+
 - **Fixed:** `ekos-notifier install-service` run while the service is up (re-installing, or
   an installer upgrade) said another copy was "probably in a terminal" and didn't apply the new
   unit. It now recognises the service and restarts it on the new unit and version; the warning

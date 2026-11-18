@@ -46,6 +46,8 @@ ExecReload=/bin/kill -HUP $MAINPID
 # SIGTERM stops it cleanly: everything queued is written before it exits.
 Restart=on-failure
 RestartSec=10
+# 78: an error retrying can't fix (a database from a newer version): stop, don't loop.
+RestartPreventExitStatus=78
 TimeoutStopSec=30
 Environment=PYTHONUNBUFFERED=1
 

@@ -34,6 +34,7 @@ log = logging.getLogger(__name__)
 CONSUMER = "notify"
 MAX_AGE = 600.0  # seconds: undelivered alerts older than this are dropped
 RETRY_DELAYS = (15, 30, 60, 120)  # then every 2 minutes, until MAX_AGE
+MAX_BACKOFF = 60.0  # seconds between passes after repeated failures
 
 PUSHOVER = {
     "emergency": {"priority": "emergency", "interval": "60", "expire": "3600"},
@@ -126,10 +127,21 @@ class Notifier:
         self._store: Store | None = None
 
     async def run(self) -> None:
+        """Pass after pass until cancelled. A pass that fails (the database busy on a slow SD
+        card, a notifier library raising) is logged and retried with a growing delay: the
+        notifier never takes the service down with it, and what's unsent stays queued."""
         loop = asyncio.get_running_loop()
+        failures = 0
         try:
             while True:
-                await loop.run_in_executor(self._executor, self.step)
+                try:
+                    await loop.run_in_executor(self._executor, self.step)
+                    failures = 0
+                except Exception:  # noqa: BLE001 - keep sending; the outbox remembers
+                    failures += 1
+                    log.exception("notifier: a pass failed (%d in a row); retrying", failures)
+                    await asyncio.sleep(min(self.poll * 2**failures, MAX_BACKOFF))
+                    continue
                 await asyncio.sleep(self.poll)
         finally:
             if self._store is not None:

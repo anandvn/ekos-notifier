@@ -59,7 +59,8 @@ def test_restart_resumes_the_open_session(tmp_path):
     store.close()
 
 
-def test_a_failing_writer_stops_the_service_with_an_error(tmp_path, caplog):
+def test_a_newer_database_stops_the_service_for_good(tmp_path, caplog):
+    # Exit 78: the unit's RestartPreventExitStatus, so systemd doesn't retry every 10 s.
     db = tmp_path / "tc.db"
     import sqlite3
 
@@ -67,5 +68,5 @@ def test_a_failing_writer_stops_the_service_with_an_error(tmp_path, caplog):
     con = sqlite3.connect(db)
     con.execute("PRAGMA user_version = 99")
     con.close()
-    assert main(["run", "--db", str(db)]) == 1
+    assert main(["run", "--db", str(db)]) == 78
     assert "Upgrade Ekos Notifier" in caplog.text
