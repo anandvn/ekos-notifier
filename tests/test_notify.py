@@ -149,6 +149,7 @@ def test_service_sends_the_m31_alerts(tmp_path):
     # Sorted: replayed this fast, alerts minutes apart can share a step (Emergency goes first).
     assert sorted((p, t) for _, p, t in send.sent) == [
         ("emergency", "Mount left unparked"),
+        ("normal", "Flats reminder"),
         ("normal", "Session summary"),
         ("normal", "Starting session"),
     ]

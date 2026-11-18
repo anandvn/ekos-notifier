@@ -5,6 +5,11 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Flats reminder** (Normal, with the session summary): filters with lights but no flats tonight,
+  once per filter per night. **Darks reminder** (off by default): "cover the telescope" when a
+  dark job starts; the Ekos adapter now reads the active Capture job's frame type (`capture.job`).
+  `messages:` supports alerts that are off unless turned on.
+
 - Choose which messages you get: a `messages:` section in the config sets any alert to `off`,
   `digest`, `quiet`, `normal`, `high` or `emergency`; all-clears follow their problem when it's
   off or held for the digest. `ekos-notifier config alerts` lists every alert with its default

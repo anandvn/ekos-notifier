@@ -163,3 +163,31 @@ def test_mount_log_of_an_ekos_started_later_is_all_new():
     bus.lines = ["2026-11-18T20:00:00 Status: inactive"]
     asyncio.run(a.read_logs(bus))
     assert mount_logs(events) == ["Status: inactive"]
+
+
+class JobBus(StubBus):
+    def __init__(self, job, frame_type):
+        super().__init__({})
+        self.job, self.frame_type = job, frame_type
+
+    async def call(self, msg):
+        if msg.member == "getActiveJobID":
+            return Reply([self.job])
+        if msg.member == "getJobFrameType":
+            assert msg.body == [self.job]
+            return Reply([self.frame_type])
+        return await super().call(msg)
+
+
+def test_active_capture_job_frame_type_is_read_and_sent_on_change():
+    a, events = adapter()
+    bus = JobBus(3, 2)
+    asyncio.run(a.read_job(bus))
+    asyncio.run(a.read_job(bus))  # same job: nothing new
+    bus.job, bus.frame_type = 4, 0
+    asyncio.run(a.read_job(bus))
+    jobs = [e.data for e in events if e.kind == "capture.job"]
+    assert jobs == [{"job": 3, "frame_type": "dark"}, {"job": 4, "frame_type": "light"}]
+    bus.job = -1  # nothing active
+    asyncio.run(a.read_job(bus))
+    assert len([e for e in events if e.kind == "capture.job"]) == 2

@@ -105,9 +105,11 @@ def test_m31_night_alerts_in_order_and_on_time():
     assert [a.data["rule"] for a in got] == [
         "session_started",
         "session_summary",
+        "flats_reminder",  # Luminance lights, but flats only for the other six filters
         "ekos_stopped_mount_unparked",
     ]
-    started, summary, emergency = got
+    started, summary, flats, emergency = got
+    assert flats.data["filters"] == ["Luminance"] and flats.ts == summary.ts
     sched_idle = next(e for e in out if e.kind == "scheduler.state" and e.data["state"] == "idle")
     assert summary.ts == sched_idle.ts  # at once, not after Ekos's 10-minute grace
     body = summary.data["body"]
