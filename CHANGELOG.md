@@ -5,6 +5,11 @@ Semantic Versioning.
 
 ## Unreleased
 
+- `ekos-notifier simulate`: replay a night and print every alert it would send, with your config:
+  the sample night (now shipped in the package), a recording, or one of your sessions from the
+  database (`--session last`, `--list`; read-only). `--brief` for titles, `--send` to send them
+  marked [Simulated] (an Emergency as High). The mount-limit Emergency is planned for after 1.0.
+
 - **Meridian flip failed** and **Meridian flip overdue** (Emergency), with "Meridian flip done"
   after. Ekos's Mount module logs its flips only in its `logText` property (no `newLog` signal),
   which the Ekos adapter now polls every 10 s, so Mount's log lines are recorded too. Overdue: the

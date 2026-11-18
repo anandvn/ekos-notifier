@@ -1,15 +1,15 @@
 import itertools
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
 from ekos_notifier import replay, session
 from ekos_notifier.events import Event
+from ekos_notifier.samples import SAMPLE_NIGHT
 from ekos_notifier.session import SessionManager, night_of
 from ekos_notifier.store import Store
 
-FIXTURE = Path(__file__).parent / "fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz"
+FIXTURE = SAMPLE_NIGHT
 EVENING = datetime(2026, 11, 16, 21, 0).timestamp()
 
 

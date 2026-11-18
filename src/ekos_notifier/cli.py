@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import logging
 import sys
+import time
 
 from ekos_notifier import __version__
 
@@ -14,7 +15,6 @@ EXIT_NOT_IMPLEMENTED = 3
 
 PLANNED = {
     "doctor": "check D-Bus, PHD2, INDI, clock, disk, notifier and sync, and suggest fixes",
-    "simulate": "replay a recorded night to preview alerts",
 }
 
 CONFIG_HELP = "config file (default: ~/.config/ekos-notifier/config.yaml)"
@@ -79,6 +79,33 @@ def build_parser() -> argparse.ArgumentParser:
     svc.add_argument("--uninstall", action="store_true", help="stop, disable and remove it")
     svc.add_argument("--config", metavar="PATH", help="config file for the service to use")
 
+    sim = sub.add_parser(
+        "simulate",
+        help="replay a night to preview the alerts it would send",
+        description="Replay a night through the alert rules with your config and show every "
+        "alert it would send, to tune alerts in daylight. With no arguments, the sample night "
+        "shipped with Ekos Notifier; or a recording file; or one of your own sessions from the "
+        "database (read-only). Nothing is written, and nothing is sent unless you ask.",
+    )
+    sim.add_argument("recording", nargs="?", help="a recording (.ndjson.gz) to replay")
+    sim.add_argument(
+        "--session", metavar="ID", help="replay one of your sessions: 'last' or an id from --list"
+    )
+    sim.add_argument("--list", action="store_true", help="list your recent sessions")
+    sim.add_argument(
+        "--db",
+        metavar="PATH",
+        help="database file (default: ~/.local/share/ekos-notifier/ekos-notifier.db)",
+    )
+    sim.add_argument("--config", metavar="PATH", help=CONFIG_HELP)
+    sim.add_argument("--brief", action="store_true", help="titles only")
+    sim.add_argument(
+        "--send",
+        action="store_true",
+        help="also send the alerts that would go out at once, marked [Simulated] "
+        "(an Emergency is sent as High)",
+    )
+
     for name, help_text in PLANNED.items():
         sub.add_parser(name, help=f"{help_text} (not yet implemented)")
 
@@ -108,6 +135,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_indi_dump(args)
     if args.command == "install-service":
         return cmd_install_service(args)
+    if args.command == "simulate":
+        return cmd_simulate(args)
     print(f"ekos-notifier {args.command}: not implemented yet (pre-alpha).", file=sys.stderr)
     return EXIT_NOT_IMPLEMENTED
 
@@ -280,6 +309,54 @@ def cmd_install_service(args: argparse.Namespace) -> int:
         return 1
     for line in lines:
         print(line)
+    return 0
+
+
+def cmd_simulate(args: argparse.Namespace) -> int:
+    from ekos_notifier import simulate
+    from ekos_notifier.notify import send_apprise
+    from ekos_notifier.service import build_rules
+    from ekos_notifier.store import default_path
+
+    cfg = _load_config(args.config)
+    if cfg is None:
+        return 1
+    db = args.db or default_path()
+    try:
+        if args.list:
+            rows = simulate.sessions(db)
+            if not rows:
+                print("No imaging sessions in the database yet.")
+            for r in rows:
+                start = time.strftime("%Y-%m-%d %H:%M", time.localtime(r["started_at"]))
+                end = (
+                    time.strftime("%H:%M", time.localtime(r["ended_at"])) if r["ended_at"] else "…"
+                )
+                why = r["end_reason"] or r["state"]
+                print(f"{r['id'][:8]}  night of {r['night']}  {start}–{end}  {why}")
+            return 0
+        if args.session and args.recording:
+            print("Give a recording or --session, not both.", file=sys.stderr)
+            return 2
+        if args.session:
+            night = simulate.session(db, args.session)
+        elif args.recording:
+            night = simulate.recording(args.recording)
+        else:
+            night = simulate.sample()
+    except simulate.SimulateError as exc:
+        print(f"simulate: {exc}", file=sys.stderr)
+        return 1
+    alerts = simulate.run(night, build_rules(cfg, live=False))
+    print("\n".join(simulate.report(night, alerts, brief=args.brief)))
+    if args.send:
+        if not cfg.notify:
+            print("Nothing sent: no notifiers in the config.", file=sys.stderr)
+            return 1
+        errors = simulate.send(alerts, cfg.notify, send_apprise)
+        for error in errors:
+            print(f"FAILED: {error}", file=sys.stderr)
+        return 1 if errors else 0
     return 0
 
 

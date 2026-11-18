@@ -1,13 +1,13 @@
 """The M 31 simulated night (see tests/fixtures/replay/README.md) through the Ekos decoder."""
 
 from collections import Counter
-from pathlib import Path
 
 import pytest
 
 from ekos_notifier import replay
+from ekos_notifier.samples import SAMPLE_NIGHT
 
-FIXTURE = Path(__file__).parent / "fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz"
+FIXTURE = SAMPLE_NIGHT
 
 
 @pytest.fixture(scope="module")

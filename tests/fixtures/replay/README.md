@@ -39,6 +39,10 @@ for the real coordinates, hostname and username before committing.
 
 ### `sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz` (1.6 MB)
 
+Now shipped with the package as the sample night (`src/ekos_notifier/samples/`, imported as
+`ekos_notifier.samples.SAMPLE_NIGHT`): `ekos-notifier simulate` replays it with no arguments, and
+the tests read it from there.
+
 Simulators on KStars 3.8.5 (Flatpak), PHD2 2.6.14 with the Guide Simulator, recorded 2026-11-16
 (times below are EST, UTC−5). Scrubbed with `tools/scrub_replay.py` (site → 51.48, 0.0, 46 m).
 Recording starts ~6 min before the Scheduler and ends just after its shutdown.

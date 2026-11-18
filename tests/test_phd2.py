@@ -1,13 +1,13 @@
 import asyncio
 import json
-from pathlib import Path
 
 from ekos_notifier import replay
 from ekos_notifier.ekos.settings import UNKNOWN, GuiderSettings
 from ekos_notifier.phd2.adapter import Phd2Adapter
 from ekos_notifier.phd2.decode import Phd2Decoder
+from ekos_notifier.samples import SAMPLE_NIGHT
 
-FIXTURE = Path(__file__).parent / "fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz"
+FIXTURE = SAMPLE_NIGHT
 
 VERSION = {"Event": "Version", "PHDVersion": "2.6.14", "PHDSubver": "", "MsgVersion": 1}
 STEP = {

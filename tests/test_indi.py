@@ -1,7 +1,6 @@
 import asyncio
 import sqlite3
 import xml.etree.ElementTree as ET
-from pathlib import Path
 
 import pytest
 
@@ -12,9 +11,10 @@ from ekos_notifier.indi import dump
 from ekos_notifier.indi.adapter import IndiAdapter
 from ekos_notifier.indi.decode import HEARTBEAT, IndiDecoder, Mapping, dewpoint, number
 from ekos_notifier.indi.presets import load_builtin, parse
+from ekos_notifier.samples import SAMPLE_NIGHT
 from ekos_notifier.store import Store
 
-FIXTURE = Path(__file__).parent / "fixtures/replay/sim-m31-scheduler-kstars-3.8.5-flatpak.ndjson.gz"
+FIXTURE = SAMPLE_NIGHT
 
 
 def driver(device, exe, interface):
