@@ -6,6 +6,7 @@ are read; the rest of the example file is kept in ``raw`` for the features still
 
 from __future__ import annotations
 
+import difflib
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -46,6 +47,79 @@ class Config:
     indi_mappings: list[Mapping] = field(default_factory=list)
     messages: MessageSettings = field(default_factory=MessageSettings)
     raw: dict[str, Any] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)  # settings that are ignored, or overridden
+
+
+# Every setting the file can hold, by section (None: a value, not a section of settings).
+# `messages:` is checked against the alert registry instead. Keep in step with
+# config.example.yaml (a test checks the example raises no warnings).
+_DIGEST = {"enabled", "interval_minutes", "align_to_clock"}
+KNOWN: dict[str, set[str] | None] = {
+    "notify": None,
+    "notify_expire_minutes": None,
+    "style": None,
+    "digest": _DIGEST,
+    "crier": _DIGEST,  # the digest's name before the rename
+    "heartbeat": {"url", "grace_minutes"},
+    "indi": {"host", "port", "metrics"},
+    "power": {"battery", "low_volts", "critical_volts"},
+    "messages": None,
+    "alerts": {
+        "dew_margin_c",
+        "guiding_recovery_minutes",
+        "guiding_poor_minutes",
+        "cooler_tolerance_c",
+        "disk_low_gb",
+        "clouds_drop_percent",
+        "twilight_warning_minutes",
+        "target_low_warning_minutes",
+    },
+    "sync": {"dest", "include_fits", "auto_when_reachable"},
+    "gui": {"port", "night_mode"},
+    "units": {"temperature", "guide_error", "clock"},
+    "privacy": {"round_site_coordinates"},
+}
+WHY_UNUSED = {"power.preset": "power boxes are recognised automatically"}
+
+
+def _hint(name: str, choices: Any) -> str:
+    close = difflib.get_close_matches(name, list(choices), n=1)
+    return f" (did you mean '{close[0]}'?)" if close else ""
+
+
+def _warnings(raw: dict[str, Any], battery: str, low: Any, critical: Any) -> list[str]:
+    """Settings the file has that do nothing, and battery levels that replace the preset's."""
+    out = []
+    for key, value in raw.items():
+        key = str(key)
+        if key not in KNOWN:
+            out.append(f"'{key}' isn't a setting{_hint(key, KNOWN)}; it's ignored")
+            continue
+        section = KNOWN[key]
+        if section is None or not isinstance(value, dict):
+            continue
+        for sub in value:
+            name = f"{key}.{sub}"
+            if sub not in section:
+                why = WHY_UNUSED.get(name) or f"not a setting{_hint(str(sub), section)}"
+                out.append(f"'{name}' isn't used ({why}); it's ignored")
+    power = raw.get("power") if isinstance(raw.get("power"), dict) else {}
+    if battery == "mains":
+        for name in ("low_volts", "critical_volts"):
+            if power.get(name) is not None:
+                out.append(f"'power.{name}' is ignored with battery: mains (no voltage alerts)")
+    elif battery in BATTERIES:
+        preset_low, preset_critical = BATTERIES[battery]
+        for name, value, preset in (
+            ("low_volts", low, preset_low),
+            ("critical_volts", critical, preset_critical),
+        ):
+            if power.get(name) is not None and value != preset:
+                out.append(
+                    f"'power.{name}: {value:g}' replaces {battery}'s {preset:g} V; "
+                    "delete it to use the preset's level"
+                )
+    return out
 
 
 def default_path() -> Path:
@@ -167,6 +241,7 @@ def load(path: str | Path | None = None) -> Config:
         indi_mappings=mappings,
         messages=message_settings,
         raw=raw,
+        warnings=_warnings(raw, battery, low_volts, critical_volts),
     )
 
 

@@ -125,8 +125,9 @@ fade (0 turns it off). Its numbers are a first guess until it has seen real clou
 **Disk low** (High) when the disk Ekos saves to has under 10 GB free (`alerts: disk_low_gb`),
 with how many more frames fit and how long that is at tonight's pace.
 
-With a power box: **Battery critical** (Emergency, below 11.5 V for a minute, sent even outside a
-session), **Battery low** (High, below 12.0 V, once) and **Battery OK** when the voltage is back.
+With a power box: **Battery critical** (Emergency, at or under 11.5 V for a minute) and **Battery
+low** (High, at or under 12.0 V, once), both sent at any time, even outside a session, and
+**Battery OK** when the voltage is back.
 Pick your battery in the config (`power: battery: agm_12v | lifepo4_12v | mains | custom`, or set
 `low_volts` / `critical_volts`); `mains` turns the voltage alerts off. Also High: **Power output
 off** when an output that was powering something switches off during a session, and **No

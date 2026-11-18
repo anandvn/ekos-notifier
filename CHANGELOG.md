@@ -5,6 +5,14 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Battery low is sent at any time**, not only during a session (seen live: a LiFePO4 at
+  12.0 V raised nothing with no session running), and both battery levels now count **at or
+  under** the level, so exactly 12.0 V on a LiFePO4 is critical.
+- **`config check` flags settings that do nothing**: unknown keys in any section, with a
+  suggestion ("did you mean 'dew_margin_c'?"), and `low_volts`/`critical_volts` that replace
+  the battery preset's levels. They're warnings, not errors; the service logs them at startup
+  and on reload too.
+
 - **Fixed:** when `~/.local/bin` isn't on your `PATH`, the installer and the README now say to
   add it to `~/.bashrc` (`~/.zshrc` for zsh), not `~/.profile`: terminals like Konsole don't
   read `~/.profile`, and on StellarMate a `~/.bash_profile` hides it even at login. If the line

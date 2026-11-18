@@ -54,7 +54,7 @@ A = Alert
 ALERTS: dict[str, Alert] = {
     # Emergency
     "ekos_stopped_mount_unparked": A("emergency", False, "Ekos stopped with the mount unparked"),
-    "battery_critical": A("emergency", False, "Battery under the critical voltage"),
+    "battery_critical": A("emergency", False, "Battery at or under the critical voltage"),
     "meridian_flip_failed": A("emergency", False, "Ekos reports a failed meridian flip"),
     "meridian_flip_overdue": A("emergency", False, "Still unflipped well past the flip time"),
     # High
@@ -70,7 +70,7 @@ ALERTS: dict[str, Alert] = {
     "dew_risk": A("high", False, "Dew margin small or humidity high"),
     "cooler_cant_hold": A("high", False, "Camera drifted above its setpoint"),
     "cooler_cant_reach": A("high", False, "Camera never reached its setpoint"),
-    "battery_low": A("high", False, "Battery under the low voltage"),
+    "battery_low": A("high", False, "Battery at or under the low voltage"),
     "power_output_off": A("high", False, "A power box output switched off"),
     "power_output_dead": A("high", False, "A power box output stopped drawing current"),
     "disk_low": A("high", False, "Little disk space left for frames"),
