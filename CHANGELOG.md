@@ -5,6 +5,13 @@ Semantic Versioning.
 
 ## Unreleased
 
+## 0.2.0 — 2026-11-19
+
+The 0.2 "First run" milestone: `ekos-notifier setup` sets up notifications in a few questions,
+`ekos-notifier doctor` checks the rig and says how to fix what's wrong, the docs have a site,
+and alerts work with KStars in any language it ships. Message styles are dropped: messages are
+in plain English.
+
 - **Changed: message styles are dropped.** Messages are in plain English. The Olde English
   style is dropped and Terse is deferred, so the `style:` setting is gone; a config that still
   has it gets a note that it's ignored (delete the line).
