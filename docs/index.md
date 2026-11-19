@@ -26,13 +26,14 @@ python3-venv`), and:
 - writes a commented config to fill in, `~/.config/ekos-notifier/config.yaml`, readable only by
   you (`ekos-notifier config init` does the same; an existing config is never touched);
 - offers to start Ekos Notifier with your session (the systemd user service below; `--service`
-  or `--no-service` answers for you).
+  or `--no-service` answers for you);
+- offers `ekos-notifier setup` when no notifier is set up yet (with a terminal to ask on).
 
 Run it again to upgrade: it restarts the service on the new version, and rebuilds the venv if
 an OS update moved Python to a new version. `sh install.sh --uninstall` (or `| sh -s --
 --uninstall`) removes the service, the venv and the command, and keeps your config and
 sessions. Using pipx or uv instead works too: install `ekos-notifier`, then run `ekos-notifier
-install-service`.
+setup` (it offers the service).
 
 ## What works today
 
@@ -65,7 +66,12 @@ terminal while the service is up) refuses to start rather than send every alert 
 
 ### Notifications
 
-Put your notifier in `~/.config/ekos-notifier/config.yaml` (any
+`ekos-notifier setup` sets it up with a few questions: it shows what it sees on the rig, takes
+your notifier's details (Pushover, ntfy, Telegram, Discord or any Apprise URL) and sends a test,
+then asks about the battery and the hourly digest. It saves only when you say so, changing just
+those lines of the config and keeping the rest (and the comments); the installer offers it.
+
+Or put your notifier in `~/.config/ekos-notifier/config.yaml` (any
 [Apprise URL](https://github.com/caronc/apprise/wiki); see `config.example.yaml`):
 
 ```yaml

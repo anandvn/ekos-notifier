@@ -61,69 +61,58 @@ The installer:
 3. writes a config file for you to fill in, `~/.config/ekos-notifier/config.yaml`, readable
    only by you (it will hold your notification keys);
 4. asks **"Start Ekos Notifier with your session?"**: answer **Y** (or just Enter). It then
-   starts now and whenever you log in, as KStars does on StellarMate.
+   starts now and whenever you log in, as KStars does on StellarMate;
+5. offers to **set up your notifications** (`ekos-notifier setup`, below): answer **Y** to do
+   it now.
 
 If it ends by saying `~/.local/bin` isn't on your `PATH`, run the line it prints, then open a
 new terminal so `ekos-notifier` is found.
 
 Already use pipx or uv? `pipx install ekos-notifier` (or `uv tool install ekos-notifier`), then
-`ekos-notifier config init` and `ekos-notifier install-service`, does the same.
+`ekos-notifier setup`, does the same (setup offers to install the service).
 
 ## Set up in ten minutes
 
 Out of the box, Ekos Notifier records your nights but sends nothing: it needs to know where to
-send alerts. That's one line in the config file.
+send alerts.
 
-### 1. Get a notification URL
+### 1. Get your notifier's details
 
-Every notifier is written as one URL. The common ones:
+Pick a service and get what it needs. Ekos Notifier sends through
+[Apprise](https://github.com/caronc/apprise/wiki), so almost any service works; the common ones:
 
-| Service | What to do | URL to use |
+| Service | What to do | As a URL |
 | --- | --- | --- |
 | **Pushover** (recommended: its Emergency priority repeats until you acknowledge it) | Install the app and sign up at [pushover.net](https://pushover.net). Copy **Your User Key** from the dashboard. Then **Create an Application/API Token** (name it "Ekos Notifier") and copy its **API Token**. | `pover://USER_KEY@API_TOKEN` |
 | **ntfy** (free, no account) | Install the ntfy app and subscribe to a topic name that's hard to guess, e.g. `rig-k7q2x9`. | `ntfys://ntfy.sh/rig-k7q2x9` |
 | **Telegram** | Create a bot with @BotFather (it gives you a bot token), send the bot a message, then get your chat ID. | `tgram://BOT_TOKEN/CHAT_ID` |
-| **Discord** | Channel settings → Integrations → Webhooks → New Webhook → Copy Webhook URL, and use the two parts after `/webhooks/`. | `discord://WEBHOOK_ID/WEBHOOK_TOKEN` |
+| **Discord** | Channel settings → Integrations → Webhooks → New Webhook → Copy Webhook URL. | the webhook URL as it is |
 | **Email** | An app password from your mail provider. | `mailto://user:app_password@gmail.com` |
 
-Anything else: find it in the [Apprise list](https://github.com/caronc/apprise/wiki).
+### 2. Run setup
 
-### 2. Put it in the config file
-
-Open the file in a text editor (`nano` is on every system; save with Ctrl-O then Enter, quit
-with Ctrl-X):
+The installer offers this at the end; any time after, run:
 
 ```bash
-nano ~/.config/ekos-notifier/config.yaml
+ekos-notifier setup
 ```
 
-Near the top you'll find:
+It shows what it can see on your rig (KStars and Ekos, your INDI devices, PHD2, and your power
+box's voltage), then asks:
 
-```yaml
-notify:
-  # - "pover://USER_KEY@APP_TOKEN"      # Pushover
-  # - "ntfys://ntfy.sh/my-rig-topic"    # ntfy
-```
+- **your notifier**: pick the service and paste its details. It sends a test straight away
+  and asks whether it arrived. Add as many as you like.
+- **your battery**: 12 V AGM, 12 V LiFePO4, mains power (no battery alerts), or your own levels.
+- **the hourly digest**: on or off, and how often.
 
-Delete the `# ` in front of the line for your service and put your URL in its place, keeping
-the two spaces, the dash and the quotes:
+Enter keeps the answer shown in `[brackets]`, and Ctrl-C leaves without saving. At the end it
+shows what will change and saves only when you say yes. It changes just those lines in
+`~/.config/ekos-notifier/config.yaml`, keeping your other settings and the comments, and the
+old file is kept as `config.yaml.bak`. Run it again any time to change your answers.
 
-```yaml
-notify:
-  - "pover://your-user-key@your-api-token"
-```
+### 3. Check the rest
 
-Several services? One line each, lined up the same way.
-
-### 3. Check it and send a test
-
-```bash
-ekos-notifier config check              # says OK, or exactly what's wrong
-ekos-notifier test-notify               # a test message to your phone
-ekos-notifier test-notify --emergency   # Pushover: a repeating Emergency (acknowledge it in the app)
-```
-
-Then, with KStars and Ekos running and your equipment connected, check the rest:
+With KStars and Ekos running and your equipment connected:
 
 ```bash
 ekos-notifier doctor
@@ -154,6 +143,39 @@ To see what a night's alerts look like before you're under the stars:
 ekos-notifier simulate            # replays a sample night and lists the alerts it would send
 ekos-notifier simulate --send     # …and sends them, marked [Simulated]
 ekos-notifier simulate --list     # your own recorded sessions; replay one with --session ID
+```
+
+### Or edit the config by hand
+
+Everything setup does is a few lines in the config file. Open it in a text editor (`nano` is
+on every system; save with Ctrl-O then Enter, quit with Ctrl-X):
+
+```bash
+nano ~/.config/ekos-notifier/config.yaml
+```
+
+Near the top you'll find:
+
+```yaml
+notify:
+  # - "pover://USER_KEY@APP_TOKEN"      # Pushover
+  # - "ntfys://ntfy.sh/my-rig-topic"    # ntfy
+```
+
+Delete the `# ` in front of the line for your service and put your URL (from the table above)
+in its place, keeping the two spaces, the dash and the quotes:
+
+```yaml
+notify:
+  - "pover://your-user-key@your-api-token"
+```
+
+Several services? One line each, lined up the same way. Then check it and send a test:
+
+```bash
+ekos-notifier config check              # says OK, or exactly what's wrong
+ekos-notifier test-notify               # a test message to your phone
+ekos-notifier test-notify --emergency   # Pushover: a repeating Emergency (acknowledge it in the app)
 ```
 
 ## Your config file
