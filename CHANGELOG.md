@@ -5,6 +5,14 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **`ekos-notifier setup`** is a terminal wizard that sets Ekos Notifier up with a few
+  questions. It starts by showing what it can see on the rig. It sets up your notifier
+  (Pushover, ntfy, Telegram, Discord or any Apprise URL), sending it a test. It also asks about
+  the battery and the hourly digest. It saves only when you say so, and changes just those lines
+  of the config, keeping your other settings and the comments; the old file is kept as `.bak`.
+  The installer offers it when no notifier is set up, and the README's setup guide starts from
+  it.
+
 - **`ekos-notifier doctor`** checks everything Ekos Notifier needs and says how to fix what
   isn't right. It checks the install, including a venv broken by an OS update. It checks the
   config: notifier URLs, and a file other users can read. It checks the service: whether it's

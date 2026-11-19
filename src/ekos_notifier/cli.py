@@ -65,6 +65,16 @@ def build_parser() -> argparse.ArgumentParser:
     dump.add_argument("--seconds", type=float, default=5.0, help="how long to listen (default 5)")
     dump.add_argument("--config", metavar="PATH", help=CONFIG_HELP)
 
+    wiz = sub.add_parser(
+        "setup",
+        help="set up notifications, the battery and the digest, with a few questions",
+        description="Set up Ekos Notifier with a few questions in the terminal: it shows what it "
+        "can see on the rig, sets up a notifier and sends it a test, and asks about the battery "
+        "and the hourly digest. It saves to the config file only when you say so, keeping its "
+        "comments and other settings. Run it again any time to change the answers.",
+    )
+    wiz.add_argument("--config", metavar="PATH", help=CONFIG_HELP)
+
     doc = sub.add_parser(
         "doctor",
         help="check the install, config, service, Ekos, INDI, PHD2, clock and disk; suggest fixes",
@@ -162,6 +172,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_simulate(args)
     if args.command == "doctor":
         return cmd_doctor(args)
+    if args.command == "setup":
+        return cmd_setup(args)
     print(f"ekos-notifier {args.command}: not implemented yet (pre-alpha).", file=sys.stderr)
     return EXIT_NOT_IMPLEMENTED
 
@@ -446,6 +458,15 @@ def cmd_simulate(args: argparse.Namespace) -> int:
             print(f"FAILED: {error}", file=sys.stderr)
         return 1 if errors else 0
     return 0
+
+
+def cmd_setup(args: argparse.Namespace) -> int:
+    from ekos_notifier import wizard
+
+    if not sys.stdin.isatty():
+        print("ekos-notifier setup asks questions: run it in a terminal.", file=sys.stderr)
+        return 2
+    return wizard.run(args.config, wizard.Prompter())
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:

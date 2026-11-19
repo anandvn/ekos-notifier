@@ -182,7 +182,12 @@ if [ "$on_path" -eq 0 ]; then
     fi
 fi
 if "$VENV/bin/ekos-notifier" config check 2>/dev/null | grep -q "notify: none"; then
-    say "Next: put your notifier (any Apprise URL, e.g. Pushover) under notify: in"
-    say "    $config"
-    say "then: ekos-notifier config check && ekos-notifier test-notify"
+    say ""
+    if (: </dev/tty) 2>/dev/null && ask "Set up your notifications now (ekos-notifier setup)?" y; then
+        say ""
+        "$VENV/bin/ekos-notifier" setup </dev/tty >/dev/tty || true
+    else
+        say "Next: ekos-notifier setup (a few questions), or put your notifier (any Apprise URL,"
+        say "e.g. Pushover) under notify: in $config"
+    fi
 fi
