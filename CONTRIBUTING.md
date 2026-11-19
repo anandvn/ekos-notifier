@@ -2,10 +2,9 @@
 
 Thanks for helping. The easiest ways in don't need much Python:
 
-- **Device presets** — YAML files in `presets/` that map an INDI device's properties to Ekos
-  Notifier's metrics. Run `ekos-notifier indi-dump` (once it exists) and open a "Device support" issue.
-- **Message styles** — Jinja templates in `styles/<name>/`. Plain, Terse and Olde English are the
-  first three; pirate is surely next.
+- **Device presets** — YAML files in `src/ekos_notifier/indi/presets/` that map an INDI device's
+  properties to Ekos Notifier's metrics. Run `ekos-notifier indi-dump` and open a "Device
+  support" issue.
 - **Docs** — if something confused you during setup, that's a docs bug. Please report it.
 
 ## Development setup

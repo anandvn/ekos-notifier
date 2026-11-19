@@ -1,4 +1,4 @@
-"""The hourly digest (docs/design.md, "Hourly digest and message styles").
+"""The hourly digest (docs/design.md, "Hourly digest and message wording").
 
 While a session is active, one status message per interval (default 60 min, on the clock hour):
 
@@ -13,8 +13,7 @@ While a session is active, one status message per interval (default 60 min, on t
   as a completed meridian flip.
 
 A digest due less than ``min_session`` seconds after the session started is skipped (the
-"Starting session" message just said it all). Plain wording only for now; Terse and Olde
-English styles come with the template sets. From INDI: camera temperature, ambient, humidity,
+"Starting session" message just said it all). From INDI: camera temperature, ambient, humidity,
 dew margin and power (voltage, its low this interval, current).
 """
 

@@ -21,7 +21,7 @@ your equipment.
 
 > **Status: pre-alpha.** It runs and alerts today, but hasn't had a season on real rigs yet,
 > and settings may change before 1.0. Not yet built: the web dashboard, carrying data home
-> (sync), the dead-man's switch, and the Terse and Olde English message styles. See
+> (sync) and the dead-man's switch. See
 > [the design](https://github.com/anandvn/ekos-notifier/blob/main/docs/design.md) and [the roadmap](https://github.com/anandvn/ekos-notifier/blob/main/docs/design.md#roadmap).
 
 **Contents:** [What you need](#what-you-need) · [Install](#install) ·
@@ -191,7 +191,7 @@ the value shown is the default. A few rules keep YAML happy:
   within a few seconds; a file with a mistake is ignored (the previous settings stay) until
   it's fixed.
 
-Sections marked *NOT USED YET* in the file (style, heartbeat, sync, gui, units, privacy) are
+Sections marked *NOT USED YET* in the file (heartbeat, sync, gui, units, privacy) are
 for features still to come; changing them does nothing for now. The ones you're most likely to
 change:
 
@@ -368,7 +368,7 @@ lines of `journalctl --user -u ekos-notifier`.
 
 ## Contributing
 
-Device presets, message styles and docs are the easiest ways in. See
+Device presets and docs are the easiest ways in. See
 [CONTRIBUTING.md](https://github.com/anandvn/ekos-notifier/blob/main/CONTRIBUTING.md) to set up a development checkout.
 
 ## License

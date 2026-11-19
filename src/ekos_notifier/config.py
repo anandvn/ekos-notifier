@@ -57,7 +57,6 @@ _DIGEST = {"enabled", "interval_minutes", "align_to_clock"}
 KNOWN: dict[str, set[str] | None] = {
     "notify": None,
     "notify_expire_minutes": None,
-    "style": None,
     "digest": _DIGEST,
     "crier": _DIGEST,  # the digest's name before the rename
     "heartbeat": {"url", "grace_minutes"},
@@ -79,7 +78,10 @@ KNOWN: dict[str, set[str] | None] = {
     "units": {"temperature", "guide_error", "clock"},
     "privacy": {"round_site_coordinates"},
 }
-WHY_UNUSED = {"power.preset": "power boxes are recognised automatically"}
+WHY_UNUSED = {
+    "power.preset": "power boxes are recognised automatically",
+    "style": "message styles were dropped: messages are in plain English",
+}
 
 
 def _hint(name: str, choices: Any) -> str:
@@ -92,6 +94,9 @@ def _warnings(raw: dict[str, Any], battery: str, low: Any, critical: Any) -> lis
     out = []
     for key, value in raw.items():
         key = str(key)
+        if key in WHY_UNUSED:
+            out.append(f"'{key}' isn't used ({WHY_UNUSED[key]}); it's ignored")
+            continue
         if key not in KNOWN:
             out.append(f"'{key}' isn't a setting{_hint(key, KNOWN)}; it's ignored")
             continue
