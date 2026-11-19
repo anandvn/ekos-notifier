@@ -13,6 +13,7 @@ import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from ekos_notifier.i18n import _
 from ekos_notifier.indi.adapter import GET_PROPERTIES
 from ekos_notifier.indi.decode import OUTPUT_PROPS, IndiDecoder
 from ekos_notifier.indi.presets import INTERFACES, Preset
@@ -97,12 +98,19 @@ def summary(elements: list[ET.Element], presets: list[Preset]) -> list[str]:
     caps = next((e.data["metrics"] for e in reversed(events) if e.kind == "indi.capabilities"), {})
     lines = []
     for dev in decoder.devices.values():
-        what = ", ".join(_names(dev.interfaces)) or "no interfaces reported"
-        state = "connected" if dev.connected else "not connected (connect it in Ekos first)"
-        lines.append(f"{dev.name}: {dev.driver or 'unknown driver'} ({what}), {state}")
+        what = ", ".join(_names(dev.interfaces)) or _("no interfaces reported")
+        state = _("connected") if dev.connected else _("not connected (connect it in Ekos first)")
+        lines.append(
+            _("{device}: {driver} ({interfaces}), {state}").format(
+                device=dev.name,
+                driver=dev.driver or _("unknown driver"),
+                interfaces=what,
+                state=state,
+            )
+        )
         mine = sorted(m for m, devices in caps.items() if dev.name in devices)
         if mine:
-            lines.append(f"  recognised: {', '.join(mine)}")
+            lines.append("  " + _("recognised: {metrics}").format(metrics=", ".join(mine)))
         known = {(prop, element) for _, prop, element, _ in decoder._sources(dev)}
         for prop, values in sorted(dev.numbers.items()):
             if NOT_READINGS.search(prop) or prop in OUTPUT_PROPS:
@@ -111,7 +119,12 @@ def summary(elements: list[ET.Element], presets: list[Preset]) -> list[str]:
                 if (prop, element) in known:
                     continue  # already recognised
                 if LOOKS_LIKE.search(element) and not NOT_READINGS.search(element):
-                    lines.append(f'  candidate: "{dev.name} / {prop}.{element}" = {value:g}')
+                    lines.append(
+                        "  "
+                        + _('candidate: "{device} / {property}.{element}" = {value}').format(
+                            device=dev.name, property=prop, element=element, value=f"{value:g}"
+                        )
+                    )
     return lines
 
 

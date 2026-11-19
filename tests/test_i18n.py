@@ -235,3 +235,57 @@ def test_rules_are_built_in_the_configs_language(german, monkeypatch):
     assert i18n.language() == "de"
     build_rules(Config(language="en"), live=False)
     assert i18n.language() == "en"
+
+
+# -- the terminal ---------------------------------------------------------------------------
+
+WARNINGS = (
+    "notfy: []\n"
+    "style: plain\n"
+    "alerts:\n  dew_margin: 3\n"
+    "power:\n  battery: lifepo4_12v\n  low_volts: 12.5\n  preset: auto\n"
+    "messages:\n  guiding_lost: normal\n"
+)
+
+
+def untranslated(text):
+    return [line for line in text.splitlines() if line.strip() and not ({"⟪", "⟫"} & set(line))]
+
+
+@pytest.mark.parametrize(
+    "command",
+    [["config", "alerts"], ["config", "check"], ["simulate", "--brief"], ["doctor"]],
+    ids=" ".join,
+)
+def test_the_terminal_speaks_the_configs_language(command, tmp_path, monkeypatch, capsys):
+    from ekos_notifier.cli import main
+
+    pseudo_catalog(tmp_path)
+    monkeypatch.setattr(i18n, "LOCALE_DIR", tmp_path)
+    path = tmp_path / "config.yaml"
+    path.write_text(WARNINGS + "language: xx\n")
+    try:
+        main([*command, "--config", str(path)])
+    finally:
+        i18n.use("en")
+    out = capsys.readouterr()
+    assert untranslated(out.out + out.err) == []
+
+
+def test_the_setup_wizard_speaks_the_language(tmp_path):
+    import test_wizard as w
+
+    pseudo_catalog(tmp_path)
+    i18n.use("xx", tmp_path)
+    try:
+        rc, s = w.run(
+            tmp_path / "w" / "config.yaml",
+            *("", "", w.KEY, w.TOKEN, "", "", "", "2", "", "", "", ""),
+            installed=False,
+            installs=[],
+        )
+    finally:
+        i18n.use("en")
+    assert rc == 0
+    # the test's own stand-in for what doctor saw is the only line that isn't the wizard's
+    assert [line for line in untranslated(s.text) if "KStars found" not in line] == []

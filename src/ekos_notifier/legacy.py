@@ -13,6 +13,8 @@ import os
 from collections.abc import Callable
 from pathlib import Path
 
+from ekos_notifier.i18n import _
+
 OLD, NEW = "town-crier", "ekos-notifier"
 DB_SUFFIXES = ("", "-wal", "-shm", "-journal")
 
@@ -45,7 +47,11 @@ def migrate(say: Callable[[str], None] = print, proc: Path = Path("/proc")) -> N
     config = _base("XDG_CONFIG_HOME", ".config")
     if (config / OLD).is_dir() and not (config / NEW).exists():
         (config / OLD).rename(config / NEW)
-        say(f"Moved {config / OLD} to {config / NEW} (Town Crier is now Ekos Notifier).")
+        say(
+            _("Moved {config} to {config2} (Town Crier is now Ekos Notifier).").format(
+                config=config / OLD, config2=config / NEW
+            )
+        )
 
     data = _base("XDG_DATA_HOME", ".local/share")
     old, new = data / OLD, data / NEW
@@ -53,8 +59,10 @@ def migrate(say: Callable[[str], None] = print, proc: Path = Path("/proc")) -> N
         return
     if _open_by_any_process(old, proc):
         say(
-            f"Not moving {old} yet: an old Town Crier process still has its database open. "
-            "Stop it, then run Ekos Notifier again."
+            _(
+                "Not moving {old} yet: an old Town Crier process still has its "
+                "database open. Stop it, then run Ekos Notifier again."
+            ).format(old=old)
         )
         return
     old.rename(new)
@@ -62,4 +70,4 @@ def migrate(say: Callable[[str], None] = print, proc: Path = Path("/proc")) -> N
         f = new / f"{OLD}.db{suffix}"
         if f.exists():
             f.rename(new / f"{NEW}.db{suffix}")
-    say(f"Moved {old} to {new} (Town Crier is now Ekos Notifier).")
+    say(_("Moved {old} to {new} (Town Crier is now Ekos Notifier).").format(old=old, new=new))

@@ -25,8 +25,10 @@ from pathlib import Path
 from urllib.parse import quote
 
 from ekos_notifier import __version__
+from ekos_notifier.i18n import N_, _, ngettext
 
 OK, NOTE, WARN, FAIL = "ok", "note", "warn", "FAIL"
+LABELS = {OK: N_("ok"), NOTE: N_("note"), WARN: N_("warn"), FAIL: N_("FAIL")}  # as shown
 TIMEOUT = 3.0  # seconds for each connection
 INSTALLER = (
     "curl -fsSL https://raw.githubusercontent.com/anandvn/ekos-notifier/main/install.sh | sh"
@@ -59,15 +61,26 @@ def check_install(
 ) -> list[Check]:
     venv = venv or venv_dir()
     python = "{}.{}".format(*sys.version_info[:2])
-    out = [Check(OK, f"Ekos Notifier {__version__} on Python {python} ({_home(sys.prefix)})")]
+    out = [
+        Check(
+            OK,
+            _("Ekos Notifier {version} on Python {python} ({path})").format(
+                version=__version__, python=python, path=_home(sys.prefix)
+            ),
+        )
+    ]
     if venv.exists() and not (venv / "bin" / "python").exists():
         # The venv's python is a link to the system's; an OS update to a new Python breaks it.
         out.append(
             Check(
                 FAIL,
-                f"the installer's venv ({_home(venv)}) is broken: the Python it was built on "
-                "is gone (an OS update?)",
-                f"run the installer again; it rebuilds the venv: {INSTALLER}",
+                _(
+                    "the installer's venv ({path}) is broken: the Python it was built on "
+                    "is gone (an OS update?)"
+                ).format(path=_home(venv)),
+                _("run the installer again; it rebuilds the venv: {installer}").format(
+                    installer=INSTALLER
+                ),
             )
         )
     if which("ekos-notifier") is None:
@@ -75,8 +88,10 @@ def check_install(
         out.append(
             Check(
                 NOTE,
-                "'ekos-notifier' isn't on your PATH (the service doesn't need it)",
-                f"echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> {rc}, then open a new terminal",
+                _("'ekos-notifier' isn't on your PATH (the service doesn't need it)"),
+                _("{command}, then open a new terminal").format(
+                    command=f"echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> {rc}"
+                ),
             )
         )
     return out
@@ -98,16 +113,20 @@ def check_config(path: str | None = None) -> tuple[object | None, list[Check]]:
             Check(
                 FAIL,
                 f"{exc}",
-                "fix it (`ekos-notifier config check` explains); until then the service "
-                "records the night but sends nothing",
+                _(
+                    "fix it (`ekos-notifier config check` explains); until then the "
+                    "service records the night but sends nothing"
+                ),
             )
         ]
     if cfg.path is None:
         return cfg, [
             Check(
                 WARN,
-                "no config file: Ekos Notifier records the night but sends nothing",
-                "ekos-notifier config init, then put your notifier under notify:",
+                _("no config file: Ekos Notifier records the night but sends nothing"),
+                _("{command}, then put your notifier under notify:").format(
+                    command="ekos-notifier config init"
+                ),
             )
         ]
     out = [Check(OK, _home(cfg.path))]
@@ -116,8 +135,8 @@ def check_config(path: str | None = None) -> tuple[object | None, list[Check]]:
         out.append(
             Check(
                 WARN,
-                "no notifier: the night is recorded, but nothing is sent",
-                "put an Apprise URL (e.g. pover://USER_KEY@APP_TOKEN) under notify:",
+                _("no notifier: the night is recorded, but nothing is sent"),
+                _("put an Apprise URL (e.g. pover://USER_KEY@APP_TOKEN) under notify:"),
             )
         )
     good = []
@@ -128,16 +147,18 @@ def check_config(path: str | None = None) -> tuple[object | None, list[Check]]:
             out.append(
                 Check(
                     FAIL,
-                    f"notify: not a valid Apprise URL: {url.split(':', 1)[0]}://…",
-                    "see https://github.com/caronc/apprise/wiki for the format",
+                    _("notify: not a valid Apprise URL: {scheme}://…").format(
+                        scheme=url.split(":", 1)[0]
+                    ),
+                    _("see https://github.com/caronc/apprise/wiki for the format"),
                 )
             )
     if good:
         from ekos_notifier.cli import _private
 
         names = ", ".join(_private(url).split("?")[0].rstrip("/") for url in good)
-        out.append(Check(OK, f"notify: {names}"))
-        out.append(Check(NOTE, "doctor sends nothing: `ekos-notifier test-notify` sends a test"))
+        out.append(Check(OK, _("notify: {names}").format(names=names)))
+        out.append(Check(NOTE, _("doctor sends nothing: `ekos-notifier test-notify` sends a test")))
     try:
         mode = cfg.path.stat().st_mode
     except OSError:
@@ -146,7 +167,7 @@ def check_config(path: str | None = None) -> tuple[object | None, list[Check]]:
         out.append(
             Check(
                 WARN,
-                "the config holds your notifier keys and other users can read it",
+                _("the config holds your notifier keys and other users can read it"),
                 f"chmod 600 {_home(cfg.path)}",
             )
         )
@@ -191,33 +212,35 @@ def check_service(
         out = [
             Check(
                 WARN,
-                "not installed: Ekos Notifier runs only while you run it yourself",
-                "ekos-notifier install-service (starts it with your session)",
+                _("not installed: Ekos Notifier runs only while you run it yourself"),
+                "ekos-notifier install-service " + _("(starts it with your session)"),
             )
         ]
         if pid:
-            out.append(Check(NOTE, f"running in a terminal (PID {pid})"))
+            out.append(Check(NOTE, _("running in a terminal (PID {pid})").format(pid=pid)))
         return out
     try:
         text = path.read_text()
     except OSError as exc:
-        return [Check(FAIL, f"can't read {_home(path)}: {exc}")]
+        return [Check(FAIL, _("can't read {path}: {exc}").format(path=_home(path), exc=exc))]
     out = []
     python, config = _exec_start(text)
     if python is None or not Path(python).exists():
         out.append(
             Check(
                 FAIL,
-                f"the service's Python ({python or 'none'}) is gone: it can't start "
-                "(an OS update moved Python on?)",
-                f"run the installer again: {INSTALLER}",
+                _(
+                    "the service's Python ({python}) is gone: it can't start (an OS update "
+                    "moved Python on?)"
+                ).format(python=python or "none"),
+                _("run the installer again: {installer}").format(installer=INSTALLER),
             )
         )
     elif text != systemd.unit_text(python=python, config=config):
         out.append(
             Check(
                 WARN,
-                "the service file is from an older version (e.g. no `reload`)",
+                _("the service file is from an older version (e.g. no `reload`)"),
                 "ekos-notifier install-service",
             )
         )
@@ -225,29 +248,37 @@ def check_service(
         state = getattr(runner(["systemctl", "--user", "is-active", systemd.UNIT]), "stdout", "")
         service_pid = systemd.service_pid(runner)
     except OSError:  # no systemctl
-        return [*out, Check(NOTE, "couldn't ask systemd whether it's running")]
+        return [*out, Check(NOTE, _("couldn't ask systemd whether it's running"))]
     state = (state or "").strip() or "unknown"
     if state == "active":
-        out.append(Check(OK, f"running (PID {service_pid})" if service_pid else "running"))
+        text = _("running (PID {pid})").format(pid=service_pid) if service_pid else _("running")
+        out.append(Check(OK, text))
     elif state == "failed":
         out.append(
             Check(
                 FAIL,
-                "it failed and isn't running",
-                "see why: journalctl --user -u ekos-notifier -n 50; then: "
-                "systemctl --user restart ekos-notifier",
+                _("it failed and isn't running"),
+                _(
+                    "see why: journalctl --user -u ekos-notifier -n 50; then: systemctl "
+                    "--user restart ekos-notifier"
+                ),
             )
         )
     else:
         out.append(
             Check(
                 WARN,
-                f"installed but not running ({state})",
+                _("installed but not running ({state})").format(state=state),
                 "systemctl --user start ekos-notifier",
             )
         )
     if pid and pid != service_pid:
-        out.append(Check(NOTE, f"another copy is running (PID {pid}), probably in a terminal"))
+        out.append(
+            Check(
+                NOTE,
+                _("another copy is running (PID {pid}), probably in a terminal").format(pid=pid),
+            )
+        )
     return out
 
 
@@ -258,7 +289,14 @@ def check_database(db: Path) -> list[Check]:
     from ekos_notifier.store import MIGRATIONS
 
     if not db.exists():
-        return [Check(NOTE, f"{_home(db)}: not there yet (made when the service first runs)")]
+        return [
+            Check(
+                NOTE,
+                _("{path}: not there yet (made when the service first runs)").format(
+                    path=_home(db)
+                ),
+            )
+        ]
     try:
         con = sqlite3.connect(f"file:{quote(str(db))}?mode=ro", uri=True, timeout=2)
         try:
@@ -267,9 +305,11 @@ def check_database(db: Path) -> list[Check]:
                 return [
                     Check(
                         FAIL,
-                        f"{_home(db)} is from a newer Ekos Notifier (schema {version}; this "
-                        f"one knows up to {len(MIGRATIONS)})",
-                        f"upgrade Ekos Notifier: {INSTALLER}",
+                        _(
+                            "{path} is from a newer Ekos Notifier (schema {version}; this one "
+                            "knows up to {count})"
+                        ).format(path=_home(db), version=version, count=len(MIGRATIONS)),
+                        _("upgrade Ekos Notifier: {installer}").format(installer=INSTALLER),
                     )
                 ]
             sessions, last = (0, None)
@@ -280,11 +320,16 @@ def check_database(db: Path) -> list[Check]:
         finally:
             con.close()
     except sqlite3.Error as exc:
-        return [Check(FAIL, f"{_home(db)} can't be read: {exc}")]
+        return [Check(FAIL, _("{path} can't be read: {exc}").format(path=_home(db), exc=exc))]
     size = db.stat().st_size / 1e6
-    nights = f"{sessions} session{'s' if sessions != 1 else ''}"
     if last:
-        nights += f", the last on the night of {last}"
+        nights = ngettext(
+            "{n} session, the last on the night of {night}",
+            "{n} sessions, the last on the night of {night}",
+            sessions,
+        ).format(n=sessions, night=last)
+    else:
+        nights = ngettext("{n} session", "{n} sessions", sessions).format(n=sessions)
     return [Check(OK, f"{_home(db)} ({size:.1f} MB): {nights}")]
 
 
@@ -311,9 +356,11 @@ async def check_dbus(find: Callable[[], list] | None = None) -> tuple[EkosState,
         return EkosState(), [
             Check(
                 FAIL,
-                "no session bus found (no DBUS_SESSION_BUS_ADDRESS, /run/user/<uid>/bus or "
-                "KStars process)",
-                "run Ekos Notifier as the user who runs KStars, on the same computer",
+                _(
+                    "no session bus found (no DBUS_SESSION_BUS_ADDRESS, "
+                    "/run/user/<uid>/bus or KStars process)"
+                ),
+                _("run Ekos Notifier as the user who runs KStars, on the same computer"),
             )
         ]
 
@@ -362,31 +409,38 @@ async def check_dbus(find: Callable[[], list] | None = None) -> tuple[EkosState,
         finally:
             bus.disconnect()
         ekos = states.COMMUNICATION.get(status) if isinstance(status, int) else None
-        out = [Check(OK, f"KStars found on D-Bus ({cand.source})")]
+        out = [Check(OK, _("KStars found on D-Bus ({source})").format(source=cand.source))]
         if ekos == "success":
-            out.append(Check(OK, "Ekos is started and connected to its devices"))
+            out.append(Check(OK, _("Ekos is started and connected to its devices")))
         elif ekos == "error":
             out.append(
-                Check(WARN, "Ekos is started but couldn't connect its devices (see Ekos's log)")
+                Check(WARN, _("Ekos is started but couldn't connect its devices (see Ekos's log)"))
             )
         elif ekos is not None:
-            out.append(Check(NOTE, f"Ekos is {ekos}: start it to check INDI and PHD2 fully"))
+            out.append(
+                Check(
+                    NOTE,
+                    _("Ekos is {ekos}: start it to check INDI and PHD2 fully").format(ekos=ekos),
+                )
+            )
         else:
-            out.append(Check(NOTE, "Ekos isn't started: start it to check INDI and PHD2 fully"))
+            out.append(Check(NOTE, _("Ekos isn't started: start it to check INDI and PHD2 fully")))
         return EkosState(True, ekos), out
     if reached:
         return EkosState(), [
             Check(
                 WARN,
-                f"KStars isn't running (looked on the {', '.join(reached)})",
-                "start KStars, then run doctor again; Ekos Notifier waits for it by itself",
+                _("KStars isn't running (looked on the {places})").format(
+                    places=", ".join(reached)
+                ),
+                _("start KStars, then run doctor again; Ekos Notifier waits for it by itself"),
             )
         ]
     return EkosState(), [
         Check(
             FAIL,
-            "no session bus could be reached: " + "; ".join(errors),
-            "run Ekos Notifier as the user who runs KStars, on the same computer",
+            _("no session bus could be reached: {errors}").format(errors="; ".join(errors)),
+            _("run Ekos Notifier as the user who runs KStars, on the same computer"),
         )
     ]
 
@@ -405,16 +459,18 @@ def check_kstars(processes: Callable[[], list] | None = None) -> list[Check]:
         out.append(
             Check(
                 WARN,
-                f"{len(procs)} copies of KStars are running (PIDs {pids}): Ekos Notifier "
-                "can't tell whose settings to read",
-                "close all but one",
+                _(
+                    "{count} copies of KStars are running (PIDs {pids}): Ekos Notifier can't "
+                    "tell whose settings to read"
+                ).format(count=len(procs), pids=pids),
+                _("close all but one"),
             )
         )
     for k in procs:
         try:
             info = parse_kconfig((k.root / ".flatpak-info").read_text(errors="replace"))
         except OSError:
-            out.append(Check(OK, f"KStars (PID {k.pid}) runs natively"))
+            out.append(Check(OK, _("KStars (PID {pid}) runs natively").format(pid=k.pid)))
             continue
         context = info.get("Context", {})
 
@@ -423,26 +479,39 @@ def check_kstars(processes: Callable[[], list] | None = None) -> list[Check]:
 
         missing = []
         if not has("shared", "network"):
-            missing.append("network (to reach INDI and PHD2)")
+            missing.append(_("network (to reach INDI and PHD2)"))
         if not has("sockets", "session-bus"):
-            missing.append("the session bus (to follow Ekos)")
+            missing.append(_("the session bus (to follow Ekos)"))
         if missing:
             out.append(
                 Check(
                     FAIL,
-                    f"KStars (PID {k.pid}) is a Flatpak without " + " or ".join(missing),
-                    "flatpak override --user --share=network --socket=session-bus "
-                    "org.kde.kstars, then restart KStars",
+                    _("KStars (PID {pid}) is a Flatpak without {missing}").format(
+                        pid=k.pid, missing=_(" or ").join(missing)
+                    ),
+                    _("{command}, then restart KStars").format(
+                        command="flatpak override --user --share=network --socket=session-bus"
+                        " org.kde.kstars"
+                    ),
                 )
             )
         else:
-            out.append(Check(OK, f"KStars (PID {k.pid}) is a Flatpak sharing network and D-Bus"))
+            out.append(
+                Check(
+                    OK,
+                    _("KStars (PID {pid}) is a Flatpak sharing network and D-Bus").format(
+                        pid=k.pid
+                    ),
+                )
+            )
         if not (has("filesystems", "host") or has("filesystems", "home")):
             out.append(
                 Check(
                     NOTE,
-                    "the KStars Flatpak can't see your home folder: Disk low may check the "
-                    "wrong disk",
+                    _(
+                        "the KStars Flatpak can't see your home folder: Disk low may check the "
+                        "wrong disk"
+                    ),
                 )
             )
     return out
@@ -458,10 +527,15 @@ def check_numbers(k) -> list[Check]:
         return [
             Check(
                 WARN,
-                f"KStars writes numbers in '{name}', which this computer doesn't have: exposure "
-                "times and other localized numbers in Ekos's log are left unread",
-                f"add the locale: uncomment {name.split('.')[0]} in /etc/locale.gen and run "
-                "`sudo locale-gen`, then restart the service",
+                _(
+                    "KStars writes numbers in '{name}', which this computer doesn't have: "
+                    "exposure times and other localized numbers in Ekos's log are left "
+                    "unread"
+                ).format(name=name),
+                _(
+                    "add the locale: uncomment {locale} in /etc/locale.gen and run `sudo "
+                    "locale-gen`, then restart the service"
+                ).format(locale=name.split(".")[0]),
             )
         ]
     if fmt in (translation.ENGLISH, translation.C):
@@ -469,8 +543,10 @@ def check_numbers(k) -> list[Check]:
     return [
         Check(
             OK,
-            f"KStars writes numbers in '{name}' (decimal '{fmt.decimal}'): Ekos's log is read "
-            "in that format",
+            _(
+                "KStars writes numbers in '{name}' (decimal '{decimal}'): Ekos's log "
+                "is read in that format"
+            ).format(name=name, decimal=fmt.decimal),
         )
     ]
 
@@ -488,16 +564,21 @@ def check_language(k) -> list[Check]:
         return [
             Check(
                 WARN,
-                f"KStars runs in '{language}', and its translations can't be read: alerts "
-                "that read Ekos's log (Autofocus failed, Plate solve failed…) may not fire",
-                "switch KStars to English (Help > Switch Application Language)",
+                _(
+                    "KStars runs in '{language}', and its translations can't be read: "
+                    "alerts that read Ekos's log (Autofocus failed, Plate solve failed…) "
+                    "may not fire"
+                ).format(language=language),
+                _("switch KStars to English (Help > Switch Application Language)"),
             )
         ]
     return [
         Check(
             OK,
-            f"KStars runs in '{language}': Ekos's log is read through its translations "
-            f"({len(bt)} phrases), so alerts work as in English",
+            _(
+                "KStars runs in '{language}': Ekos's log is read through its "
+                "translations ({count} phrases), so alerts work as in English"
+            ).format(language=language, count=len(bt)),
         )
     ]
 
@@ -528,12 +609,21 @@ async def check_indi(
             return [
                 Check(
                     FAIL,
-                    f"Ekos is running but nothing answers on {where}",
-                    "if your profile's INDI server is on another computer, set indi: host "
-                    "and port in the config",
+                    _("Ekos is running but nothing answers on {where}").format(where=where),
+                    _(
+                        "if your profile's INDI server is on another computer, set indi: host "
+                        "and port in the config"
+                    ),
                 )
             ]
-        return [Check(NOTE, f"no INDI server on {where} (Ekos starts it with your profile)")]
+        return [
+            Check(
+                NOTE,
+                _("no INDI server on {where} (Ekos starts it with your profile)").format(
+                    where=where
+                ),
+            )
+        ]
     mappings = cfg.indi_mappings if cfg is not None else ()
     decoder = IndiDecoder(load_builtin(), mappings)
     caps: dict[str, list[str]] = {}
@@ -545,15 +635,17 @@ async def check_indi(
     devices = f"{len(decoder.devices)} device{'s' if len(decoder.devices) != 1 else ''}"
     if connected != len(decoder.devices):
         devices += f", {connected} connected"
-    out = [Check(OK, f"INDI server on {where}: {devices}")]
+    out = [Check(OK, _("INDI server on {where}: {devices}").format(where=where, devices=devices))]
     if caps:
-        out.append(Check(OK, f"recognised: {recognised(caps)}"))
+        out.append(Check(OK, _("recognised: {recognised}").format(recognised=recognised(caps))))
     elif connected:
         out.append(
             Check(
                 NOTE,
-                "no power box, weather sensor or camera temperature recognised",
-                "ekos-notifier indi-dump lists the readings that could be mapped in the config",
+                _("no power box, weather sensor or camera temperature recognised"),
+                _("{command} lists the readings that could be mapped in the config").format(
+                    command="ekos-notifier indi-dump"
+                ),
             )
         )
     return out
@@ -588,8 +680,10 @@ async def check_phd2(
 
     s = (settings or guider_settings)()
     if s.uses_phd2 is False:
-        name = {"internal": "its internal guider", "lin_guider": "Lin Guider"}.get(s.guider)
-        return [Check(OK, f"Ekos uses {name or s.guider}: PHD2 isn't needed")]
+        name = {"internal": _("its internal guider"), "lin_guider": "Lin Guider"}.get(s.guider)
+        return [
+            Check(OK, _("Ekos uses {guider}: PHD2 isn't needed").format(guider=name or s.guider))
+        ]
     where = f"{s.phd2_host}:{s.phd2_port}"
     try:
         found = await version(s.phd2_host, s.phd2_port)
@@ -598,13 +692,22 @@ async def check_phd2(
             return [
                 Check(
                     WARN,
-                    f"Ekos is set to guide with PHD2, but nothing answers on {where}",
-                    "start PHD2, with Tools > Enable Server on; Ekos Notifier connects by "
-                    "itself once it's up",
+                    _("Ekos is set to guide with PHD2, but nothing answers on {where}").format(
+                        where=where
+                    ),
+                    _(
+                        "start PHD2, with Tools > Enable Server on; Ekos Notifier connects by "
+                        "itself once it's up"
+                    ),
                 )
             ]
-        return [Check(NOTE, f"PHD2 isn't running on {where} (Ekos's guider is unknown)")]
-    return [Check(OK, f"PHD2 {found} on {where}")]
+        return [
+            Check(
+                NOTE,
+                _("PHD2 isn't running on {where} (Ekos's guider is unknown)").format(where=where),
+            )
+        ]
+    return [Check(OK, _("PHD2 {found} on {where}").format(found=found, where=where))]
 
 
 # -- clock --------------------------------------------------------------------------------
@@ -617,21 +720,25 @@ def check_clock(runner: Runner | None = None) -> list[Check]:
     try:
         result = runner(["timedatectl", "show", "-p", "NTPSynchronized", "--value"])
     except OSError:
-        return [Check(NOTE, "couldn't check the clock (no timedatectl)")]
+        return [Check(NOTE, _("couldn't check the clock (no timedatectl)"))]
     answer = (getattr(result, "stdout", "") or "").strip()
     if answer == "yes":
-        return [Check(OK, "the clock is synchronised")]
+        return [Check(OK, _("the clock is synchronised"))]
     if answer == "no":
         return [
             Check(
                 WARN,
-                "the clock isn't synchronised: alert times, twilight and the meridian checks "
-                "depend on it",
-                "connect to the internet for a minute, or use a GPS (gpsd with chrony) at a "
-                "dark site",
+                _(
+                    "the clock isn't synchronised: alert times, twilight and the meridian "
+                    "checks depend on it"
+                ),
+                _(
+                    "connect to the internet for a minute, or use a GPS (gpsd with chrony) "
+                    "at a dark site"
+                ),
             )
         ]
-    return [Check(NOTE, "couldn't check the clock")]
+    return [Check(NOTE, _("couldn't check the clock"))]
 
 
 # -- disk ---------------------------------------------------------------------------------
@@ -666,26 +773,37 @@ def check_disk(
     free = free or free_bytes
     frames = folder or last_frame_folder(db)
     places: Iterable[tuple[str, str]] = (
-        [(frames, "where Ekos saved its last frame")]
+        [(frames, _("where Ekos saved its last frame"))]
         if frames
-        else [(str(Path.home()), "the home folder (no frames recorded yet)")]
+        else [(str(Path.home()), _("the home folder (no frames recorded yet)"))]
     )
     low = cfg.disk_low_gb if cfg is not None else 10.0
     out = []
     for path, what in places:
         n = free(path)
         if n is None:
-            out.append(Check(NOTE, f"couldn't check the free space in {_home(path)}"))
+            out.append(
+                Check(NOTE, _("couldn't check the free space in {path}").format(path=_home(path)))
+            )
         elif low > 0 and n < low * GB:
             out.append(
                 Check(
                     WARN,
-                    f"{n / GB:.1f} GB free in {_home(path)}, {what}: under the {low:g} GB alert",
-                    "move finished frames off before the night",
+                    _("{n} GB free in {path}, {what}: under the {low} GB alert").format(
+                        n=f"{n / GB:.1f}", path=_home(path), what=what, low=f"{low:g}"
+                    ),
+                    _("move finished frames off before the night"),
                 )
             )
         else:
-            out.append(Check(OK, f"{n / GB:.0f} GB free in {_home(path)}, {what}"))
+            out.append(
+                Check(
+                    OK,
+                    _("{n} GB free in {path}, {what}").format(
+                        n=f"{n / GB:.0f}", path=_home(path), what=what
+                    ),
+                )
+            )
     return out
 
 
@@ -699,36 +817,44 @@ async def run(config_path: str | None, db: Path, say: Callable[[str], None] = pr
     def show(area: str, checks: list[Check]) -> None:
         if not checks:
             return
-        say(area)
+        say(_(area))
         for c in checks:
-            say(f"  {c.status:<5} {c.text}")
+            say(f"  {_(LABELS[c.status]):<5} {c.text}")
             if c.fix:
                 say(f"        → {c.fix}")
         results.extend(checks)
 
-    say(f"Ekos Notifier doctor ({__version__})")
+    say(_("Ekos Notifier doctor ({version})").format(version=__version__))
     say("")
-    show("Install", check_install())
+    show(N_("Install"), check_install())
     cfg, checks = check_config(config_path)
-    show("Config", checks)
-    show("Service", check_service(db))
-    show("Database", check_database(db))
+    show(N_("Config"), checks)
+    show(N_("Service"), check_service(db))
+    show(N_("Database"), check_database(db))
     ekos, checks = await check_dbus()
-    show("KStars and Ekos", checks + check_kstars())
-    show("INDI", await check_indi(cfg, ekos))
-    show("PHD2", await check_phd2())
-    show("Clock", check_clock())
-    show("Disk", check_disk(cfg, db))
+    show(N_("KStars and Ekos"), checks + check_kstars())
+    show(N_("INDI"), await check_indi(cfg, ekos))
+    show(N_("PHD2"), await check_phd2())
+    show(N_("Clock"), check_clock())
+    show(N_("Disk"), check_disk(cfg, db))
     failed = sum(c.status == FAIL for c in results)
     warned = sum(c.status == WARN for c in results)
     say("")
     if not failed and not warned:
-        say("All good.")
+        say(_("All good."))
     else:
-        parts = [
-            f"{n} {word}{'s' if n != 1 else ''}"
-            for n, word in ((failed, "problem"), (warned, "warning"))
-            if n
-        ]
-        say(f"{' and '.join(parts)}: the → lines say what to do.")
+        problems = ngettext("{n} problem", "{n} problems", failed).format(n=failed)
+        warnings = ngettext("{n} warning", "{n} warnings", warned).format(n=warned)
+        if failed and warned:
+            say(
+                _("{problems} and {warnings}: the → lines say what to do.").format(
+                    problems=problems, warnings=warnings
+                )
+            )
+        else:
+            say(
+                _("{problems}: the → lines say what to do.").format(
+                    problems=problems if failed else warnings
+                )
+            )
     return 1 if failed else 0

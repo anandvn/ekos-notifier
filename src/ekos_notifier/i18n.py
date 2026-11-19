@@ -156,11 +156,12 @@ def available() -> list[str]:
     return sorted(p.stem for p in LOCALE_DIR.glob("*.po"))
 
 
-def use(setting: str | None = "auto", directory: Path = LOCALE_DIR) -> str:
+def use(setting: str | None = "auto", directory: Path | None = None) -> str:
     """Translate messages into ``setting`` ("auto", "en", "de", "pt_BR" …) from now on; returns
     the language chosen ("en" when there's no catalog for it)."""
     global _current, _language
     wanted = system_language() if setting in (None, "", "auto") else str(setting)
+    directory = LOCALE_DIR if directory is None else directory
     for code in _codes(wanted):
         if code == "en" or code.startswith("en_"):
             break
