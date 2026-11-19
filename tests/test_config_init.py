@@ -43,6 +43,7 @@ def test_warnings_for_settings_that_do_nothing(tmp_path, capsys):
     path.write_text(
         "notfy: []\n"
         "style: olde\n"
+        "heartbeat:\n  url: ''\n"
         "alerts:\n  dew_margin: 3\n"
         "power:\n  preset: auto\n  battery: lifepo4_12v\n  low_volts: 12.5\n"
     )
@@ -51,6 +52,7 @@ def test_warnings_for_settings_that_do_nothing(tmp_path, capsys):
     assert any("'alerts.dew_margin'" in w and "did you mean 'dew_margin_c'" in w for w in warnings)
     assert any("'power.preset'" in w and "recognised automatically" in w for w in warnings)
     assert any("'style' isn't used" in w and "plain English" in w for w in warnings)
+    assert any("'heartbeat' isn't used" in w and "do-it-yourself" in w for w in warnings)
     assert (
         "'power.low_volts: 12.5' replaces lifepo4_12v's 12.8 V; delete it to use the preset's level"
         in warnings

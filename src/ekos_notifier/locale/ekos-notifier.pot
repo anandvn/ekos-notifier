@@ -761,6 +761,10 @@ msgid "message styles were dropped: messages are in plain English"
 msgstr ""
 
 #: ekos_notifier/config.py
+msgid "the heartbeat was dropped: the README shows a do-it-yourself one"
+msgstr ""
+
+#: ekos_notifier/config.py
 #, python-brace-format
 msgid "not a setting (did you mean '{name}'?)"
 msgstr ""

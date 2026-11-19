@@ -23,8 +23,6 @@ problem replayable.
       solve (below), guiding lost, a meridian flip.
 - [ ] Offline at the site: alerts dropped after 10 minutes, nothing sent late, nothing lost from
       the record.
-- [ ] The heartbeat: pings during the session; stopping the service (or pulling the network)
-      makes the ping service alert.
 - [ ] The KStars version on the rig, for the minimum-version item below.
 
 ## Ekos / KStars

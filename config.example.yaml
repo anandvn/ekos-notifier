@@ -27,13 +27,6 @@ digest:
   interval_minutes: 60
   align_to_clock: true     # on the hour, rather than N minutes from session start
 
-# Optional dead-man's switch: a URL pinged every minute during a session.
-# If pings stop, the service (e.g. Healthchecks.io) alerts you. Leave empty to disable.
-# NOT USED YET (version 0.3).
-heartbeat:
-  url: ""
-  grace_minutes: 30
-
 # INDI devices, read only. The server is the active Ekos profile's; set host/port only to
 # override it. Devices are recognised by presets (weather stations, camera and focuser
 # temperatures so far). Map anything else yourself as metric: "Device / PROPERTY.ELEMENT";
