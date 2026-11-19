@@ -218,7 +218,8 @@ Ekos Notifier also reads your INDI devices (read only, from the server your Ekos
 weather stations, camera and focuser temperatures, and power boxes and dew controllers whose
 driver uses INDI's standard power interface (libindi 2.x: Pegasus PPB/PPBA/SPB/UPB/UPB3,
 SVBONY, Terrans, Celestron Dew Power, Gemini PBH, smPro, myDewControllerPro and others) are
-recognised automatically. A few seconds after Ekos connects them, the log says what was found,
+recognised automatically, as is the SVBONY SV241's temperature and humidity sensor. A few
+seconds after Ekos connects them, the log says what was found,
 one line for all of them ("INDI recognised: Power Box (battery voltage, current, outputs); QHY
 CCD (camera temperature)"), and again whenever that changes; with nothing recognised it says so.
 The digest shows camera temperature, ambient, humidity, dew margin and

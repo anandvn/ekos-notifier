@@ -1,0 +1,15 @@
+# SVBONY SV241 / SV241 Pro power box: its temperature and humidity sensor. Its power (voltage,
+# current, outputs, dew heaters) comes through libindi's standard power interface
+# (power-standard.yaml); these readings aren't part of that interface, and the driver reports no
+# weather interface, so they're matched by driver. Issue #47.
+name: SVBONY SV241 (temperature and humidity sensor)
+status: verified
+verified_with: indi_svbony_powerbox 1.0, an SV241 Pro (indi-dump, issue #47)
+match:
+  driver: indi_svbony_powerbox
+metrics:
+  env.temperature: WEATHER_SV_SENSORS.SHT40_TEMP
+  env.humidity: WEATHER_SV_SENSORS.SHT40_HUMI
+  env.dewpoint: WEATHER_SV_SENSORS.DEW_POINT
+# Not used: WEATHER_SV_SENSORS.DS18B20_TEMP, the lens temperature probe ("Lens Temperature(C)"),
+# which has no metric yet.
