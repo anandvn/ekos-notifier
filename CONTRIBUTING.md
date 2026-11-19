@@ -31,6 +31,12 @@ translation is one file next to it, `<language>.po`: `de.po`, `fr.po`, `pt_BR.po
    python tools/update_pot.py --check   # placeholders, and messages that no longer exist
    ```
 
+   The four Emergency alerts are the ones that wake people for a mount or battery in trouble,
+   so their titles and texts are checked by a second speaker of the language before a
+   translation is merged: "Mount left unparked", "Battery critical", "Meridian flip failed"
+   and "Meridian flip overdue" (search the `.po` file for those titles and the messages near
+   them in `rules.py`, `power.py` and `sky.py`). Take extra care that they say what to do.
+
 When messages change, the template is regenerated (`python tools/update_pot.py`, which a test
 requires); bring a translation up to date with Poedit's "Update from POT file" or
 `msgmerge --update src/ekos_notifier/locale/de.po src/ekos_notifier/locale/ekos-notifier.pot`.
