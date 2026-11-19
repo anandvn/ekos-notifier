@@ -23,7 +23,7 @@ from collections.abc import Callable, Coroutine, Iterable
 from pathlib import Path
 from typing import Any
 
-from ekos_notifier import __version__
+from ekos_notifier import __version__, i18n
 from ekos_notifier.clouds import CloudsRule
 from ekos_notifier.conditions import CoolerRule, DewRule
 from ekos_notifier.config import Config, default_path
@@ -74,7 +74,8 @@ SOURCES: tuple[Source, ...] = (ekos_source, phd2_source)
 def build_rules(config: Config, *, live: bool = True) -> Rules:
     """The alert rules with the config's settings and Ekos's own limits (read from KStars's
     settings when it runs here). ``live=False`` (simulate) leaves the disk alone: a replayed night's
-    frames aren't on this disk."""
+    frames aren't on this disk. Messages are made in the config's language from then on."""
+    i18n.use(config.language)
     return Rules(
         guiding_recovery=config.guiding_recovery_minutes * 60,
         guiding_poor_window=config.guiding_poor_minutes * 60,
@@ -208,7 +209,7 @@ async def _serve(
 
     try:
         while True:
-            done, _ = await asyncio.wait(
+            done, _pending = await asyncio.wait(
                 [stopper, writer_task, *workers], return_when=asyncio.FIRST_COMPLETED
             )
             # A cancelled task was replaced (the INDI source after a reload); anything else

@@ -32,6 +32,7 @@ from typing import Any
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert, minutes
 from ekos_notifier.ekos.translation import NUMBER, localized
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import _
 
 HUMIDITY = 90.0
 DEW_SUSTAIN = 300.0
@@ -110,10 +111,10 @@ class DewRule(SessionRule):
             if now - self._clear_since >= self.clear_after:
                 self._raised = False
                 self._clear_since = None
-                body = "Conditions are drier again: " + self._reading()
+                body = _("Conditions are drier again: {reading}").format(reading=self._reading())
                 return [
                     make_alert(
-                        now, self.session, "dew_risk_cleared", "normal", "Dew risk passed", body
+                        now, self.session, "dew_risk_cleared", "normal", _("Dew risk passed"), body
                     )
                 ]
         return []
@@ -121,23 +122,24 @@ class DewRule(SessionRule):
     def preflight(self, now: float) -> list[tuple[bool, str]]:
         if self.margin <= 0:
             return []
-        _, margin, rh = self._worst()
+        _device, margin, rh = self._worst()
         out = []
         if margin is not None:
-            text = f"dew margin {_c(margin)}"
-            out.append(
-                (
-                    margin >= self.margin,
-                    text + (f", under {self.margin:g} °C" if margin < self.margin else ""),
+            if margin < self.margin:
+                text = _("dew margin {margin}, under {limit} °C").format(
+                    margin=_c(margin), limit=f"{self.margin:g}"
                 )
-            )
+            else:
+                text = _("dew margin {margin}").format(margin=_c(margin))
+            out.append((margin >= self.margin, text))
         if rh is not None:
-            out.append(
-                (
-                    rh <= self.humidity,
-                    f"RH {rh:.0f}%" + (f", over {self.humidity:g}%" if rh > self.humidity else ""),
+            if rh > self.humidity:
+                text = _("RH {percent}%, over {limit}%").format(
+                    percent=f"{rh:.0f}", limit=f"{self.humidity:g}"
                 )
-            )
+            else:
+                text = _("RH {percent}%").format(percent=f"{rh:.0f}")
+            out.append((rh <= self.humidity, text))
         return out
 
     # -- helpers -------------------------------------------------------------------------------
@@ -150,7 +152,7 @@ class DewRule(SessionRule):
         return device, margins.get(device) if device else None, max(rh.values(), default=None)
 
     def _update(self, ts: float) -> None:
-        _, margin, rh = self._worst()
+        _device, margin, rh = self._worst()
         risky = (margin is not None and margin < self.margin) or (
             rh is not None and rh > self.humidity
         )
@@ -175,11 +177,14 @@ class DewRule(SessionRule):
         parts = []
         if device is not None and margin is not None:
             parts.append(
-                f"dew margin {_c(margin)} (ambient {_c(self._env['temp'][device])}, "
-                f"dew point {_c(self._env['dew'][device])})"
+                _("dew margin {margin} (ambient {ambient}, dew point {dewpoint})").format(
+                    margin=_c(margin),
+                    ambient=_c(self._env["temp"][device]),
+                    dewpoint=_c(self._env["dew"][device]),
+                )
             )
         if rh is not None:
-            parts.append(f"RH {rh:.0f}%")
+            parts.append(_("RH {percent}%").format(percent=f"{rh:.0f}"))
         return ", ".join(parts) + "."
 
     def _alert(self, now: float) -> Event:
@@ -190,18 +195,25 @@ class DewRule(SessionRule):
             idle = []
             for label, on, duty in sorted(self._heaters.values(), key=lambda h: h[0]):
                 if on is False or duty == 0:
-                    state.append(f"{label} off" if on is False else f"{label} 0%")
+                    off = _("{heater} off").format(heater=label)
+                    state.append(off if on is False else f"{label} 0%")
                     idle.append(f"“{label}”")
+                elif duty is not None:
+                    state.append(f"{label} {duty:.0f}%")
                 else:
-                    state.append(f"{label} {duty:.0f}%" if duty is not None else f"{label} on")
-            lines.append("Dew heaters: " + ", ".join(state) + ".")
+                    state.append(_("{heater} on").format(heater=label))
+            lines.append(_("Dew heaters: {heaters}.").format(heaters=", ".join(state)))
             if idle:
-                lines.append(f"Turn on {', '.join(idle)}, or check the optics for dew.")
+                lines.append(
+                    _("Turn on {heaters}, or check the optics for dew.").format(
+                        heaters=", ".join(idle)
+                    )
+                )
             else:
-                lines.append("Check the optics for dew.")
+                lines.append(_("Check the optics for dew."))
         else:
-            lines.append("Check the optics for dew, and the dew heaters.")
-        return make_alert(now, self.session, "dew_risk", "high", "Dew risk", "\n".join(lines))
+            lines.append(_("Check the optics for dew, and the dew heaters."))
+        return make_alert(now, self.session, "dew_risk", "high", _("Dew risk"), "\n".join(lines))
 
 
 class CoolerRule(SessionRule):
@@ -296,12 +308,26 @@ class CoolerRule(SessionRule):
             return []
         temp, sp = self._temp[camera], self._setpoint.get(camera)
         if sp is None:
-            return [(True, f"camera {_c(temp)}")]
+            return [(True, _("camera {celsius}").format(celsius=_c(temp)))]
         if abs(temp - sp["value"]) <= self.tolerance:
-            return [(True, f"camera {_c(temp)} (at setpoint)")]
+            return [(True, _("camera {celsius} (at setpoint)").format(celsius=_c(temp)))]
         if sp["reached"] and temp > sp["value"] + self.tolerance:
-            return [(False, f"camera {_c(temp)}, over its {_c(sp['value'])} setpoint")]
-        return [(True, f"camera cooling, {_c(temp)} → {_c(sp['value'])}")]
+            return [
+                (
+                    False,
+                    _("camera {celsius}, over its {setpoint} setpoint").format(
+                        celsius=_c(temp), setpoint=_c(sp["value"])
+                    ),
+                )
+            ]
+        return [
+            (
+                True,
+                _("camera cooling, {celsius} → {setpoint}").format(
+                    celsius=_c(temp), setpoint=_c(sp["value"])
+                ),
+            )
+        ]
 
     # -- helpers -------------------------------------------------------------------------------
 
@@ -358,14 +384,16 @@ class CoolerRule(SessionRule):
                 sp["reached"] = True
             if dev in self._raised:
                 del self._raised[dev]
-                body = f"{dev}: {_c(temp)}, setpoint {_c(sp['value'])}."
+                body = _("{camera}: {celsius}, setpoint {setpoint}.").format(
+                    camera=dev, celsius=_c(temp), setpoint=_c(sp["value"])
+                )
                 return [
                     make_alert(
                         ts,
                         self.session,
                         "cooler_ok",
                         "normal",
-                        "Cooler at setpoint",
+                        _("Cooler at setpoint"),
                         body,
                         immediate=True,
                         device=dev,
@@ -378,21 +406,36 @@ class CoolerRule(SessionRule):
     def _alert(self, now: float, dev: str, rule: str, since: float) -> Event:
         sp, temp = self._setpoint[dev], self._temp[dev]
         if rule == "cooler_cant_hold":
-            title = "Cooler can't hold"
-            what = (
-                f"{dev} is at {_c(temp)}, {temp - sp['value']:.1f} °C over its setpoint of "
-                f"{_c(sp['value'])}, since {hhmm(since)} ({minutes(now - since)})."
+            title = _("Cooler can't hold")
+            what = _(
+                "{camera} is at {celsius}, {over} °C over its setpoint of {setpoint}, since"
+                " {time} ({duration})."
+            ).format(
+                camera=dev,
+                celsius=_c(temp),
+                over=f"{temp - sp['value']:.1f}",
+                setpoint=_c(sp["value"]),
+                time=hhmm(since),
+                duration=minutes(now - since),
             )
         else:
-            title = "Cooler can't reach setpoint"
-            what = (
-                f"{dev} is at {_c(temp)}, {minutes(now - since)} after the setpoint of "
-                f"{_c(sp['value'])} was set at {hhmm(since)}."
+            title = _("Cooler can't reach setpoint")
+            what = _(
+                "{camera} is at {celsius}, {duration} after the setpoint of {setpoint} was set"
+                " at {time}."
+            ).format(
+                camera=dev,
+                celsius=_c(temp),
+                duration=minutes(now - since),
+                setpoint=_c(sp["value"]),
+                time=hhmm(since),
             )
         lines = [what]
         if self._ambient is not None:
             lines.append(
-                f"Ambient {_c(self._ambient)}: on a warm night, a setpoint nearer ambient helps."
+                _("Ambient {celsius}: on a warm night, a setpoint nearer ambient helps.").format(
+                    celsius=_c(self._ambient)
+                )
             )
-        lines.append("New frames won't match darks taken at the setpoint.")
+        lines.append(_("New frames won't match darks taken at the setpoint."))
         return make_alert(now, self.session, rule, "high", title, "\n".join(lines), device=dev)

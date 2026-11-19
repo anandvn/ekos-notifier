@@ -30,6 +30,7 @@ from collections.abc import Iterable
 
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert, minutes
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import _, ngettext
 
 DROP = 0.5  # how far it falls: by half
 RECENT = 60.0
@@ -214,33 +215,52 @@ class CloudsRule(SessionRule):
         base = self._fade_base
         if self._faded_since is not None and base is not None:
             snr = _median(s for _, s in self._recent)
-            fade = f"now {snr:.0f}" if snr is not None else "now lost"
-            lines.append(
-                f"The guide star has faded since {hhmm(self._faded_since)}: SNR {fade}, "
-                f"{base:.0f} before."
-            )
+            if snr is not None:
+                faded = _(
+                    "The guide star has faded since {time}: SNR now {snr}, {before} before."
+                ).format(time=hhmm(self._faded_since), snr=f"{snr:.0f}", before=f"{base:.0f}")
+            else:
+                faded = _(
+                    "The guide star has faded since {time}: SNR now lost, {before} before."
+                ).format(time=hhmm(self._faded_since), before=f"{base:.0f}")
+            lines.append(faded)
             if self._lost:
-                lines.append(f"PHD2 lost the star {self._lost} time{'s' * (self._lost > 1)}.")
+                lines.append(
+                    ngettext(
+                        "PHD2 lost the star {n} time.", "PHD2 lost the star {n} times.", self._lost
+                    ).format(n=self._lost)
+                )
         if self._dropped:
             ts, stars, typical, hfr, typical_hfr = self._dropped[-1]
-            text = f"Last frame ({hhmm(ts)}): {stars} stars, typically {typical:.0f}"
+            text = _("Last frame ({time}): {stars} stars, typically {typical}").format(
+                time=hhmm(ts), stars=stars, typical=f"{typical:.0f}"
+            )
             if hfr is not None and typical_hfr is not None:
-                text += f"; HFR {hfr:.2f}, typically {typical_hfr:.2f}"
+                text += "; " + _("HFR {hfr}, typically {typical}").format(
+                    hfr=f"{hfr:.2f}", typical=f"{typical_hfr:.2f}"
+                )
             n = len(self._dropped)
-            lines.append(text + (f" ({n} frames in a row)." if n > 1 else "."))
+            if n > 1:
+                text += " " + _("({n} frames in a row)").format(n=n)
+            lines.append(text + ".")
         lines.append(
-            f"Clouds or dew? Dimming for {minutes(now - start)}. Frames now may be unusable."
+            _("Clouds or dew? Dimming for {duration}. Frames now may be unusable.").format(
+                duration=minutes(now - start)
+            )
         )
-        return make_alert(now, self.session, "clouds", "high", "Clouds", "\n".join(lines))
+        return make_alert(now, self.session, "clouds", "high", _("Clouds"), "\n".join(lines))
 
     def _cleared(self, now: float) -> Event:
-        body = "The guide star is bright again" if self._baseline else "The frames' stars are back"
+        if self._baseline:
+            body = _("The guide star is bright again ({time}).").format(time=hhmm(now))
+        else:
+            body = _("The frames' stars are back ({time}).").format(time=hhmm(now))
         return make_alert(
             now,
             self.session,
             "clouds_cleared",
             "normal",
-            "Clouds passed",
-            f"{body} ({hhmm(now)}).",
+            _("Clouds passed"),
+            body,
             immediate=True,
         )

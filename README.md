@@ -195,6 +195,15 @@ Sections marked *NOT USED YET* in the file (heartbeat, sync, gui, units, privacy
 for features still to come; changing them does nothing for now. The ones you're most likely to
 change:
 
+### Language
+
+```yaml
+language: auto             # your system's language, or a code: en, de, pt_BR …
+```
+
+Messages are in English until a translation for your language exists; translating is one file
+and needs no Python (see [CONTRIBUTING.md](https://github.com/anandvn/ekos-notifier/blob/main/CONTRIBUTING.md#translating)).
+
 ### Battery
 
 Battery alerts read your power box's input voltage. Pick your battery type:
@@ -368,7 +377,7 @@ lines of `journalctl --user -u ekos-notifier`.
 
 ## Contributing
 
-Device presets and docs are the easiest ways in. See
+Device presets, translations and docs are the easiest ways in. See
 [CONTRIBUTING.md](https://github.com/anandvn/ekos-notifier/blob/main/CONTRIBUTING.md) to set up a development checkout.
 
 ## License

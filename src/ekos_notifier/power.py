@@ -32,6 +32,7 @@ from typing import Any
 
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert, minutes
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import _
 
 SUSTAIN = 60.0
 HYSTERESIS = 0.3
@@ -153,18 +154,24 @@ class PowerRule(SessionRule):
         for device, volts in sorted(self._volts.items()):
             name = f"{device} " if several else ""
             if self.low is None and self.critical is None:
-                out.append((True, f"{name}power {volts:.1f} V"))
+                ok, text = True, _("power {volts} V").format(volts=f"{volts:.1f}")
             elif self.critical is not None and volts <= self.critical:
-                out.append(
-                    (
-                        False,
-                        f"{name}battery {volts:.2f} V, at or under {self.critical:g} V critical",
-                    )
+                ok, text = (
+                    False,
+                    _("battery {volts} V, at or under {limit} V critical").format(
+                        volts=f"{volts:.2f}", limit=f"{self.critical:g}"
+                    ),
                 )
             elif self.low is not None and volts <= self.low:
-                out.append((False, f"{name}battery {volts:.2f} V, at or under {self.low:g} V low"))
+                ok, text = (
+                    False,
+                    _("battery {volts} V, at or under {limit} V low").format(
+                        volts=f"{volts:.2f}", limit=f"{self.low:g}"
+                    ),
+                )
             else:
-                out.append((True, f"{name}battery {volts:.1f} V"))
+                ok, text = True, _("battery {volts} V").format(volts=f"{volts:.1f}")
+            out.append((ok, name + text))
         return out
 
     # -- battery -----------------------------------------------------------------------------
@@ -185,8 +192,10 @@ class PowerRule(SessionRule):
                     self.session,
                     "battery_ok",
                     "normal",
-                    "Battery OK",
-                    f"{device} reads {volts:.2f} V again.",
+                    _("Battery OK"),
+                    _("{device} reads {volts} V again.").format(
+                        device=device, volts=f"{volts:.2f}"
+                    ),
                     immediate=True,
                     device=device,
                 )
@@ -196,27 +205,49 @@ class PowerRule(SessionRule):
     def _battery(self, now: float, device: str, level: str) -> Event:
         volts = self._volts[device]
         amps = self._amps.get(device)
-        draw = f" with {amps:.1f} A drawn" if amps is not None else ""
+        values = {
+            "device": device,
+            "volts": f"{volts:.2f}",
+            "amps": f"{amps:.1f}" if amps is not None else "",
+        }
         if level == "critical":
+            if amps is not None:
+                reads = _(
+                    "{device} reads {volts} V with {amps} A drawn, at or under the {limit} V"
+                    " critical level for {duration}."
+                )
+            else:
+                reads = _(
+                    "{device} reads {volts} V, at or under the {limit} V critical level for"
+                    " {duration}."
+                )
             body = (
-                f"{device} reads {volts:.2f} V{draw}, at or under the {self.critical:g} V critical "
-                f"level for {minutes(self.sustain)}. Equipment may shut down soon.\n"
-                "Swap or charge the battery, or park the mount."
+                reads.format(**values, limit=f"{self.critical:g}", duration=minutes(self.sustain))
+                + " "
+                + _("Equipment may shut down soon.")
+                + "\n"
+                + _("Swap or charge the battery, or park the mount.")
             )
             return make_alert(
                 now,
                 self.session,
                 "battery_critical",
                 "emergency",
-                "Battery critical",
+                _("Battery critical"),
                 body,
                 device=device,
             )
-        body = f"{device} reads {volts:.2f} V{draw}, at or under the {self.low:g} V low level."
+        if amps is not None:
+            reads = _(
+                "{device} reads {volts} V with {amps} A drawn, at or under the {limit} V low level."
+            )
+        else:
+            reads = _("{device} reads {volts} V, at or under the {limit} V low level.")
+        body = reads.format(**values, limit=f"{self.low:g}")
         if self.critical is not None:
-            body += f" Critical at {self.critical:g} V."
+            body += " " + _("Critical at {limit} V.").format(limit=f"{self.critical:g}")
         return make_alert(
-            now, self.session, "battery_low", "high", "Battery low", body, device=device
+            now, self.session, "battery_low", "high", _("Battery low"), body, device=device
         )
 
     # -- outputs -----------------------------------------------------------------------------
@@ -262,33 +293,51 @@ class PowerRule(SessionRule):
         if self._shutdown_at is not None and ts - self._shutdown_at < SHUTDOWN_WINDOW:
             return
         device, label, peak = key[0], state["label"], state.get("peak")
-        was = f" (it was drawing {peak:.2f} A)" if peak is not None else ""
+        values = {"device": device, "output": label, "time": hhmm(since)}
+        if peak is not None:
+            values["amps"] = f"{peak:.2f}"
         if rule == "power_output_off":
-            title = f"Power output off: {label}"
-            body = (
-                f"{device}: output “{label}” switched off at {hhmm(since)} during the "
-                f"session{was}.\nIf you didn't turn it off, check the box and what it powers."
-            )
+            title = _("Power output off: {output}").format(output=label)
+            if peak is not None:
+                what = _(
+                    "{device}: output “{output}” switched off at {time} during the session (it"
+                    " was drawing {amps} A)."
+                )
+            else:
+                what = _("{device}: output “{output}” switched off at {time} during the session.")
+            advice = _("If you didn't turn it off, check the box and what it powers.")
         else:
-            title = f"No current on {label}"
-            body = (
-                f"{device}: output “{label}” is on but has drawn no current since "
-                f"{hhmm(since)}{was}.\nA blown fuse, a loose cable, or the device switched off?"
-            )
+            title = _("No current on {output}").format(output=label)
+            if peak is not None:
+                what = _(
+                    "{device}: output “{output}” is on but has drawn no current since {time} (it"
+                    " was drawing {amps} A)."
+                )
+            else:
+                what = _("{device}: output “{output}” is on but has drawn no current since {time}.")
+            advice = _("A blown fuse, a loose cable, or the device switched off?")
+        body = what.format(**values) + "\n" + advice
         self._pending[key] = make_alert(
             ts, self.session, rule, "high", title, body, device=device, output=key[1]
         )
 
     def _back(self, ts: float, key: tuple[str, str], state: dict[str, Any]) -> Event:
         current = state["current"]
-        drawing = f" and drawing {current:.2f} A" if current is not None else ""
+        if current is not None:
+            body = _("{device}: “{output}” is on and drawing {amps} A again.").format(
+                device=key[0], output=state["label"], amps=f"{current:.2f}"
+            )
+        else:
+            body = _("{device}: “{output}” is on again.").format(
+                device=key[0], output=state["label"]
+            )
         return make_alert(
             ts,
             self.session,
             "power_output_back",
             "normal",
-            f"Power output back: {state['label']}",
-            f"{key[0]}: “{state['label']}” is on{drawing} again.",
+            _("Power output back: {output}").format(output=state["label"]),
+            body,
             immediate=True,
             device=key[0],
             output=key[1],

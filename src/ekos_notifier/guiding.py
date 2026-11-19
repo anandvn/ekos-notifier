@@ -34,6 +34,7 @@ from ekos_notifier.alerts import SessionRule, hhmm, make_alert, minutes
 from ekos_notifier.ekos import translation
 from ekos_notifier.ekos.translation import NUMBER, localized, plain
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import N_, _, word
 
 RECOVERY = 300.0
 
@@ -88,7 +89,7 @@ def _clock(ts: float) -> str:
 
 
 def _minutes(seconds: float) -> str:
-    return f"{max(1, round(seconds / 60))} min"
+    return minutes(seconds)
 
 
 class GuidingRule:
@@ -253,8 +254,10 @@ class GuidingRule:
                 self._session,
                 "guiding_recovered",
                 "normal",
-                "Guiding recovered",
-                f"Guiding is back at {_clock(ts)}, {_minutes(ts - lost_at)} after it stopped.",
+                _("Guiding recovered"),
+                _("Guiding is back at {time}, {duration} after it stopped.").format(
+                    time=_clock(ts), duration=_minutes(ts - lost_at)
+                ),
                 immediate=True,
             )
         ]
@@ -287,9 +290,13 @@ class GuidingRule:
         lines = [message]
         if self._rms is not None:
             ra, dec = self._rms
-            lines.append(f"Guide RMS now: RA {ra:.2f}\u2033, DEC {dec:.2f}\u2033.")
-        lines.append("Repeats of this message won't be sent again this session.")
-        title = "PHD2 error" if d.get("type") == "error" else "PHD2 warning"
+            lines.append(
+                _("Guide RMS now: RA {ra}\u2033, DEC {dec}\u2033.").format(
+                    ra=f"{ra:.2f}", dec=f"{dec:.2f}"
+                )
+            )
+        lines.append(_("Repeats of this message won't be sent again this session."))
+        title = _("PHD2 error") if d.get("type") == "error" else _("PHD2 warning")
         alert = _alert(event.ts, self._session, "phd2_warning", "high", title, "\n".join(lines))
         alert.data["message"] = message  # what a restart checks against
         self._phd2_pending.append((event.ts + PHD2_HOLD, alert))
@@ -303,24 +310,29 @@ class GuidingRule:
     def _lost_alert(self, now: float) -> Event:
         assert self._lost_at is not None
         lines = [
-            f"Guiding stopped at {_clock(self._lost_at)} and hasn't recovered "
-            f"({_minutes(now - self._lost_at)})."
+            _("Guiding stopped at {time} and hasn't recovered ({duration}).").format(
+                time=_clock(self._lost_at), duration=_minutes(now - self._lost_at)
+            )
         ]
         if self._phd2_lost or "star" in self._hints:
-            lines.append(f"PHD2: {self._hints.get('star', 'star lost')}.")
+            star = self._hints.get("star") or _("star lost")
+            lines.append(_("PHD2: {status}.").format(status=star))
         if "phd2_alert" in self._hints:
-            lines.append(f"PHD2 says: {self._hints['phd2_alert']}")
+            lines.append(_("PHD2 says: {message}").format(message=self._hints["phd2_alert"]))
         details = []
         if self._ekos_guide:
-            details.append(f"Ekos guide: {self._ekos_guide.replace('_', ' ')}")
+            details.append(_("Ekos guide: {state}").format(state=word(self._ekos_guide)))
         if self._capture:
-            details.append(f"capture: {self._capture.replace('_', ' ')}")
+            details.append(_("capture: {state}").format(state=word(self._capture)))
         if self._mount == "idle":
-            details.append("mount: not tracking")
+            details.append(_("mount: not tracking"))
         if details:
-            lines.append("; ".join(details).capitalize() + ".")
-        lines.append("Check the sky, the guide camera and guide star.")
-        return _alert(now, self._session, "guiding_lost", "high", "Guiding lost", "\n".join(lines))
+            text = "; ".join(details)
+            lines.append(text[:1].upper() + text[1:] + ".")
+        lines.append(_("Check the sky, the guide camera and guide star."))
+        return _alert(
+            now, self._session, "guiding_lost", "high", _("Guiding lost"), "\n".join(lines)
+        )
 
 
 def _alert(
@@ -483,53 +495,67 @@ class PoorGuidingRule(SessionRule):
         if self._rms is None:
             return ""
         ra, dec = self._rms
-        return f"RA {ra:.2f}\u2033, DEC {dec:.2f}\u2033 (total {self._total():.2f}\u2033)"
+        return _("RA {ra}\u2033, DEC {dec}\u2033 (total {total}\u2033)").format(
+            ra=f"{ra:.2f}", dec=f"{dec:.2f}", total=f"{self._total():.2f}"
+        )
 
     def _poor_ekos(self, now: float) -> Event:
         assert self._held_since is not None
         lines = [
-            "Ekos keeps suspending exposures for guide deviation: no frame has finished since "
-            f"{hhmm(self._held_since)} ({minutes(now - self._held_since)})."
+            _(
+                "Ekos keeps suspending exposures for guide deviation: no frame has finished"
+                " since {time} ({duration})."
+            ).format(time=hhmm(self._held_since), duration=minutes(now - self._held_since))
         ]
-        if self._ekos_limit is not None:
-            line = f"Its limit is {self._ekos_limit:g}\u2033"
-            if self._deviation is not None:
-                line += f"; latest deviation {self._deviation:g}\u2033"
-            lines.append(line + ".")
+        if self._ekos_limit is not None and self._deviation is not None:
+            lines.append(
+                _("Its limit is {limit}\u2033; latest deviation {deviation}\u2033.").format(
+                    limit=f"{self._ekos_limit:g}", deviation=f"{self._deviation:g}"
+                )
+            )
+        elif self._ekos_limit is not None:
+            lines.append(_("Its limit is {limit}\u2033.").format(limit=f"{self._ekos_limit:g}"))
         if self._rms is not None:
-            lines.append(f"Guide RMS: {self._values()}.")
-        lines.append(ADVICE)
+            lines.append(_("Guide RMS: {values}.").format(values=self._values()))
+        lines.append(_(ADVICE))
         return make_alert(
-            now, self.session, "guiding_poor", "high", "Guiding poor", "\n".join(lines)
+            now, self.session, "guiding_poor", "high", _("Guiding poor"), "\n".join(lines)
         )
 
     def _poor_rms(self, now: float) -> Event:
         body = (
-            f"Guide RMS has been over {self.limit:g}\u2033 (Ekos's guide deviation limit) for "
-            f"{minutes(self.window)}: {self._values()}.\n"
-            "Ekos isn't enforcing that limit for this sequence, so it keeps exposing.\n" + ADVICE
+            _(
+                "Guide RMS has been over {limit}\u2033 (Ekos's guide deviation limit) for"
+                " {duration}: {values}."
+            ).format(limit=f"{self.limit:g}", duration=minutes(self.window), values=self._values())
+            + "\n"
+            + _("Ekos isn't enforcing that limit for this sequence, so it keeps exposing.")
+            + "\n"
+            + _(ADVICE)
         )
-        return make_alert(now, self.session, "guiding_poor", "high", "Guiding poor", body)
+        return make_alert(now, self.session, "guiding_poor", "high", _("Guiding poor"), body)
 
     def _back(self, now: float) -> Event:
         if self._enforced:
-            body = f"Exposures are finishing again: a frame completed at {hhmm(now)}."
+            body = _("Exposures are finishing again: a frame completed at {time}.").format(
+                time=hhmm(now)
+            )
         else:
-            body = f"Guiding is back under {self.limit:g}\u2033."
+            body = _("Guiding is back under {limit}\u2033.").format(limit=f"{self.limit:g}")
         if self._rms is not None:
-            body += f" Guide RMS: {self._values()}."
+            body += " " + _("Guide RMS: {values}.").format(values=self._values())
         return make_alert(
             now,
             self.session,
             "guiding_poor_cleared",
             "normal",
-            "Guiding back within limits",
+            _("Guiding back within limits"),
             body,
             immediate=True,
         )
 
 
 DEFAULT_DEVIATION = 2.0  # Ekos's own default (kstars.kcfg GuideDeviation)
-ADVICE = (
+ADVICE = N_(
     "Stars are probably trailing. Check balance, wind, seeing, cables and the guide calibration."
 )

@@ -18,6 +18,7 @@ from collections.abc import Iterable
 
 from ekos_notifier.alerts import SessionRule, make_alert
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import _
 from ekos_notifier.session import night_of
 
 QUIET_ENDS = {"ekos_stopped"}  # as for the summary: you stopped Ekos yourself
@@ -64,9 +65,10 @@ class CalibrationRule(SessionRule):
                         event.session_id,
                         "darks_reminder",
                         "normal",
-                        "Darks starting",
-                        "Ekos is starting dark frames.\nCover the telescope (or close the dust "
-                        "cap) if it isn't already.",
+                        _("Darks starting"),
+                        _("Ekos is starting dark frames.")
+                        + "\n"
+                        + _("Cover the telescope (or close the dust cap) if it isn't already."),
                         immediate=True,
                     )
                 ]
@@ -76,16 +78,19 @@ class CalibrationRule(SessionRule):
     def _flats_reminder(event: Event, filters: list[str]) -> Event:
         which = ", ".join(filters)
         body = (
-            f"No flats yet tonight for {which}.\n"
-            "Take them before the focus, rotation or camera changes, or tonight's lights won't "
-            "have matching flats."
+            _("No flats yet tonight for {filters}.").format(filters=which)
+            + "\n"
+            + _(
+                "Take them before the focus, rotation or camera changes, or tonight's lights"
+                " won't have matching flats."
+            )
         )
         return make_alert(
             event.ts,
             event.session_id,
             "flats_reminder",
             "normal",
-            "Flats reminder",
+            _("Flats reminder"),
             body,
             immediate=True,
             filters=filters,

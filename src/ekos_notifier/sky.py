@@ -32,6 +32,7 @@ from ekos_notifier import ephemeris
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert
 from ekos_notifier.ekos.settings import ObservingLimits
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import _
 from ekos_notifier.session import is_snapshot
 
 DEFAULT_MIN_ALTITUDE = 10.0
@@ -53,7 +54,11 @@ FLIP_INACTIVE = re.compile(r"Meridian flip inactive \(([^)]*)\)")
 
 def _until(seconds: float) -> str:
     minutes = max(1, round(seconds / 60))
-    return f"{minutes // 60} h {minutes % 60:02d} min" if minutes >= 60 else f"{minutes} min"
+    if minutes >= 60:
+        return _("{hours} h {minutes} min").format(
+            hours=minutes // 60, minutes=f"{minutes % 60:02d}"
+        )
+    return _("{minutes} min").format(minutes=minutes)
 
 
 class SkyRule(SessionRule):
@@ -133,7 +138,8 @@ class SkyRule(SessionRule):
             changed = self._pier is not None and d["state"] != self._pier
             self._pier = d["state"]
             if changed and self._flip_alert and not is_snapshot(d):
-                return [self._flip_done(event.ts, "the mount is on the other side of the pier now")]
+                why = _("the mount is on the other side of the pier now")
+                return [self._flip_done(event.ts, why)]
         elif kind == "capture.frame" and d.get("exposure"):
             self._exposure = float(d["exposure"])
         elif kind == "ekos.log" and d.get("module") in ("Mount", "Capture"):
@@ -143,7 +149,8 @@ class SkyRule(SessionRule):
             if FLIP_DONE.search(text):
                 self._inactive = None
                 if self._flip_alert:
-                    return [self._flip_done(event.ts, f"Ekos: “{text.strip()}”")]
+                    why = _("Ekos: “{line}”").format(line=text.strip())
+                    return [self._flip_done(event.ts, why)]
             elif FLIP_FAILED.search(text) and self._flip_alert != "failed" and self.session:
                 self._flip_alert = "failed"
                 return [self._flip_failed(event.ts, text.strip())]
@@ -217,12 +224,17 @@ class SkyRule(SessionRule):
         self._compute(now)
         parts = []
         if self._tracking and self._flip is not None and self._flip > now:
-            parts.append(f"Flip in {_until(self._flip - now)}")
+            parts.append(_("Flip in {duration}").format(duration=_until(self._flip - now)))
         if self._tracking and self._sets is not None and self._sets > now:
-            what = self._target_name or "Target"
-            parts.append(f"{what} below {self.min_altitude:g}° in {_until(self._sets - now)}")
+            parts.append(
+                _("{target} below {altitude}° in {duration}").format(
+                    target=self._target_name or _("Target"),
+                    altitude=f"{self.min_altitude:g}",
+                    duration=_until(self._sets - now),
+                )
+            )
         if self._dawn is not None and self._dawn > now:
-            parts.append(f"Dawn in {_until(self._dawn - now)}")
+            parts.append(_("Dawn in {duration}").format(duration=_until(self._dawn - now)))
         return " · ".join(parts) + "." if parts else ""
 
     # -- helpers -------------------------------------------------------------------------------
@@ -251,53 +263,83 @@ class SkyRule(SessionRule):
             if self._pier is not None:
                 self._pier_before = self._pier
 
-    def _target(self) -> str:
-        return self._target_name or "The target"
+    def _target(self, start: bool = True) -> str:
+        """The target's name, or "the target" (capitalised at the start of a sentence)."""
+        if self._target_name:
+            return self._target_name
+        return _("The target") if start else _("the target")
 
     def _twilight(self, now: float) -> Event:
         assert self._dawn is not None
         body = (
-            f"Astronomical dawn at {hhmm(self._dawn)}, in {_until(self._dawn - now)}.\n"
-            "Plan the last frames, flats and parking."
+            _("Astronomical dawn at {time}, in {duration}.").format(
+                time=hhmm(self._dawn), duration=_until(self._dawn - now)
+            )
+            + "\n"
+            + _("Plan the last frames, flats and parking.")
         )
         return make_alert(
-            now, self.session, "twilight_coming", "normal", "Twilight coming", body, immediate=True
+            now,
+            self.session,
+            "twilight_coming",
+            "normal",
+            _("Twilight coming"),
+            body,
+            immediate=True,
         )
 
     def _low(self, now: float) -> Event:
         assert self._sets is not None and self._site is not None and self._coords is not None
         alt = ephemeris.altitude(now, *self._site, *self._coords)
         body = (
-            f"{self._target()} sinks below {self.min_altitude:g}° at {hhmm(self._sets)}, "
-            f"in {_until(self._sets - now)} (now {alt:.0f}°).\n"
-            "Plan the next target, or flats and parking."
+            _("{target} sinks below {altitude}° at {time}, in {duration} (now {now}°).").format(
+                target=self._target(),
+                altitude=f"{self.min_altitude:g}",
+                time=hhmm(self._sets),
+                duration=_until(self._sets - now),
+                now=f"{alt:.0f}",
+            )
+            + "\n"
+            + _("Plan the next target, or flats and parking.")
         )
         return make_alert(
-            now, self.session, "target_low", "normal", "Target low", body, immediate=True
+            now, self.session, "target_low", "normal", _("Target low"), body, immediate=True
         )
 
     def _flip_failed(self, now: float, text: str) -> Event:
         body = (
-            f"Ekos at {hhmm(now)}: “{text}”\n"
-            "The mount may keep tracking into its pier limit. Check the mount, or park it."
+            _("Ekos at {time}: “{line}”").format(time=hhmm(now), line=text)
+            + "\n"
+            + _("The mount may keep tracking into its pier limit. Check the mount, or park it.")
         )
         return make_alert(
-            now, self.session, "meridian_flip_failed", "emergency", "Meridian flip failed", body
+            now,
+            self.session,
+            "meridian_flip_failed",
+            "emergency",
+            _("Meridian flip failed"),
+            body,
         )
 
     def _flip_overdue(self, now: float) -> Event:
         assert self._flip_at is not None
         late = _until(now - self._flip_at)
-        body = (
-            f"Ekos should have flipped the mount at {hhmm(self._flip_at)}, {late} ago, but it's "
-            f"still tracking {self._target().lower() if not self._target_name else self._target()}"
-            f" on the same side of the pier."
-        )
+        body = _(
+            "Ekos should have flipped the mount at {time}, {late} ago, but it's still tracking"
+            " {target} on the same side of the pier."
+        ).format(time=hhmm(self._flip_at), late=late, target=self._target(start=False))
         if self._inactive:
-            body += f" Ekos says: “Meridian flip inactive ({self._inactive})”."
-        body += "\nThe mount may run into its pier limit. Check the mount, or park it."
+            body += " " + _("Ekos says: “Meridian flip inactive ({reason})”.").format(
+                reason=self._inactive
+            )
+        body += "\n" + _("The mount may run into its pier limit. Check the mount, or park it.")
         return make_alert(
-            now, self.session, "meridian_flip_overdue", "emergency", "Meridian flip overdue", body
+            now,
+            self.session,
+            "meridian_flip_overdue",
+            "emergency",
+            _("Meridian flip overdue"),
+            body,
         )
 
     def _flip_done(self, now: float, why: str) -> Event:
@@ -307,14 +349,16 @@ class SkyRule(SessionRule):
             self.session,
             "meridian_flip_done",
             "normal",
-            "Meridian flip done",
-            f"The meridian flip has completed: {why}.",
+            _("Meridian flip done"),
+            _("The meridian flip has completed: {why}.").format(why=why),
             immediate=True,
         )
 
     def _flip_soon(self, now: float) -> Event:
         assert self._flip is not None
-        body = f"Ekos should flip the mount at {hhmm(self._flip)}, in {_until(self._flip - now)}."
+        body = _("Ekos should flip the mount at {time}, in {duration}.").format(
+            time=hhmm(self._flip), duration=_until(self._flip - now)
+        )
         return make_alert(
-            now, self.session, "meridian_flip_soon", "quiet", "Meridian flip soon", body
+            now, self.session, "meridian_flip_soon", "quiet", _("Meridian flip soon"), body
         )

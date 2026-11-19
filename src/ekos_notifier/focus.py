@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import _, ngettext
 
 FAILURES = 2
 RUNNING = {"in_progress", "framing", "changing_filter", "waiting"}
@@ -78,10 +79,16 @@ class AutofocusRule(SessionRule):
         return []
 
     def _alert(self, failed_at: float, now: float) -> Event:
-        lines = [f"Autofocus has failed {self._streak} times in a row (last at {hhmm(failed_at)})."]
+        lines = [
+            ngettext(
+                "Autofocus has failed {n} time in a row (last at {time}).",
+                "Autofocus has failed {n} times in a row (last at {time}).",
+                self._streak,
+            ).format(n=self._streak, time=hhmm(failed_at))
+        ]
         if self._hfr is not None:
-            lines.append(f"Last HFR measured: {self._hfr:.2f}.")
-        lines.append("Stars may be too faint (clouds, dew) or too far out of focus to measure.")
+            lines.append(_("Last HFR measured: {hfr}.").format(hfr=f"{self._hfr:.2f}"))
+        lines.append(_("Stars may be too faint (clouds, dew) or too far out of focus to measure."))
         return make_alert(
-            now, self.session, "autofocus_failed", "high", "Autofocus failed", "\n".join(lines)
+            now, self.session, "autofocus_failed", "high", _("Autofocus failed"), "\n".join(lines)
         )

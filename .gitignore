@@ -52,9 +52,8 @@ coverage.xml
 .pytest_cache/
 cover/
 
-# Translations
+# Translations: compiled catalogs only (the .pot template and .po files are source)
 *.mo
-*.pot
 
 # Django stuff:
 *.log

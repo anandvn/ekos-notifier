@@ -23,6 +23,7 @@ from collections import deque
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert, minutes
 from ekos_notifier.ekos.translation import NUMBER, localized, plain
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import N_, _, word
 
 ABORT_GRACE = 60.0
 STALL_MIN = 120.0
@@ -68,16 +69,16 @@ class CaptureRule(SessionRule):
             if (m := DOWNLOAD.search(text)) and (value := plain(m.group(1))) is not None:
                 self._download = value
         elif kind == "guide.state" and state in ("aborted", "calibration_error", "disconnected"):
-            self._causes.append((event.ts, "guiding stopped"))
+            self._causes.append((event.ts, N_("guiding stopped")))
         elif kind == "focus.state" and state == "failed":
-            self._causes.append((event.ts, "autofocus failed"))
+            self._causes.append((event.ts, N_("autofocus failed")))
         elif kind == "kstars.vanished" or (
             kind in ("ekos.state", "indi.state") and state in ("idle", "error")
         ):
             self._capture = None  # its last state is stale now; the Emergency rule takes over
             self._abort = None
         elif kind == "device.disconnected":
-            self._causes.append((event.ts, "a device disconnected"))
+            self._causes.append((event.ts, N_("a device disconnected")))
         elif kind == "capture.frame":
             self._since = event.ts
             if d.get("exposure"):
@@ -135,37 +136,41 @@ class CaptureRule(SessionRule):
             text = re.sub(r"^\[[^\]]*\]\s*", "", recent[-1])  # drop "[CCD Simulator] "
             return re.sub(r"\s*Aborting( exposure)?\.*$", "", text, flags=re.I).strip() or text
         causes = [c for t, c in self._causes if ts - t <= CAUSE_WINDOW]
-        return causes[-1] if causes else ""
+        return _(causes[-1]) if causes else ""
 
     def _abort_alert(self, now: float, ts: float, reason: str) -> Event:
-        body = (
-            f"Capture aborted at {hhmm(ts)} and hasn't restarted.\n"
-            f"Ekos: {reason.rstrip('.')}.\n"
-            "The sequence is stopped: nothing is being captured."
+        body = "\n".join(
+            [
+                _("Capture aborted at {time} and hasn't restarted.").format(time=hhmm(ts)),
+                _("Ekos: {reason}.").format(reason=reason.rstrip(".")),
+                _("The sequence is stopped: nothing is being captured."),
+            ]
         )
-        return make_alert(now, self.session, "capture_aborted", "high", "Capture aborted", body)
+        return make_alert(now, self.session, "capture_aborted", "high", _("Capture aborted"), body)
 
     def _scheduler_alert(self, ts: float) -> Event:
-        lines = [f"The Scheduler aborted at {hhmm(ts)}."]
+        lines = [_("The Scheduler aborted at {time}.").format(time=hhmm(ts))]
         recent = [text for t, module, text in self._log if module == "Scheduler" and ts - t <= 60]
         if recent:
-            lines.append("Scheduler: " + recent[-1])
-        lines.append("No more jobs will run tonight unless you restart it.")
+            lines.append(_("Scheduler: {line}").format(line=recent[-1]))
+        lines.append(_("No more jobs will run tonight unless you restart it."))
         return make_alert(
-            ts, self.session, "scheduler_aborted", "high", "Scheduler aborted", "\n".join(lines)
+            ts, self.session, "scheduler_aborted", "high", _("Scheduler aborted"), "\n".join(lines)
         )
 
     def _stall_alert(self, now: float) -> Event:
         assert self._since is not None
-        what = (self._capture or "busy").replace("_", " ")
+        what = word(self._capture) if self._capture else _("busy")
         if self._capture == "capturing" and self._exposure:
-            what = f"capturing a {self._exposure:g} s exposure"
+            what = _("capturing a {seconds} s exposure").format(seconds=f"{self._exposure:g}")
         body = (
-            f"No progress from Capture since {hhmm(self._since)} ({minutes(now - self._since)}): "
-            f"it's still {what}.\n"
-            "Check the camera, its connection and the filter wheel."
+            _("No progress from Capture since {time} ({duration}): it's still {what}.").format(
+                time=hhmm(self._since), duration=minutes(now - self._since), what=what
+            )
+            + "\n"
+            + _("Check the camera, its connection and the filter wheel.")
         )
-        return make_alert(now, self.session, "capture_stalled", "high", "Capture stalled", body)
+        return make_alert(now, self.session, "capture_stalled", "high", _("Capture stalled"), body)
 
     def _unstalled(self, ts: float) -> list[Event]:
         if self._stalled_at is None:
@@ -173,14 +178,16 @@ class CaptureRule(SessionRule):
         since, self._stalled_at = self._stalled_at, None
         if not self.session:
             return []
-        body = f"A new frame arrived at {hhmm(ts)}, {minutes(ts - since)} after Capture stalled."
+        body = _("A new frame arrived at {time}, {duration} after Capture stalled.").format(
+            time=hhmm(ts), duration=minutes(ts - since)
+        )
         return [
             make_alert(
                 ts,
                 self.session,
                 "capture_running",
                 "normal",
-                "Capture running again",
+                _("Capture running again"),
                 body,
                 immediate=True,
             )

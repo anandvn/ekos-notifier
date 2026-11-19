@@ -25,6 +25,7 @@ from collections.abc import Iterable
 
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import _, ngettext
 
 RETRY_GRACE = 180.0
 CONTEXT_WINDOW = 900.0  # a flip or target change this soon before the run explains it
@@ -94,8 +95,8 @@ class PlateSolveRule(SessionRule):
                         self.session,
                         "plate_solve_ok",
                         "normal",
-                        "Plate solve succeeded",
-                        f"Ekos solved the frame at {hhmm(ts)}.",
+                        _("Plate solve succeeded"),
+                        _("Ekos solved the frame at {time}.").format(time=hhmm(ts)),
                         immediate=True,
                     )
                 ]
@@ -117,19 +118,37 @@ class PlateSolveRule(SessionRule):
         return [self._alert(now, failed_at)]
 
     def _alert(self, now: float, failed_at: float) -> Event:
-        runs = f"{self._streak} runs" if self._streak > 1 else "a run"
-        when = ""
+        time = hhmm(failed_at)
+        if self._streak > 1:
+            runs = ngettext(
+                "{n} run failed since {time}", "{n} runs failed since {time}", self._streak
+            ).format(n=self._streak, time=time)
+        else:
+            runs = _("a run failed since {time}").format(time=time)
         if self._flip_at is not None and 0 <= failed_at - self._flip_at <= CONTEXT_WINDOW:
-            when = " after the meridian flip"
+            first = _("Ekos couldn't solve the frame after the meridian flip ({runs}).").format(
+                runs=runs
+            )
         elif self._target is not None and 0 <= failed_at - self._target[0] <= CONTEXT_WINDOW:
-            when = f" after slewing to {self._target[1]}"
-        lines = [f"Ekos couldn't solve the frame{when} ({runs} failed since {hhmm(failed_at)})."]
+            first = _("Ekos couldn't solve the frame after slewing to {target} ({runs}).").format(
+                target=self._target[1], runs=runs
+            )
+        else:
+            first = _("Ekos couldn't solve the frame ({runs}).").format(runs=runs)
+        lines = [first]
         if self._reason:
-            lines.append(f"Ekos: “{self._reason}”")
+            lines.append(_("Ekos: “{line}”").format(line=self._reason))
         lines.append(
-            "Without a solve the target may be off-centre. Check for clouds, dew or focus, "
-            "and the solver settings."
+            _(
+                "Without a solve the target may be off-centre. Check for clouds, dew or focus,"
+                " and the solver settings."
+            )
         )
         return make_alert(
-            now, self.session, "plate_solve_failed", "high", "Plate solve failed", "\n".join(lines)
+            now,
+            self.session,
+            "plate_solve_failed",
+            "high",
+            _("Plate solve failed"),
+            "\n".join(lines),
         )
