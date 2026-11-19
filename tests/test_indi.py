@@ -430,3 +430,36 @@ def test_a_dump_too_long_to_paste_points_to_device(monkeypatch, tmp_path, capsys
     rc, _out = run_dump(monkeypatch, tmp_path)
     text = capsys.readouterr().out
     assert rc == 0 and "too long to paste" in text and "--device" in text
+
+
+SV241 = "tests/fixtures/indi/svbony-sv241-pro-indi-dump.xml.gz"
+
+
+def test_the_svbony_sv241_pro_is_recognised_from_its_real_dump():
+    """Issue #47: power from the standard power interface, temperature, humidity and dew point
+    from the driver's own sensor property. The lens probe stays a candidate."""
+    import gzip
+
+    elements = list(ET.fromstring(gzip.open(SV241, "rt", encoding="utf-8").read()))
+    decoder = IndiDecoder(load_builtin())
+    events = []
+    for element in elements:
+        events += decoder.feed(0.0, element)
+    caps = [e for e in events if e.kind == "indi.capabilities"][-1].data["metrics"]
+    assert set(caps) == {
+        "env.temperature",
+        "env.humidity",
+        "env.dewpoint",
+        "power.voltage",
+        "power.current",
+        "power.watts",
+        "power.outputs",
+    }
+    readings = {e.data["metric"]: e.data["value"] for e in events if e.kind == "metric"}
+    assert readings["env.temperature"] == pytest.approx(25.9)
+    assert readings["env.humidity"] == pytest.approx(59.3)
+    assert readings["env.dewpoint"] == pytest.approx(17.34)
+    lines = dump.summary(elements, load_builtin())
+    assert [line for line in lines if "candidate" in line] == [
+        '  candidate: "SVBONY SV241 Pro / WEATHER_SV_SENSORS.DS18B20_TEMP" = 25.52'
+    ]

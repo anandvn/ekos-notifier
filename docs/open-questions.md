@@ -191,9 +191,13 @@ problem replayable.
       standard `INDI::PowerInterface` (`DRIVER_INTERFACE` bit 18; `POWER_SENSORS`
       `SENSOR_VOLTAGE`/`SENSOR_CURRENT`/`SENSOR_POWER`, `POWER_CHANNELS`/`POWER_CURRENTS`/
       `POWER_LABELS` with elements `POWER_CHANNEL_n`, and `DEW_*` alike), checked with a test
-      driver on libindi 2.2.5; 15 drivers on the VM use it (Pegasus, SVBONY, Terrans, …). Still
-      open: a real box's stream, and which libindi release first shipped the interface (older
-      drivers need config mappings).
+      driver on libindi 2.2.5; 15 drivers on the VM use it (Pegasus, SVBONY, Terrans, …).
+      **Real box (2026-11-20, issue #47):** an SVBONY SV241 Pro (`indi_svbony_powerbox` 1.0,
+      interface 294912 = power + aux) reported voltage, current, power and its outputs through
+      the standard interface, recognised with no preset. Its temperature/humidity sensor is the
+      driver's own `WEATHER_SV_SENSORS`, now a driver preset. Still open: a live night's stream
+      from it, and which libindi release first shipped the interface (older drivers need config
+      mappings).
 - [x] Which INDI weather simulator properties exist, to build the "weather station only" fixture.
       **Only after the device is connected.** Before that, every device shows just CONNECTION,
       DRIVER_INFO and housekeeping, so Ekos Notifier (observe-only) sees no metrics until Ekos connects

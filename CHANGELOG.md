@@ -5,6 +5,11 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **SVBONY SV241 / SV241 Pro: temperature and humidity recognised.** The box's own sensor now
+  feeds Dew risk, the dew pre-flight check and the digest's conditions, with no config (its
+  power, outputs and dew heaters were already recognised). The first preset from a real
+  device-support request (#47).
+
 - **Asking for a device preset works now.** `ekos-notifier indi-dump --device "Your box"` writes
   just that device, small enough to paste into a Device support issue; the whole rig's dump was
   too long to paste, and the issue form couldn't take it as an attachment. The command now says
