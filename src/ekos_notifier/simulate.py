@@ -93,7 +93,17 @@ def recording(path: str | Path, label: str | None = None) -> Night:
             " read Ekos's log may be missing)"
         ).format(language=language)
     numbers = replay.meta_numbers(meta)
-    return Night(label, list(replay.events(records, translator=translator, numbers=numbers)))
+    events = list(replay.events(records, translator=translator, numbers=numbers))
+    if records.ended_early is not None:
+        until = time.strftime("%H:%M", time.localtime(records.last_t)) if records.last_t else "?"
+        label += " " + _("(the recording ends early: replayed up to {time})").format(time=until)
+    if records.bad_lines:
+        label += " " + ngettext(
+            "({n} damaged line skipped, line {lines})",
+            "({n} damaged lines skipped, lines {lines})",
+            len(records.bad_lines),
+        ).format(n=len(records.bad_lines), lines=", ".join(map(str, records.bad_lines[:5])))
+    return Night(label, events)
 
 
 def sessions(db_path: str | Path, limit: int = 10) -> list[sqlite3.Row]:

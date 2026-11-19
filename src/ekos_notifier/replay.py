@@ -5,6 +5,7 @@ from __future__ import annotations
 import gzip
 import json
 import xml.etree.ElementTree as ET
+import zlib
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any
@@ -20,21 +21,64 @@ FORMAT = "ekos-notifier-replay/0"
 LEGACY_FORMATS = {"town-crier-replay/0"}  # recordings made before the rename
 
 
-def read(path: str | Path) -> tuple[dict[str, Any], Iterator[dict[str, Any]]]:
-    """The meta record and an iterator over the other records, in file order."""
+class Records:
+    """The records after the meta line, read once, in file order. A damaged recording is read
+    as far as it goes: a line that isn't valid JSON is skipped, and a file that ends early (cut
+    off by a crash or a power cut while recording, or a copy that stopped) ends there. What was
+    wrong is kept in ``bad_lines`` and ``ended_early``, and ``last_t`` is the last time read."""
+
+    def __init__(self, f: Any) -> None:
+        self._f = f
+        self.bad_lines: list[int] = []
+        self.ended_early: str | None = None  # why the file stopped before its end
+        self.last_t: float | None = None
+
+    def __iter__(self) -> Iterator[dict[str, Any]]:
+        number = 1
+        with self._f:
+            while True:
+                try:
+                    line = self._f.readline()
+                except (EOFError, OSError, zlib.error, UnicodeDecodeError) as exc:
+                    self.ended_early = str(exc) or type(exc).__name__
+                    return
+                if not line:
+                    return
+                number += 1
+                if not line.strip():
+                    continue
+                try:
+                    record = json.loads(line)
+                except ValueError:
+                    record = None
+                if not isinstance(record, dict):
+                    self.bad_lines.append(number)
+                    continue
+                if isinstance(record.get("t"), (int, float)):
+                    self.last_t = float(record["t"])
+                yield record
+
+    @property
+    def damaged(self) -> bool:
+        return bool(self.bad_lines) or self.ended_early is not None
+
+
+def read(path: str | Path) -> tuple[dict[str, Any], Records]:
+    """The meta record and the other records (see ``Records``: a damaged file is read as far as
+    it goes). A file that isn't a recording at all raises ValueError or OSError."""
     f = gzip.open(path, "rt", encoding="utf-8")
-    meta = json.loads(f.readline())
-    if meta.get("format") != FORMAT and meta.get("format") not in LEGACY_FORMATS:
+    try:
+        meta = json.loads(f.readline())
+    except (EOFError, OSError, zlib.error, UnicodeDecodeError, ValueError) as exc:
         f.close()
-        raise ValueError(f"{path}: not a {FORMAT} recording (format={meta.get('format')!r})")
-
-    def records() -> Iterator[dict[str, Any]]:
-        with f:
-            for line in f:
-                if line.strip():
-                    yield json.loads(line)
-
-    return meta, records()
+        raise ValueError(f"{path}: not a {FORMAT} recording ({exc})") from None
+    if not isinstance(meta, dict) or (
+        meta.get("format") != FORMAT and meta.get("format") not in LEGACY_FORMATS
+    ):
+        f.close()
+        found = meta.get("format") if isinstance(meta, dict) else None
+        raise ValueError(f"{path}: not a {FORMAT} recording (format={found!r})")
+    return meta, Records(f)
 
 
 def events(

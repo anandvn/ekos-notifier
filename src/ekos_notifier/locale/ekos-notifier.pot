@@ -2437,6 +2437,18 @@ msgstr ""
 
 #: ekos_notifier/simulate.py
 #, python-brace-format
+msgid "(the recording ends early: replayed up to {time})"
+msgstr ""
+
+#: ekos_notifier/simulate.py
+#, python-brace-format
+msgid "({n} damaged line skipped, line {lines})"
+msgid_plural "({n} damaged lines skipped, lines {lines})"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ekos_notifier/simulate.py
+#, python-brace-format
 msgid "'{which}' matches {len} sessions: give more of the id"
 msgstr ""
 

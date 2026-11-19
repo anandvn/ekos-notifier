@@ -1,3 +1,6 @@
+import gzip
+from pathlib import Path
+
 import pytest
 
 from ekos_notifier import replay, simulate
@@ -101,3 +104,37 @@ def test_cli_simulate_sample_and_list(tmp_path, capsys, recorded_db):
         main(["simulate", "--list", "--db", str(path), "--config", str(tmp_path / "c.yaml")]) == 0
     )
     assert "scheduler_finished" in capsys.readouterr().out
+
+
+GERMAN_NIGHT = "tests/fixtures/replay/sim-german-failures-kstars-3.8.5-flatpak.ndjson.gz"
+
+
+def test_a_recording_cut_off_replays_as_far_as_it_goes(tmp_path):
+    # A crash or power cut while recording leaves the gzip stream without its end.
+    data = Path(GERMAN_NIGHT).read_bytes()
+    cut = tmp_path / "cut.ndjson.gz"
+    cut.write_bytes(data[: len(data) // 2])
+    night = simulate.recording(cut)
+    assert "the recording ends early: replayed up to" in night.label
+    assert night.events  # what was recorded before the cut is all there
+
+
+def test_a_damaged_line_is_skipped(tmp_path):
+    lines = gzip.open(GERMAN_NIGHT, "rt", encoding="utf-8").read().splitlines()
+    lines[150] = '{"t": 1, "src": "dbus", BROKEN'
+    lines[151] = "[1, 2]"  # valid JSON, but not a record
+    bad = tmp_path / "bad.ndjson.gz"
+    bad.write_bytes(gzip.compress("\n".join(lines).encode()))
+    night = simulate.recording(bad)
+    assert "(2 damaged lines skipped, lines 151, 152)" in night.label
+    whole = simulate.recording(GERMAN_NIGHT)
+    assert len(night.events) >= len(whole.events) - 2
+    assert "damaged" not in whole.label and "ends early" not in whole.label
+
+
+@pytest.mark.parametrize("content", [b"not gzip", gzip.compress(b"not json\n"), gzip.compress(b"")])
+def test_a_file_that_isnt_a_recording_is_an_error(tmp_path, content):
+    path = tmp_path / "x.ndjson.gz"
+    path.write_bytes(content)
+    with pytest.raises(simulate.SimulateError, match="not a ekos-notifier-replay/0 recording"):
+        simulate.recording(path)

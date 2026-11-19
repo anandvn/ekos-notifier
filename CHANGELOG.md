@@ -5,6 +5,11 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Fixed: `simulate` crashed on a damaged recording.** A recording cut off by a crash or power
+  cut, or one with a corrupt line, now replays as far as it goes, and the heading says so ("the
+  recording ends early: replayed up to 22:13", "1 damaged line skipped"). A file that isn't a
+  recording at all gets a plain error instead of a traceback.
+
 ## 0.3.1 — 2026-11-20
 
 The first fixes from field testing: asking for a device preset works end to end, and the first
