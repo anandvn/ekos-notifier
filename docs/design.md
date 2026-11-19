@@ -150,7 +150,7 @@ Meridian flip in 15 min: only when Ekos is set to flip (`[Mount] ExecuteMeridian
 - **Correlate:** concurrent star-lost, HFR jump and star-count drop become one Clouds alert.
 - **Thumbnails:** a 100–200 KB stretched JPEG attaches to first-sub and summary messages where the notifier supports images.
 
-## Hourly digest and message styles
+## Hourly digest and message wording
 
 The digest is one status message per interval (default 60 min) while a session is Active, folding in any held Normal events. Off in the GUI = Normal events send individually.
 
@@ -160,7 +160,7 @@ The digest is one status message per interval (default 60 min) while a session i
 - **Priority:** Quiet when all's well; Normal when it says Attention.
 - **Timing:** on the clock hour, or every N minutes from session start (configurable). A digest due less than 10 minutes after the session started is skipped.
 - **Verdict:** Attention when a High or Emergency alert was raised in the interval and not cleared in it, or a problem raised earlier is still open: one with an all-clear alert until it's sent (guiding lost, guiding poor, capture stalled, mount left unparked), and capture aborted, Scheduler aborted and autofocus failed until capture, the Scheduler or focus is working again (seen live: without this, "All's well" with nothing captured since an abort). The problems are named in the title and carry over as "Still open", including across a service restart (rebuilt from the session's alerts, then closed by Ekos's snapshot if no longer true).
-- **Implemented so far** (`ekos_notifier.digest`, plain style): target (from the Scheduler's job), filter and job progress (from Capture's "has N/M frames captured"), lights and integration this interval and tonight, calibration frames, median guide RMS, failed dithers, median HFR when Ekos measures it, and "Since last": every alert (sent or held) and milestones such as a completed meridian flip. Temperatures, battery, dew, flip and dawn times wait for the INDI adapter and the site location; Terse and Olde English for the template sets.
+- **Implemented so far** (`ekos_notifier.digest`): target (from the Scheduler's job), filter and job progress (from Capture's "has N/M frames captured"), lights and integration this interval and tonight, calibration frames, median guide RMS, failed dithers, median HFR when Ekos measures it, and "Since last": every alert (sent or held) and milestones such as a completed meridian flip. Temperatures, battery, dew, flip and dawn times wait for the INDI adapter and the site location; 
 - **Body:** target · filter · frames done/planned (+ this interval) · median HFR · guide RMS · camera temp · battery and trend · ambient, RH, dew margin · time to flip and dawn · events since last digest · thumbnail.
 
 ```
@@ -172,24 +172,9 @@ Flip in 1h40 · Dawn in 6h05
 Since last: flip complete 22:31
 ```
 
-### Message styles
+### Message wording
 
-**Changed:** the Olde English style is dropped. Translating Ekos Notifier's own messages (a catalog per language) is planned instead; Terse may come with it.
-
-Every message is rendered from a template set; the style is a single config setting. Numbers and units are identical across styles, only the wording changes.
-
-| Event | Plain (default) | Terse | Olde English |
-| --- | --- | --- | --- |
-| Session start | Starting session — IC 1396 | ▶ IC 1396 | Hear ye, hear ye! The watch beginneth upon IC 1396 |
-| Digest, OK | 23:00 — All's well | 23:00 OK | Eleven of the clock, and all is well |
-| Digest, warning | 23:00 — Attention: dew margin 1.4 °C | 23:00 ⚠ dew 1.4 °C | Eleven of the clock — the dew draweth nigh (1.4 °C) |
-| Guiding aborted | Guiding aborted, not recovered after 5 min | Guide abort 5m | Hark! The guide star hath fled these five minutes |
-| Battery low | Battery low: 11.9 V, ~2 h left | Batt 11.9V ~2h | The cells grow faint: 11.9 volts, scarce two hours remain |
-| Mount near limit | Mount still tracking, 12 min to pier limit | MOUNT 12m to limit | Alarum! The mount strayeth toward the pier, twelve minutes hence |
-| Summary | Session complete: 142 frames, 11 h 50 m | Done 142f 11h50m | The night's labour is done: 142 frames, eleven hours and fifty minutes of light |
-
-- **Safety rule:** Emergency messages in any style carry the plain-English line as their last line, so a stylised alert is never ambiguous at 3 a.m.
-- **Community styles:** templates live in `styles/<name>/` (Jinja); new styles (pirate, Shakespearean, other languages) are a pull request away. Plain English doubles as the base for translations.
+Messages are in plain English. The Olde English style was dropped (too gimmicky to maintain), and a Terse style is deferred past 0.2. Varying the wording is planned as translation instead: Ekos Notifier's own messages in a catalog per language, with plain English as the source. Whatever the wording, an Emergency message must stay unambiguous at 3 a.m.
 
 ## Offline behavior
 
@@ -277,7 +262,7 @@ A phone-first web page served by the service on the rig's local network, read-on
 | Notes | Add timestamped notes to the session |
 | Sessions | Past sessions with summaries and sync status |
 | Sync | Unsynced count, destination reachable?, last flush, Flush button with progress, FITS checkbox |
-| Settings | Notifier test, thresholds, digest interval, message style, heartbeat, sync destination, units |
+| Settings | Notifier test, thresholds, digest interval, heartbeat, sync destination, units |
 
 - **Stack:** Starlette, server-rendered HTML, htmx for live updates, uPlot for charts; all assets vendored, no CDN.
 - **Never slows capture:** the GUI only reads SQLite (WAL), and all work runs at low priority.
@@ -296,7 +281,6 @@ Every external dependency sits behind a small adapter interface with a sensible 
 | Notifications | Apprise URLs (Pushover, ntfy, Telegram, Discord, Slack, Gotify, email, Home Assistant, 100+) | `notify: ["pover://user@token"]` |
 | Heartbeat | Any ping URL: Healthchecks.io (hosted or self-hosted), Uptime Kuma push, Cronitor | `heartbeat: url: https://hc-ping.com/…` |
 | Sync | rclone remote or local path | `sync: dest: "nas:astro/sessions"` |
-| Message styles | Plain, Terse, Olde English template sets | `style: olde` |
 
 - **Battery presets:** LiFePO4 12 V, AGM 12 V, AC mains (voltage alerts off), custom thresholds.
 - **Units:** °C/°F, guide error in arcseconds or pixels, 12/24 h time.
@@ -389,7 +373,7 @@ Top priority: a new user goes from install to a test alert on their phone in und
 4. **Power:** pick power box preset and battery type, or "mains power".
 5. **Heartbeat (optional):** explain the dead-man's switch in two sentences, paste a ping URL, test.
 6. **Sync (optional):** pick destination type, guided rclone setup, Test write.
-7. **Style + digest:** message style (with live preview, including Olde English), digest interval.
+7. **Digest:** on or off, and its interval.
 8. **Done:** a checklist of what's on, and "Simulate a night" to see sample alerts.
 
 ### Built-in safety nets
@@ -410,7 +394,7 @@ Top priority: a new user goes from install to a test alert on their phone in und
 | Power box presets | Supported devices and custom mapping |
 | Export format | Folder layout + JSON Schema, importer guide |
 | Troubleshooting / FAQ | `doctor` output explained, common StellarMate/Astroberry issues |
-| Contributing | Adapters, message styles, presets, dev setup with simulation |
+| Contributing | Adapters, presets, dev setup with simulation |
 
 ## Architecture, packaging and platforms
 
@@ -471,7 +455,7 @@ Four milestones to a public 1.0; the wizard and docs land before the GUI polish 
 | Milestone | Scope |
 | --- | --- |
 | 0.1 Core | Event sources (Ekos D-Bus, PHD2, INDI), canonical metrics with capability gating, `indi-dump`, SQLite store, session lifecycle, alert rules, Apprise notifier, hourly digest, simulation mode |
-| 0.2 First run | Wizard, `doctor`, config validation, Quick start + Alerts reference docs, Olde English and Terse styles |
+| 0.2 First run | Terminal setup wizard, `doctor`, config validation, Quick start + Alerts reference docs, KStars in any language (the GUI wizard comes with the GUI; Terse is deferred, Olde English dropped) |
 | 0.3 GUI + sync | Web GUI views, export folders, rclone sync and Flush, heartbeat |
 | 1.0 Public | Full docs site, power box presets, `install.sh` (venv, no root) and PyPI release, reference importer, multi-setup test matrix passing in CI, field-tested on StellarMate and Astroberry |
 

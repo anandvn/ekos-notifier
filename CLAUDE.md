@@ -32,8 +32,9 @@ mostly at dark sites with intermittent internet.
   Setup (focus, polar align, calibration, trial guiding) is logged *before* the session and attached.
 - **Alert priorities:** Emergency / High / Normal / Quiet. Normal is batched into the hourly
   digest except time-critical ones (target low, twilight, sequence complete).
-- **Message styles:** Plain (default), Terse, **Olde English**. Jinja templates in `styles/<name>/`.
-  Emergency messages always end with a plain-English line, whatever the style.
+- **Messages:** plain English. The Olde English style was dropped (2026-11-19) and Terse is
+  deferred past 0.2; translating our own messages (a catalog per language) is the planned way to
+  vary wording. KStars in another language is handled by reading its log back into English.
 - **GUI:** Starlette (not FastAPI: pydantic-core is compiled) + server-rendered HTML + htmx +
   uPlot, all assets vendored (no CDN), red night mode, LAN only, password set in first-run wizard. Read-only toward Ekos.
 - **Export:** each closed session → immutable folder (`session.json`, `events.ndjson`,
@@ -74,6 +75,5 @@ work through `docs/open-questions.md` and record findings there and in `docs/des
 
 Renamed from Town Crier / `ekos-towncrier` on 2026-11-17: GitHub repo and PyPI
 distribution **`ekos-notifier`** (free on PyPI as of Nov 2026), CLI command `ekos-notifier`,
-Python package `ekos_notifier`. The hourly digest is plain "hourly digest" (config `digest:`);
-the Olde English message style stays as an option. Old recordings (`town-crier-replay/0`) and
-the old `~/.config/town-crier`, `~/.local/share/town-crier` folders are still understood.
+Python package `ekos_notifier`. The hourly digest is plain "hourly digest" (config `digest:`).
+Old recordings (`town-crier-replay/0`) and the old `~/.config/town-crier`, `~/.local/share/town-crier` folders are still understood.

@@ -5,6 +5,10 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Changed: message styles are dropped.** Messages are in plain English. The Olde English
+  style is dropped and Terse is deferred, so the `style:` setting is gone; a config that still
+  has it gets a note that it's ignored (delete the line).
+
 - **Fixed: alerts work with KStars in another language.** Ekos translates its log, and some
   alerts read it. With KStars in German, for example, **Autofocus failed** could be missed,
   alerts lost the reason Ekos gave, and stopping Ekos yourself was taken for Ekos being lost.

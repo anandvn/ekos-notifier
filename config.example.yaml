@@ -17,9 +17,6 @@ notify:
 # than sent late. It stays in the session record. 0 = try once, never retry.
 notify_expire_minutes: 10
 
-# Wording of messages: plain | terse | olde. NOT USED YET: every message is plain for now.
-style: plain
-
 # Hourly status digest while a session is running.
 digest:
   enabled: true
