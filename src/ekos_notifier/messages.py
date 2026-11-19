@@ -82,7 +82,7 @@ ALERTS: dict[str, Alert] = {
     "flats_reminder": A("normal", True, "Filters with lights but no flats tonight"),
     "darks_reminder": A("normal", True, "Darks starting: cover the telescope", off=True),
     # All-clears
-    "mount_unparked_cleared": A("normal", False, "The mount is parked again",
+    "mount_unparked_cleared": A("normal", True, "The mount is parked again",
                                 "ekos_stopped_mount_unparked"),
     "battery_ok": A("normal", True, "Battery voltage back up", "battery_low"),
     "meridian_flip_done": A("normal", True, "The meridian flip completed",

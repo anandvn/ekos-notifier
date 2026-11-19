@@ -226,6 +226,9 @@ class Rules:
                         "normal",
                         "Mount parked",
                         "The mount is parked again. All clear.",
+                        # At once: its Emergency comes after Ekos stops, when there's usually
+                        # no session, so no hourly digest to carry it.
+                        immediate=True,
                     )
                 )
         elif kind == "mount.state":

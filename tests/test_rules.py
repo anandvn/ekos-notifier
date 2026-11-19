@@ -65,6 +65,19 @@ def test_all_clear_when_parked_after_the_emergency():
     ]
 
 
+def test_the_all_clear_is_sent_at_once_with_no_session():
+    # Its Emergency comes after Ekos stops, usually with no session open, so no hourly digest
+    # would ever carry it: the phone would keep the Emergency with nothing after it.
+    from ekos_notifier.notify import should_send
+
+    r = Rules(unparked_grace=60)
+    for e in [ev(0, "mount.park", state="unparked"), ev(5, "indi.state", state="idle")]:
+        r.handle(e)
+    assert [a.data["rule"] for a in r.tick(T + 70)] == ["ekos_stopped_mount_unparked"]
+    [cleared] = [a for a in r.handle(ev(300, "mount.park", state="parked")) if a.kind == "alert"]
+    assert cleared.data["immediate"] and should_send(cleared.data)
+
+
 def test_summary_counts_frames_of_the_session():
     r = Rules()
     out = []

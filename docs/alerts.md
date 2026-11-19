@@ -85,7 +85,7 @@ Each follows its problem's setting when that's `off` or `digest`.
 
 | Alert | Name | Default | When |
 | --- | --- | --- | --- |
-| Mount parked | `mount_unparked_cleared` | digest | The mount is seen parked after "Mount left unparked". |
+| Mount parked | `mount_unparked_cleared` | normal | The mount is seen parked after "Mount left unparked". |
 | Battery OK | `battery_ok` | normal | The voltage is back 0.3 V over the low level, after Battery low or critical. |
 | Meridian flip done | `meridian_flip_done` | normal | The flip completed, after a failed or overdue flip. |
 | Guiding recovered | `guiding_recovered` | normal | Guiding is back, after Guiding lost. |
