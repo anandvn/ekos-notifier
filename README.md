@@ -296,7 +296,7 @@ journalctl --user -u ekos-notifier | grep "INDI recognised" | tail -1
 If yours isn't recognised, list its properties and map the one you want:
 
 ```bash
-ekos-notifier indi-dump      # with Ekos connected: writes your devices' properties to indi-dump.xml
+ekos-notifier indi-dump      # with Ekos connected: lists your devices and the readings that could be used
 ```
 
 ```yaml
@@ -306,8 +306,11 @@ indi:
     env.humidity: "My Sensor / HUMIDITY.VALUE"
 ```
 
-Please also [open an issue](https://github.com/anandvn/ekos-notifier/issues) with the dump
-attached, so the next person with that device doesn't have to.
+Please also ask for a preset, so the next person with that device doesn't have to: run
+`ekos-notifier indi-dump --device "Your box"` (the name as Ekos shows it), and paste the
+`indi-dump.xml` it writes into a
+[Device support issue](https://github.com/anandvn/ekos-notifier/issues/new?template=device_support.yml).
+It's small enough to paste for one device; your site location and user name are removed.
 
 ## Day to day
 

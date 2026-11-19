@@ -224,8 +224,10 @@ CCD (camera temperature)"), and again whenever that changes; with nothing recogn
 The digest shows camera temperature, ambient, humidity, dew margin and
 power ("Power 12.4 V (low 12.1 V), 4.2 A"). For anything else (an older power box driver, a USB
 temperature/humidity sensor), run `ekos-notifier indi-dump` with your equipment connected:
-it lists your devices and the readings that could be used, and writes a file you can attach to a
-"Device support" issue. Map a reading yourself in the config:
+it lists your devices and the readings that could be used. To ask for a preset, run
+`ekos-notifier indi-dump --device "Your box"` and paste the `indi-dump.xml` it writes into a
+[Device support issue](https://github.com/anandvn/ekos-notifier/issues/new?template=device_support.yml).
+Map a reading yourself in the config:
 
 ```yaml
 indi:

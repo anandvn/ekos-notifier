@@ -213,7 +213,11 @@ msgid "write your INDI devices' properties to a file, for a device-support reque
 msgstr ""
 
 #: ekos_notifier/cli.py
-msgid "Connect to the INDI server (read-only), write every device's properties to a file with the site location removed, and list what Ekos Notifier recognises and the readings that could be mapped in the config. Connect your equipment in Ekos first."
+msgid "Connect to the INDI server (read-only), write every device's properties (or one device's, with --device) to a file with the site location removed, and list what Ekos Notifier recognises and the readings that could be mapped in the config. Connect your equipment in Ekos first."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "only this device, as Ekos names it (repeat for more): a small file to paste into a device-support issue"
 msgstr ""
 
 #: ekos_notifier/cli.py
@@ -505,11 +509,26 @@ msgstr ""
 
 #: ekos_notifier/cli.py
 #, python-brace-format
-msgid "Wrote {count} properties to {path} (site location removed)."
+msgid "No device called {names}. The INDI server has: {devices}"
 msgstr ""
 
 #: ekos_notifier/cli.py
-msgid "Attach it to a 'Device support' issue, or map a candidate in the config's indi.metrics."
+#, python-brace-format
+msgid "Wrote {count} properties to {path} ({kb} KB, site location removed)."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Map a candidate yourself under indi: metrics: in the config, or ask for support:"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "open a 'Device support' issue and paste the file's contents into it: {url}"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "it's too long to paste into an issue: run it again with --device \"Your box\" for just the device you're asking about ({devices})"
 msgstr ""
 
 #: ekos_notifier/cli.py

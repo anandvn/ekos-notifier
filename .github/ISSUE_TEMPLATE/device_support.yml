@@ -2,6 +2,17 @@ name: Device support request
 description: Ask for a power box, weather station or sensor preset
 labels: [device-support]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        With KStars and Ekos running and the device connected, run on the imaging computer:
+
+        ```bash
+        ekos-notifier indi-dump --device "Your box"
+        ```
+
+        using the device's name as Ekos shows it (`ekos-notifier indi-dump` on its own lists
+        every device). It writes `indi-dump.xml` with your site location and user name removed.
   - type: input
     id: device
     attributes:
@@ -13,9 +24,23 @@ body:
     id: driver
     attributes:
       label: INDI driver name
+      description: The driver indi-dump shows after the device's name, e.g. indi_pegasus_ppba.
   - type: textarea
     id: dump
     attributes:
-      label: Output of `ekos-notifier indi-dump`
-      description: Attach the file it writes, or paste it here.
-      render: text
+      label: The indi-dump file
+      description: |
+        Paste the contents of `indi-dump.xml` between the two ``` lines. If it's too long to
+        paste (GitHub takes about 65,000 characters), drag the file into this box to attach it
+        instead.
+      value: |
+        ```xml
+
+        ```
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: What the device reads that you'd like used (battery voltage, dew heaters, humidity…).

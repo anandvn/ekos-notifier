@@ -15,6 +15,8 @@ from ekos_notifier.i18n import N_, _
 EXIT_NOT_IMPLEMENTED = 3
 EXIT_FATAL = 78  # EX_CONFIG: an error retrying won't fix; the unit doesn't restart on it
 
+DEVICE_ISSUE = "https://github.com/anandvn/ekos-notifier/issues/new?template=device_support.yml"
+PASTE_LIMIT = 60_000  # bytes: GitHub caps an issue's text at 65,536 characters
 CONFIG_HELP = N_("config file (default: ~/.config/ekos-notifier/config.yaml)")
 
 
@@ -63,12 +65,22 @@ def build_parser() -> argparse.ArgumentParser:
         help=_("write your INDI devices' properties to a file, for a device-support request"),
         description=_(
             "Connect to the INDI server (read-only), write every device's "
-            "properties to a file with the site location removed, and list what "
+            "properties (or one device's, with --device) to a file with the site "
+            "location removed, and list what "
             "Ekos Notifier recognises and the readings that could be mapped in the "
             "config. Connect your equipment in Ekos first."
         ),
     )
     dump.add_argument("-o", "--output", metavar="FILE", default="indi-dump.xml")
+    dump.add_argument(
+        "--device",
+        metavar="NAME",
+        action="append",
+        help=_(
+            "only this device, as Ekos names it (repeat for more): a small file to paste into a"
+            " device-support issue"
+        ),
+    )
     dump.add_argument("--host", help=_("INDI server (default: the active Ekos profile's)"))
     dump.add_argument("--port", type=int, help=_("INDI port (default: the profile's, or 7624)"))
     dump.add_argument(
@@ -489,19 +501,45 @@ def cmd_indi_dump(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
+    if args.device:
+        chosen = dump.only(elements, args.device)
+        if not chosen:
+            print(
+                _("No device called {names}. The INDI server has: {devices}").format(
+                    names=", ".join(f"“{n}”" for n in args.device),
+                    devices=", ".join(f"“{d}”" for d in dump.devices(elements)),
+                ),
+                file=sys.stderr,
+            )
+            return 1
+        elements = chosen
     out = Path(args.output)
     dump.write(dump.scrub(elements), out)
     for line in dump.summary(elements, load_builtin()):
         print(line)
+    size = out.stat().st_size
     print(
         "\n"
-        + _("Wrote {count} properties to {path} (site location removed).").format(
-            count=len(elements), path=out
+        + _("Wrote {count} properties to {path} ({kb} KB, site location removed).").format(
+            count=len(elements), path=out, kb=f"{size / 1000:.0f}"
         )
     )
-    print(
-        _("Attach it to a 'Device support' issue, or map a candidate in the config's indi.metrics.")
-    )
+    print(_("Map a candidate yourself under indi: metrics: in the config, or ask for support:"))
+    if size <= PASTE_LIMIT:
+        print(
+            "  "
+            + _(
+                "open a 'Device support' issue and paste the file's contents into it: {url}"
+            ).format(url=DEVICE_ISSUE)
+        )
+    else:
+        print(
+            "  "
+            + _(
+                'it\'s too long to paste into an issue: run it again with --device "Your box"'
+                " for just the device you're asking about ({devices})"
+            ).format(devices=", ".join(f"“{d}”" for d in dump.devices(elements)))
+        )
     return 0
 
 

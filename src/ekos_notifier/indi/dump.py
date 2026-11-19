@@ -20,7 +20,7 @@ from ekos_notifier.indi.presets import INTERFACES, Preset
 
 LOCATION = {"GEOGRAPHIC_COORD"}
 # "CURRENT" only as a word end ("SENSOR_CURRENT"), not "ALIGNMENT_POINTSET_CURRENT_ENTRY" (live).
-LOOKS_LIKE = re.compile(r"TEMP|HUMID|DEW|VOLT|CURRENT(?![_A-Z])|AMP(?![_A-Z])|POWER", re.I)
+LOOKS_LIKE = re.compile(r"TEMP|HUMI|DEW|VOLT|CURRENT(?![_A-Z])|AMP(?![_A-Z])|POWER", re.I)
 # Thresholds, limits, set points and simulator knobs (WEATHER_CONTROL), not readings.
 NOT_READINGS = re.compile(
     r"MIN|MAX|LIMIT|WARN|ALERT|THRESHOLD|OFFSET|TARGET|SETPOINT|RAMP|CONTROL|SETTINGS|^SIM_",
@@ -81,6 +81,17 @@ def scrub(elements: list[ET.Element]) -> list[ET.Element]:
                 elif child.text:
                     child.text = HOME.sub("/home/user", child.text)
     return elements
+
+
+def devices(elements: list[ET.Element]) -> list[str]:
+    """The devices in a dump, in the order the server listed them."""
+    return list(dict.fromkeys(el.get("device") or "" for el in elements if el.get("device")))
+
+
+def only(elements: list[ET.Element], names: list[str]) -> list[ET.Element]:
+    """The properties of the named devices (names match whole, ignoring case)."""
+    wanted = {n.strip().lower() for n in names}
+    return [el for el in elements if (el.get("device") or "").lower() in wanted]
 
 
 def write(elements: list[ET.Element], path: Path) -> None:

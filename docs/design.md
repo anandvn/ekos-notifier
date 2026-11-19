@@ -336,13 +336,13 @@ When several devices report the same metric, a configurable priority order picks
 - **Power boxes:** a built-in preset for libindi 2.x's standard power interface (`DRIVER_INTERFACE` bit 18), whatever the brand: `POWER_SENSORS` voltage, current and power as metrics, and each output from `POWER_CHANNELS` (on/off), `POWER_CURRENTS` and `POWER_LABELS` (the box's own names: "Camera", "Mount"), and the `DEW_*` equivalents with `DEW_DUTY_CYCLES`, as `power.output` events. Verified with a test driver built on libindi 2.2.5's `INDI::PowerInterface` (`tools/indi_power_simulator`; its recorded stream is a test fixture); 15 installed drivers use the interface. Older drivers, with their own property names, are mapped in config. Battery presets: `agm_12v` (default), `lifepo4_12v`, `mains` (voltage alerts off), `custom`, with `power.low_volts`/`power.critical_volts` overriding.
 - **Camera cooler:** `camera.cooler` events (`busy`, `ok`, `alert`, `idle`) when a camera's `CCD_TEMPERATURE` changes state, for the cooler alerts. Recorded from the CCD and weather simulators (cooling to −10 °C; humidity 75 → 92 → 60 %) as test fixtures.
 - **Digest:** camera temperature, ambient, RH, dew margin, and power ("Power 12.4 V (low 12.1 V), 4.2 A").
-- **`ekos-notifier indi-dump`:** every device's properties to a file, site location removed, with what's recognised and the readings that could be mapped.
+- **`ekos-notifier indi-dump`:** every device's properties (or the named ones, `--device`) to a file, site location and user name removed, with what's recognised and the readings that could be mapped. One device is a few KB, small enough to paste into an issue; a whole rig is 100 KB or more (115 KB in the first real one, issue #47), over GitHub's 65,536-character limit, so the command says to use `--device` when the file is too long to paste. Found in a dry run (2026-11-20): the form's dump field rendered as code, which takes no attachments, and a whole-rig dump couldn't be pasted; the form now has a plain field that takes a paste or an attached file. The candidate filter also missed the SV241's `SHT40_HUMI` (it looked for `HUMID`).
 - **Not yet:** confirming the power interface on a real box (an `indi-dump` from one), presets for power boxes whose drivers predate it, heuristic detection with confirmation (needs the wizard), stale-metric notices, and a battery runtime estimate.
 
 ### Presets as data
 
 - Presets are YAML files in `src/ekos_notifier/indi/presets/`, contributed by pull request with no Python required.
-- `ekos-notifier indi-dump` writes a device's full property list for attaching to a "support my device" issue.
+- `ekos-notifier indi-dump --device "…"` writes a device's full property list to paste into a "Device support" issue (the form asks for the device, its driver and the file, pasted between code fences or attached).
 - Each preset is labelled verified, community or untested; the wizard shows the label.
 
 ### Isolation and stale data
