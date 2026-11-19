@@ -5,6 +5,14 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **`ekos-notifier doctor`** checks everything Ekos Notifier needs and says how to fix what
+  isn't right. It checks the install, including a venv broken by an OS update. It checks the
+  config: notifier URLs, and a file other users can read. It checks the service: whether it's
+  installed, running or failed, and whether its unit is out of date or names a Python that's
+  gone. It also checks the database, KStars and Ekos on D-Bus, a KStars Flatpak's permissions,
+  the INDI server and what's recognised on it, PHD2, the clock's sync and the free disk space.
+  It's read-only. The README's setup steps and troubleshooting start from it.
+
 - **Fixed:** "Mount parked", the all-clear after the "Mount left unparked" Emergency, is sent
   at once. It waited for the hourly digest, which runs only during a session, and that
   Emergency comes after Ekos stops, so it was likely never sent.
