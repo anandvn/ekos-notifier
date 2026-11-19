@@ -23,6 +23,7 @@ resumes a Normal "Guiding recovered" follows. A session closing ends the outage 
 
 from __future__ import annotations
 
+import functools
 import math
 import re
 import time
@@ -30,6 +31,8 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert, minutes
+from ekos_notifier.ekos import translation
+from ekos_notifier.ekos.translation import NUMBER, localized, plain
 from ekos_notifier.events import Event
 
 RECOVERY = 300.0
@@ -61,8 +64,22 @@ MOUNT_PAUSES = {"slewing", "moving", "parking", "parked"}
 FOCUS_BUSY = {"waiting", "in_progress", "framing", "changing_filter"}
 ALIGN_BUSY = {"in_progress", "syncing", "slewing", "rotating"}
 CALIBRATION = {"flat", "dark", "bias"}
-# PHD2 tags some advice as a warning; it isn't something to act on mid-night.
+# PHD2 tags some advice as a warning; it isn't something to act on mid-night. PHD2 translates it,
+# so its translations in the PHD2 catalogs installed here are recognised too.
 PHD2_ADVICE = ("For best results",)
+PHD2_LOCALES = (
+    "/usr/share/locale",
+    "/usr/local/share/locale",
+    "~/.local/share/flatpak/app/org.openphdguiding.OpenPHDGuiding/current/active/files/share/locale",
+    "/var/lib/flatpak/app/org.openphdguiding.OpenPHDGuiding/current/active/files/share/locale",
+)
+
+
+@functools.cache
+def phd2_advice() -> tuple[str, ...]:
+    return translation.translated_prefixes(PHD2_ADVICE, "phd2", PHD2_LOCALES)
+
+
 PHD2_HOLD = 10.0  # seconds a PHD2 warning waits, in case Ekos is shutting down
 
 
@@ -262,7 +279,7 @@ class GuidingRule:
             or self._capture == "complete"
             or self._ekos_gone
             or d.get("type") not in ("warning", "error")
-            or message.startswith(PHD2_ADVICE)
+            or message.startswith(phd2_advice())
             or message in self._phd2_sent
             or any(a.data["message"] == message for _, a in self._phd2_pending)
         ):
@@ -342,7 +359,8 @@ class PoorGuidingRule(SessionRule):
 
     A Normal "Guiding back within limits" follows: when a frame finishes (Ekos path), or after the
     RMS has stayed under the limit for ``clear_after`` seconds. ``window`` 0 turns the rule off.
-    Ekos logs in the KStars language; the Ekos path matches the English messages only.
+    Ekos logs in the KStars language: the adapter turns its lines back into English
+    (ekos.translation), and reads its numbers in the format KStars wrote them in.
     """
 
     SETTINGS = ("window",)
@@ -350,12 +368,12 @@ class PoorGuidingRule(SessionRule):
     # "exceeded" names the limit that suspends exposures; "still higher" and "now lower" name the
     # separate, usually looser, limit Ekos resumes at (2" when the trip limit was 0.5", live).
     EXCEEDED = re.compile(
-        r"deviation (?:at capture startup )?(-?[\d.]+) exceeded limit(?: value of)? "
-        r"([\d.]+) arcsecs"
+        rf"deviation (?:at capture startup )?({NUMBER}) exceeded limit(?: value of)? "
+        rf"({NUMBER}) arcsecs"
     )
     DEVIATION = re.compile(
-        r"deviation (?:at capture startup )?(-?[\d.]+) (?:is still higher than|is now lower than"
-        r"|below) limit value of ([\d.]+) arcsecs"
+        rf"deviation (?:at capture startup )?({NUMBER}) (?:is still higher than|is now lower than"
+        rf"|below) limit value of ({NUMBER}) arcsecs"
     )
     STOPPED = {"aborted", "complete", "paused"}
 
@@ -397,11 +415,12 @@ class PoorGuidingRule(SessionRule):
             text = str(d["text"])
             if m := self.EXCEEDED.search(text):
                 self._enforced = True
-                self._deviation, self._ekos_limit = float(m.group(1)), float(m.group(2))
+                # KStars writes the deviation plainly, its limit in its locale
+                self._deviation, self._ekos_limit = plain(m.group(1)), localized(m.group(2), d)
                 if self._held_since is None:
                     self._held_since = event.ts
             elif m := self.DEVIATION.search(text):
-                self._deviation = float(m.group(1))
+                self._deviation = plain(m.group(1))
         elif kind == "capture.frame" and self._enforced:
             # Ekos resuming isn't recovery (it can trip again within seconds); a finished frame is.
             self._held_since = None

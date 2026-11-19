@@ -5,7 +5,11 @@ Recorded with `tools/record_night.py`; simulated nights are scripted with `tools
 
 ## Format: `ekos-notifier-replay/0` (gzipped NDJSON)
 
-Line 1 is a `meta` record (`format`, `started`, `kstars`, `python`). Every other line is:
+Line 1 is a `meta` record (`format`, `started`, `kstars`, `python`; `language`: KStars's
+language, e.g. `de`, when it isn't English; replay reads Ekos's log through that language's
+translations, from the KStars installed on the computer replaying it; `numbers`: the
+locale KStars wrote numbers in and its separators, `{"locale": "de_DE.UTF-8", "decimal": ",",
+"group": "."}`, English when absent). Every other line is:
 
 ```json
 {"t": 1794757136.653, "src": "<stream>", ...}
@@ -63,3 +67,20 @@ Recording starts ~6 min before the Scheduler and ends just after its shutdown.
 
 A longer night (IC 410, 21:39–03:46 UTC+3, 9.4 MB, ends in a KStars crash) is kept outside the
 repository; see the "How to store fixtures" item in `docs/open-questions.md`.
+
+### `sim-german-failures-kstars-3.8.5-flatpak.ndjson.gz` (160 KB)
+
+KStars 3.8.5 (Flatpak) and PHD2 2.6.14 both in German (`language: de`, numbers in `de_DE.UTF-8`), on the simulators,
+recorded 2026-11-19 (times EST, UTC−5). Scrubbed with `tools/scrub_replay.py` (site → 51.48,
+0.0, 46 m). Drives the "KStars in another language" tests (`tests/test_translation.py`).
+
+| Time | What happens |
+| --- | --- |
+| 22:10:51 | Recording starts. Ekos connected. |
+| 22:11–22:12 | Autofocus with too short an exposure: no stars, "Die automatische Fokussierung ist fehlgeschlagen…", Ekos retries, then gives up (setup, before the session). |
+| 22:13 | Capture & Solve fails after three tries ("Die Lösung ist fehlgeschlagen."). |
+| 22:15:40 | 10 s Luminance frames ("Capturing 10,000-second", German decimal comma); the session starts with the first one. PHD2 calibrates, losing its star repeatedly. |
+| 22:16:32 | Guiding stopped ("Die automatische Nachführung wurde angehalten. Abbruch ..."): capture aborts after 5 frames. |
+| 22:16:48 | PHD2 sends its dark-library tip as a warning, in German. |
+| 22:17:55 | The user disconnects ("Verbindung zu INDI-Geräten wird getrennt ..."); PHD2 warns its camera and mount went away; INDI stops. |
+| 22:19:00 | Recording ends. |

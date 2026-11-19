@@ -5,6 +5,18 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Fixed: alerts work with KStars in another language.** Ekos translates its log, and some
+  alerts read it. With KStars in German, for example, **Autofocus failed** could be missed,
+  alerts lost the reason Ekos gave, and stopping Ekos yourself was taken for Ekos being lost.
+  Before any rule sees a log line, Ekos Notifier now turns it back into English using KStars's
+  own translations, which works for every language KStars ships. Numbers are read in KStars's
+  own locale too: German KStars writes a 10 s exposure as `10,000`, which was read as 0. If
+  this computer doesn't have that locale, those numbers are left unread and `doctor` says how
+  to add it.
+  PHD2's tips ("For best results…") are no longer sent as warnings when PHD2 runs in another
+  language. `doctor` reports KStars's language. Recordings now note it, and `simulate` replays
+  a recording made in another language through the same translations.
+
 - **`ekos-notifier setup`** is a terminal wizard that sets Ekos Notifier up with a few
   questions. It starts by showing what it can see on the rig. It sets up your notifier
   (Pushover, ntfy, Telegram, Discord or any Apprise URL), sending it a test. It also asks about

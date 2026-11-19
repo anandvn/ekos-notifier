@@ -27,6 +27,7 @@ from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta
 
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert
+from ekos_notifier.ekos.translation import NUMBER, localized
 from ekos_notifier.events import Event
 
 INTERVAL = 3600.0
@@ -64,7 +65,7 @@ OPEN_UNTIL = {
 NOT_LISTED = {"digest", "session_started"}
 JOB = re.compile(r"Job '(.+?)' ")
 CAMERA = re.compile(r"^\[([^\]]+)\] ")
-JOB_PLAN = re.compile(r"Job requires ([\d.]+)-second (.+?) images, has (\d+)/(\d+) frames")
+JOB_PLAN = re.compile(rf"Job requires ({NUMBER})-second (.+?) images, has (\d+)/(\d+) frames")
 MILESTONES = {
     "Meridian flip completed OK": "meridian flip complete",
     "Dithering failed": None,  # counted, not listed
@@ -226,7 +227,12 @@ class DigestRule(SessionRule):
                 self._target = m.group(1)
             elif m := JOB_PLAN.search(text):
                 self._filter = m.group(2)
-                self._job = (m.group(2), float(m.group(1)), int(m.group(3)), int(m.group(4)))
+                exposure = localized(m.group(1), d)
+                self._job = (
+                    None
+                    if exposure is None
+                    else (m.group(2), exposure, int(m.group(3)), int(m.group(4)))
+                )
             for needle, label in MILESTONES.items():
                 if needle in text and label:
                     self._since.append((event.ts, label))

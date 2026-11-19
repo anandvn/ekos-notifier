@@ -399,7 +399,7 @@ def check_kstars(processes: Callable[[], list] | None = None) -> list[Check]:
     procs = (processes or kstars_processes)()
     if not procs:
         return []
-    out = []
+    out = [*check_language(procs[0]), *check_numbers(procs[0])]
     if len(procs) > 1:
         pids = ", ".join(str(k.pid) for k in procs)
         out.append(
@@ -446,6 +446,60 @@ def check_kstars(processes: Callable[[], list] | None = None) -> list[Check]:
                 )
             )
     return out
+
+
+def check_numbers(k) -> list[Check]:
+    """KStars writes some numbers (exposure times…) in its locale: this computer must know it."""
+    from ekos_notifier.ekos import translation
+
+    name = translation.numeric_locale(k.environ)
+    fmt = translation.number_format(name)
+    if fmt is None:
+        return [
+            Check(
+                WARN,
+                f"KStars writes numbers in '{name}', which this computer doesn't have: exposure "
+                "times and other localized numbers in Ekos's log are left unread",
+                f"add the locale: uncomment {name.split('.')[0]} in /etc/locale.gen and run "
+                "`sudo locale-gen`, then restart the service",
+            )
+        ]
+    if fmt in (translation.ENGLISH, translation.C):
+        return []
+    return [
+        Check(
+            OK,
+            f"KStars writes numbers in '{name}' (decimal '{fmt.decimal}'): Ekos's log is read "
+            "in that format",
+        )
+    ]
+
+
+def check_language(k) -> list[Check]:
+    """KStars in another language: its log is read through its own translations."""
+    from ekos_notifier.ekos import translation
+
+    found = translation.find_catalog(k)
+    if found is None:
+        return []
+    language, path = found
+    bt = translation.load(path, language)
+    if bt is None or not len(bt):
+        return [
+            Check(
+                WARN,
+                f"KStars runs in '{language}', and its translations can't be read: alerts "
+                "that read Ekos's log (Autofocus failed, Plate solve failed…) may not fire",
+                "switch KStars to English (Help > Switch Application Language)",
+            )
+        ]
+    return [
+        Check(
+            OK,
+            f"KStars runs in '{language}': Ekos's log is read through its translations "
+            f"({len(bt)} phrases), so alerts work as in English",
+        )
+    ]
 
 
 # -- INDI ---------------------------------------------------------------------------------
