@@ -7,12 +7,14 @@ update it alongside the code.
 
 Ekos Notifier is an open-source (MIT) companion service for KStars/Ekos rigs: it watches an imaging night, records it as a session in a local database, sends alerts that matter, and carries the night's data home. It runs on the imaging computer itself and depends on no specific server, notification service or network.
 
+**Status:** this spec covers the whole product; what's built is marked **Implemented**. 1.0 is alerts, the hourly digest and the session record, field-tested on real rigs. The web GUI (and with it the GUI first-run wizard, user notes and Start/End buttons), the export folders, sync and the reference importer, and the mount-limit Emergency come **after 1.0**; see the [Roadmap](#roadmap).
+
 **Goals**
 
 - Alerts that are worth acting on: equipment risk and lost data, not noise.
 - A complete, reproducible record of every night: plan, setup quality, conditions, every frame and event.
 - Works fully offline at a dark site; internet is a bonus, never a requirement.
-- Gets the data home with one button (or automatically) to whatever storage the user owns.
+- Gets the data home with one button (or automatically) to whatever storage the user owns (after 1.0).
 - Docs and first-run experience good enough that a stranger is set up in 15 minutes.
 
 **Non-goals (v1)**
@@ -105,7 +107,7 @@ Priorities map onto each notifier's native levels where it has them (Pushover �
 | --- | --- |
 | Guiding lost | Guiding stopped (Ekos Guide aborted, reacquiring, calibration or dither error, or PHD2 lost the star) and not guiding again within 5 min of time when guiding was expected; looping or recalibrating doesn't count as recovered. The clock pauses, and restarts from zero, while the mount slews or parks, Capture flips, solves or focuses, Focus or Align is busy, calibration frames are being taken, or capture had already stopped before guiding did. Capture *suspended*, or *aborted* by Ekos because guiding stopped, doesn't pause it; nor does a mount that stopped tracking (the message says so). Message names PHD2's lost-star reason and alert if any. Followed by "Guiding recovered" (Normal, immediate). |
 | PHD2 warning | PHD2 raises a warning or error during an active session (e.g. "not able to make sufficient corrections in RA", "INDI camera disconnected"). Once per message per session, with Ekos's current guide RMS. PHD2's advice (the dark-library tip, which it also tags as a warning), info messages, and warnings caused by Ekos shutting down aren't sent: a warning is held 10 s and dropped if Ekos logs "Disconnecting INDI devices", INDI or Ekos goes idle, or capture completed (the Scheduler's end), since PHD2 warns about the camera and mount just before INDI reports idle (seen live). |
-| Guiding poor | Follows Ekos's own guide-deviation limit (per sequence job; default `[Capture] GuideDeviation` in `kstarsrc`, 2″). When the job enforces it, Ekos suspends an exposure when deviation goes over the limit ("Guiding deviation 3.791 exceeded limit value of 0.5 arcsecs…"), resumes once under a separate, looser resume limit (2″ by default), and can trip again seconds later, so no exposure ever finishes (seen live): alert when Ekos has been suspending exposures and no frame has finished for `alerts.guiding_poor_minutes` (default 10); the all-clear comes when a frame finishes. When the job doesn't enforce it, Ekos keeps exposing: alert when Ekos's total guide RMS (√(RA² + DEC²), arcsec) has stayed over that limit for the same time while guiding. Dithering doesn't restart the window; guiding stopping does. Followed by "Guiding back within limits" (Normal). `guiding_poor_minutes: 0` turns it off. The Ekos path matches Ekos's English log messages only. |
+| Guiding poor | Follows Ekos's own guide-deviation limit (per sequence job; default `[Capture] GuideDeviation` in `kstarsrc`, 2″). When the job enforces it, Ekos suspends an exposure when deviation goes over the limit ("Guiding deviation 3.791 exceeded limit value of 0.5 arcsecs…"), resumes once under a separate, looser resume limit (2″ by default), and can trip again seconds later, so no exposure ever finishes (seen live): alert when Ekos has been suspending exposures and no frame has finished for `alerts.guiding_poor_minutes` (default 10); the all-clear comes when a frame finishes. When the job doesn't enforce it, Ekos keeps exposing: alert when Ekos's total guide RMS (√(RA² + DEC²), arcsec) has stayed over that limit for the same time while guiding. Dithering doesn't restart the window; guiding stopping does. Followed by "Guiding back within limits" (Normal). `guiding_poor_minutes: 0` turns it off. With KStars in another language, Ekos's lines are read back into English first (see "KStars in another language"). |
 | Capture aborted | A running capture aborted and not restarted within 60 s (Ekos also reports "aborted" for an idle Capture when a focus exposure fails; that isn't counted), when Ekos gave a reason (its log just before, e.g. "Autoguiding stopped. Aborting...", "Autofocus failed. Aborting exposure", or guiding, focus or a device failing in the seconds before). An abort with no cause is taken as the user's own Stop and only recorded: a Stop logs only "Camera capture stopped" (seen live). |
 | Scheduler aborted | The Scheduler goes `aborted` after running (Stop leaves it `idle`); quotes its last log line. |
 | Capture stalled | Capture busy (exposing, downloading, changing filter, starting a job, dithering) with no progress for 2 × (exposure + download), at least 2 min. Exposure from Ekos's "Capturing 60.000-second…" log, download time from its "Download Time" log. Waiting states (guider drift, suspended, temperature, focus, flip) and Ekos going away don't count. Followed by "Capture running again" (Normal) at the next frame. |
@@ -124,7 +126,7 @@ Priorities map onto each notifier's native levels where it has them (Pushover �
 | --- | --- | --- |
 | Target low | 30 min (`alerts.target_low_warning_minutes`) before the target the mount is tracking sinks below Ekos's altitude limit: the mount limit if enabled (`[Mount] MinimumAltLimit`), else the Scheduler's constraint (`[Scheduler] SchedulerAltitudeValue`), else 10°. Once per target | Immediate |
 | Twilight coming | 45 min (`alerts.twilight_warning_minutes`) before astronomical dawn (Sun rising through −18°), once per session | Immediate |
-| Sequence complete | Sequence ends; starts the parking escalation if mount still tracking | Immediate |
+| Sequence complete | Not an alert of its own: the run ending closes the session, which sends the summary (saying whether the mount is parked), and "Mount left unparked" covers a mount left tracking once Ekos stops | — |
 | Flats reminder | A session that imaged ends: the filters with lights tonight but no flats tonight (flats from the sequence or an earlier session of the night count; each filter once per night; not when you stopped Ekos). The sample night has one: Luminance lights, flats for the other six filters only | With the summary |
 | Darks reminder (off by default: `messages: darks_reminder: normal`) | A dark job starts, known before its first frame: as Capture starts, the Ekos adapter reads the active job's frame type (`getActiveJobID`, `getJobFrameType`, read-only; checked live on 3.8.5) as `capture.job`. "Cover the telescope". Once per night, session or not | Immediate |
 
@@ -160,7 +162,7 @@ The digest is one status message per interval (default 60 min) while a session i
 - **Priority:** Quiet when all's well; Normal when it says Attention.
 - **Timing:** on the clock hour, or every N minutes from session start (configurable). A digest due less than 10 minutes after the session started is skipped.
 - **Verdict:** Attention when a High or Emergency alert was raised in the interval and not cleared in it, or a problem raised earlier is still open: one with an all-clear alert until it's sent (guiding lost, guiding poor, capture stalled, mount left unparked), and capture aborted, Scheduler aborted and autofocus failed until capture, the Scheduler or focus is working again (seen live: without this, "All's well" with nothing captured since an abort). The problems are named in the title and carry over as "Still open", including across a service restart (rebuilt from the session's alerts, then closed by Ekos's snapshot if no longer true).
-- **Implemented so far** (`ekos_notifier.digest`): target (from the Scheduler's job), filter and job progress (from Capture's "has N/M frames captured"), lights and integration this interval and tonight, calibration frames, median guide RMS, failed dithers, median HFR when Ekos measures it, and "Since last": every alert (sent or held) and milestones such as a completed meridian flip. Temperatures, battery, dew, flip and dawn times wait for the INDI adapter and the site location; 
+- **Implemented** (`ekos_notifier.digest`): target (from the Scheduler's job), filter and job progress (from Capture's "has N/M frames captured"), lights and integration this interval and tonight, calibration frames, median guide RMS, failed dithers, median HFR when Ekos measures it, camera temperature, ambient, RH, dew margin and power (from INDI), time to the flip, the target setting and dawn (from the site), and "Since last": every alert (sent or held) and milestones such as a completed meridian flip. Not yet: the battery trend and thumbnails.
 - **Body:** target · filter · frames done/planned (+ this interval) · median HFR · guide RMS · camera temp · battery and trend · ambient, RH, dew margin · time to flip and dawn · events since last digest · thumbnail.
 
 ```
@@ -176,7 +178,7 @@ Since last: flip complete 22:31
 
 Messages are in plain English. The Olde English style was dropped (too gimmicky to maintain), and a Terse style is deferred. Varying the wording is planned as translation instead.
 
-**Translation** (0.3, before the GUI, whose strings should be translatable from the start) uses gettext, the system KStars uses and translators know.
+**Translation** (0.3) uses gettext, the system KStars uses and translators know, so the GUI's strings (after 1.0) are translatable from the start.
 
 **Implemented** (`ekos_notifier.i18n`) for everything Ekos Notifier says: on the phone, alert titles and bodies, the hourly digest, the session summary and its statistics, the pre-flight checks, the test message and `simulate --send`'s "[Simulated]"; in the terminal, `--help`, `doctor` (its checks, fixes, status labels and headings), `setup` (questions, choices, summary), `config check` and `config alerts`, config errors and warnings, `simulate`'s report, `indi-dump`, `install-service` and the old-folders notice. The CLI picks the language from the config before building `--help` (the system's when there's no config). Log lines stay English (they're for debugging), as do commands in fixes (they're placeholders, so a translator can't break them) and the `[Y/n]` answers. 676 messages.
 
@@ -186,7 +188,7 @@ Messages are in plain English. The Olde English style was dropped (too gimmicky 
 - **Tests:** a made-up language (every message in ⟪…⟫) replays the sample night and the German fixture, and fails on any title or line it can't translate, and runs `config alerts`, `config check`, `simulate`, `doctor` and the setup wizard in it, failing on any line that isn't translated (lines that are only data, the digest's target and filter and PHD2's own messages, are allowed); the template must be current; every translation's placeholders must match the English (`update_pot.py --check` says which); and a check that no function assigns `_` (`_, x = …`), which would break `_()` there at runtime.
 - **No English line on Emergencies.** The old styles rule ("an Emergency ends with a plain-English line, whatever the style") guarded against a joke style hiding an urgent message; it doesn't carry over to a language the user chose. A second, English sentence is noise to someone who reads German at 3 a.m., and lock screens and watches show the title and first lines, so a trailing line is often never seen. Support doesn't need it either: every alert keeps its `rule` key (`battery_critical`) whatever its wording. The risk it covered, a wrong or stale translation of an urgent message, is handled in review instead: the four Emergencies (Mount left unparked, Battery critical, Meridian flip failed, Meridian flip overdue) are checked by a second speaker before a translation is merged, and an untranslated or fuzzy entry already falls back to English.
 - **Numbers in messages (decided, to build with the first comma-language translation):** each translation chooses its decimal separator. Numbers we *read* are already right whatever the locale (PHD2 and INDI always write `.`; KStars's log is read in its own locale, see "KStars in another language"); this is about numbers we *write*, which come out of Python as `12.4` and look foreign to a German reader expecting `12,4`. A translation gets one entry, the decimal separator (a gettext context, `msgctxt "decimal separator"`, so it can't clash with another message), set to `,` or left as `.`; one helper formats every number in a message with it, replacing the `f"{x:.1f}"` values passed to `.format()`. Messages never group thousands, so the separator is the only thing to localize. Not the `locale` module: `locale.format_string` needs the locale generated on the host (often missing for a language that isn't the system's), maps a region rather than our language setting (`de_CH` uses `.`), and changes process-wide state in a service that runs all night. Not Babel: correct out of the box, but a dependency of about 30 MB whose locale data changes output between releases, for one character. Until a translation sets it, numbers stay `12.4`, which is still clear.
-- **Dates and times** need no localizing: 24-hour times (`22:15`) and ISO dates (`2026-11-19`), as messages and `simulate --list` already use. Where a sentence holds a date or time, it's a placeholder in a translatable string, so a translation can place it. The GUI (0.3) follows the same rule.
+- **Dates and times** need no localizing: 24-hour times (`22:15`) and ISO dates (`2026-11-19`), as messages and `simulate --list` already use. Where a sentence holds a date or time, it's a placeholder in a translatable string, so a translation can place it. The GUI (after 1.0) follows the same rule.
 
 ## Offline behavior
 
@@ -219,10 +221,12 @@ SQLite (WAL mode) on the rig is the source of truth; a closed session is exporte
 `mount.park`, `guide.rms`, `phd2.step`, …); `frames` and `samples` are filled from events in the same
 transaction. The database lives at `~/.local/share/ekos-notifier/ekos-notifier.db` (honouring
 `XDG_DATA_HOME`), in WAL mode so readers never block the writer, and its schema is versioned with
-`PRAGMA user_version` migrations. Implemented so far: `events`, `frames`, `samples`; the other
-tables arrive with the session manager, notifier and GUI.
+`PRAGMA user_version` migrations. Implemented: `events`, `frames`, `samples`, `sessions`, and the
+notifier's `outbox` and `consumers` (its read position in `events`). The others (`targets`,
+`setup_items`, `notes`, `calibration_runs`) and the summary and sync columns arrive with the
+features that fill them.
 
-### Export folder (written at session close)
+### Export folder (written at session close; after 1.0)
 
 ```
 sessions/2026-11-07_IC1396_a3f9/
@@ -239,6 +243,8 @@ sessions/2026-11-07_IC1396_a3f9/
 - **Retention:** local copies pruned N days (default 30) after `synced_at`.
 
 ## Syncing data home
+
+**After 1.0.** Every night is already recorded in the local database, so an exporter added later can export and sync past sessions too.
 
 Sync is a file copy with rclone: every unsynced session folder (and optionally the FITS files) goes to one configured destination, one night or ten alike.
 
@@ -261,6 +267,8 @@ Sync is a file copy with rclone: every unsynced session folder (and optionally t
 - **Downstream:** importers read the export folders, keyed by session UUID so re-imports never duplicate. A reference importer (SQLite/Postgres) ships in `contrib/`; the rig never talks to anyone's database.
 
 ## Web GUI
+
+**After 1.0.** The terminal covers what the GUI was first needed for: `setup` (first run), `doctor` (what's wrong), `simulate` (preview), and the digest and summary on the phone.
 
 A phone-first web page served by the service on the rig's local network, read-only toward Ekos, with a red night-mode theme on by default after sunset.
 
@@ -289,7 +297,7 @@ Every external dependency sits behind a small adapter interface with a sensible 
 | --- | --- | --- |
 | Event sources | Ekos D-Bus (Capture, Guide, Focus, Align, Mount, Scheduler); PHD2 event server (TCP 4400); INDI client for device properties | on by default, auto-detected |
 | Guiding | PHD2 or Ekos internal guider | auto-detected from Ekos profile |
-| Power and weather | INDI properties with presets: Pegasus PPB/UPB, PrimaLuce Eagle, generic weather; custom property mapping | `power: preset: pegasus_ppb` |
+| Power and weather | INDI properties with presets: libindi's standard power interface (Pegasus, SVBONY, Terrans… whatever the brand), weather stations, camera and focuser temperatures; custom property mapping for anything else | `indi: metrics: power.voltage: "Box / PROPERTY.ELEMENT"` |
 | Notifications | Apprise URLs (Pushover, ntfy, Telegram, Discord, Slack, Gotify, email, Home Assistant, 100+) | `notify: ["pover://user@token"]` |
 | Heartbeat | Any ping URL: Healthchecks.io (hosted or self-hosted), Uptime Kuma push, Cronitor | `heartbeat: url: https://hc-ping.com/…` |
 | Sync | rclone remote or local path | `sync: dest: "nas:astro/sessions"` |
@@ -350,7 +358,7 @@ Most rules run on Ekos's status codes, which are the same in every language. Som
 
 **Implemented** (`ekos_notifier.ekos.translation`): the Ekos adapter finds the running KStars's language (its app-specific override, `klanguageoverridesrc`, else `LANGUAGE`/`LC_ALL`/`LC_MESSAGES`/`LANG` from its environment) and loads its own catalog (`kstars.mo`, looked up inside the process's root, so a Flatpak's `/app/share/locale` is found). The catalog's keys are KStars's English source strings, so each translation becomes a pattern (`%1`, `%2` … match anything, in any order) and a line matching one in full is passed on as its English source with the same values, keeping the original as `original`. The most specific match wins; translations with under four fixed characters are ignored as too vague; lines that match nothing (untranslated, or not from a translatable string) pass unchanged. No per-language work: any language KStars ships works. Loading the German catalog takes 0.16 s (8,433 phrases); a line takes about 0.4 ms. `doctor` reports the language, and warns when the catalog can't be read. Tested with a made-up language over the existing English scenarios (each alert is missed without the translation, and identical with it) and, where the KStars Flatpak is installed, against its real German catalog.
 
-**Numbers** follow the system's locale, not the language: German KStars writes "Capturing 10,000-second" (ten seconds; the line itself isn't translated) and "Fokus-Position 50.000". KStars writes numbers in its locale (Qt: `LC_ALL`, else `LC_NUMERIC`, else `LANG`; the language override changes words, not numbers), and nothing is guessed from how a number looks: `10,000` is ten in German and ten thousand in English. The adapter looks up that locale's decimal point and grouping mark in this computer's C library (`locale -k LC_NUMERIC`) and puts them on each Ekos log line it passes on (`numbers`, absent for English; stored with the event, so sessions from the database replay right too). Rules read each number the way KStars's source writes it: exposures (Capture's lines and the job plan: `%L`, three decimals), deviation limits and cooler setpoints with `localized` (in the line's format, strictly: in German `1.5` isn't a number); guiding deviations and download times with `plain` (KStars writes them the same in every locale: `0.820`). When this computer doesn't have KStars's locale (Qt carries its own locale data, so KStars can use one the system never generated), the localized numbers are left unread: rules fall back as when the line never came, the service logs a warning, and `doctor` says which locale to add (`/etc/locale.gen`, `sudo locale-gen`).
+**Numbers** follow KStars's locale, not its language: German KStars writes "Capturing 10,000-second" (ten seconds; the line itself isn't translated) and "Fokus-Position 50.000". KStars writes numbers in its locale (Qt: `LC_ALL`, else `LC_NUMERIC`, else `LANG`; the language override changes words, not numbers), and nothing is guessed from how a number looks: `10,000` is ten in German and ten thousand in English. The adapter looks up that locale's decimal point and grouping mark in this computer's C library (`locale -k LC_NUMERIC`) and puts them on each Ekos log line it passes on (`numbers`, absent for English; stored with the event, so sessions from the database replay right too). Rules read each number the way KStars's source writes it: exposures (Capture's lines and the job plan: `%L`, three decimals), deviation limits and cooler setpoints with `localized` (in the line's format, strictly: in German `1.5` isn't a number); guiding deviations and download times with `plain` (KStars writes them the same in every locale: `0.820`). When this computer doesn't have KStars's locale (Qt carries its own locale data, so KStars can use one the system never generated), the localized numbers are left unread: rules fall back as when the line never came, the service logs a warning, and `doctor` says which locale to add (`/etc/locale.gen`, `sudo locale-gen`).
 
 **PHD2** translates its own messages (wxWidgets, `phd2.mo`; its language is its own setting, and it keeps '.' in numbers whatever the locale). Its warnings are recognised by type, not wording, so they arrive in its language as they are. Only its advice ("For best results…", sent as a warning and not something to act on mid-night) is matched by wording: the translations of that advice in every PHD2 catalog installed here are recognised too, so its language needn't be found.
 
@@ -373,11 +381,11 @@ Top priority: a new user goes from install to a test alert on their phone in und
 ### Configuration
 
 - One YAML file (`~/.config/ekos-notifier/config.yaml`), fully commented, every key with a default.
-- The GUI Settings view edits the same file; `ekos-notifier config check` validates it and explains errors in plain words.
+- `ekos-notifier config check` validates it and explains errors in plain words; `ekos-notifier setup` edits the common settings line by line. The GUI Settings view (after 1.0) will edit the same file.
 
-### First-run wizard (GUI, opens automatically on first start)
+### First-run wizard
 
-**A terminal wizard is implemented** (`ekos-notifier setup`, offered by `install.sh` when no notifier is set): it shows what doctor's D-Bus, INDI and PHD2 checks see (and the power box's voltage); sets up notifiers (Pushover, with its 30-character keys checked; ntfy, with a random topic suggested; Telegram; Discord; any Apprise URL), sending each a test and asking whether it arrived; the battery (a preset, mains, or custom levels, and whether to keep levels the file already overrides); and the digest (on, interval). It shows what will change and saves only on yes. The config is edited line by line, touching only the settings whose answers changed, so comments and everything else stay; the result is loaded back and compared with the answers before it's written (atomically, mode 600, the old file kept as `config.yaml.bak`), and a file it can't edit safely (e.g. `power: {…}` on one line) is left alone with the lines to add shown instead. It ends by offering the service if it isn't installed. The GUI wizard below comes with the GUI (password, heartbeat, sync and style steps need those features first).
+**A terminal wizard is implemented** (`ekos-notifier setup`, offered by `install.sh` when no notifier is set): it shows what doctor's D-Bus, INDI and PHD2 checks see (and the power box's voltage); sets up notifiers (Pushover, with its 30-character keys checked; ntfy, with a random topic suggested; Telegram; Discord; any Apprise URL), sending each a test and asking whether it arrived; the battery (a preset, mains, or custom levels, and whether to keep levels the file already overrides); and the digest (on, interval). It shows what will change and saves only on yes. The config is edited line by line, touching only the settings whose answers changed, so comments and everything else stay; the result is loaded back and compared with the answers before it's written (atomically, mode 600, the old file kept as `config.yaml.bak`), and a file it can't edit safely (e.g. `power: {…}` on one line) is left alone with the lines to add shown instead. It ends by offering the service if it isn't installed. A GUI wizard comes with the GUI, after 1.0; its plan:
 
 1. **Welcome + password** for the GUI.
 2. **Detect:** finds KStars/Ekos, PHD2, INDI devices; shows what it found in plain words ("PHD2 found — guiding alerts on").
@@ -390,7 +398,7 @@ Top priority: a new user goes from install to a test alert on their phone in und
 
 ### Built-in safety nets
 
-- `ekos-notifier doctor`: checks D-Bus access, PHD2 port, INDI connection, clock sync, disk, notifier, sync destination; prints fixes. **Implemented** (read-only, a few seconds): the install (version, Python, a venv whose Python an OS update removed, the command on `PATH`); the config (errors, notes, notifier URLs with keys hidden, a config other users can read); the service (installed, running or failed, a unit out of date or naming a Python that's gone, another copy in a terminal); the database (sessions, a schema from a newer version); which session bus KStars is on and Ekos's status; a KStars Flatpak's `shared=network`, `sockets=session-bus` and home access (from `/proc/<pid>/root/.flatpak-info`); the INDI server, its devices and what's recognised (built-in presets plus the config's mappings); PHD2's version when Ekos guides with it; NTP sync (`timedatectl`); free space where Ekos saved the last frame. Each result is ok, note, warn or FAIL with a fix; the exit status is 1 on a FAIL. Not yet: the sync destination (no sync yet), the supported KStars/PHD2 version range, and Scheduler startup/shutdown steps naming devices missing from the profile.
+- `ekos-notifier doctor`: checks D-Bus access, PHD2 port, INDI connection, clock sync, disk, notifier, sync destination; prints fixes. **Implemented** (read-only, a few seconds): the install (version, Python, a venv whose Python an OS update removed, the command on `PATH`); the config (errors, notes, notifier URLs with keys hidden, a config other users can read); the service (installed, running or failed, a unit out of date or naming a Python that's gone, another copy in a terminal); the database (sessions, a schema from a newer version); which session bus KStars is on and Ekos's status; KStars's language and number format (and whether this computer has them); a KStars Flatpak's `shared=network`, `sockets=session-bus` and home access (from `/proc/<pid>/root/.flatpak-info`); the INDI server, its devices and what's recognised (built-in presets plus the config's mappings); PHD2's version when Ekos guides with it; NTP sync (`timedatectl`); free space where Ekos saved the last frame. Each result is ok, note, warn or FAIL with a fix; the exit status is 1 on a FAIL. Not yet: the sync destination (no sync yet), the supported KStars/PHD2 version range, and Scheduler startup/shutdown steps naming devices missing from the profile.
 - **Simulation mode:** replays a recorded night so users can tune alerts in daylight; also drives the test suite. **Implemented** as `ekos-notifier simulate`: the sample night shipped in the package (the M 31 simulator recording), a recording file, or one of the user's own sessions from the database (`--session last` or an id from `--list`, read-only; the states known before the session, such as the site, park state, pier side and INDI readings, are carried in as snapshots). The rules are built as the service builds them (config, and Ekos's limits from KStars's settings); the disk isn't checked. It prints each alert with its time, priority and body, marking those held for the digest; `--send` sends the ones that would go out at once, titled "[Simulated]", with an Emergency sent as High. Replaying a session from the database gives the same alerts as the night itself (tested, within one 10 s tick).
 
 ### Documentation plan (MkDocs site on GitHub Pages)
@@ -451,25 +459,27 @@ Because outputs only read from the store, a dead notifier, network or sync targe
 | AstroArch | Arch ARM, rolling | native, latest | Supported |
 | Debian 11 and older | 3.9 or older | — | Unsupported (Python < 3.10) |
 | KStars snap | any | snap | Unverified |
-- **Install:** an `install.sh` shipped with 1.0 (`curl -fsSL …/install.sh | sh`), because StellarMate's images have no pipx and no pacman repositories, and asking users to build pipx from the AUR is too much. It needs only Python's own `venv` and `ensurepip` (part of the base `python` package on Arch, `python3-venv` on Debian/Ubuntu/Raspberry Pi OS; checked on the StellarMate VM, Python 3.14.7). No root:
+- **Install:** an `install.sh` (`curl -fsSL …/install.sh | sh`, since 0.1), because StellarMate's images have no pipx and no pacman repositories, and asking users to build pipx from the AUR is too much. It needs only Python's own `venv` and `ensurepip` (part of the base `python` package on Arch, `python3-venv` on Debian/Ubuntu/Raspberry Pi OS; checked on the StellarMate VM, Python 3.14.7). No root:
   - creates `~/.local/share/ekos-notifier/venv` and `pip install`s `ekos-notifier` into it (a venv isn't affected by the system Python's `EXTERNALLY-MANAGED` marker);
   - links `~/.local/bin/ekos-notifier`, and says how to add `~/.local/bin` to `PATH` if it's missing;
   - offers `ekos-notifier install-service` (the unit runs the venv's Python, since it uses the Python that wrote it) and then the wizard;
   - re-run, it upgrades in place, and rebuilds the venv if the system Python moved to a new version (an OS update from 3.14 to 3.15 breaks a venv's link; `doctor` detects that and says to re-run the installer); `--uninstall` removes the service, the venv and the link, keeping the config and the database.
-  - pipx or uv users can install the package themselves and run `install-service`; `ekos-notifier upgrade` comes with the script.
-  - **Implemented** (`install.sh`, checked end to end in CI by `tools/check_install.sh` under dash): `--from` (a version, `main` for GitHub's latest until the PyPI release, a checkout, any pip spec), `--service`/`--no-service` (asked otherwise, on the terminal even under `curl | sh`; yes without one), `--uninstall`; writes the commented config (`ekos-notifier config init`, mode 600, never overwriting); an upgrade rewrites the unit and restarts the service. `doctor` reports a venv or a service whose Python is gone; with a terminal and no notifier set, it offers `ekos-notifier setup`. Not yet: `ekos-notifier upgrade` and the GUI wizard (the script says what to fill in instead).
+  - pipx or uv users can install the package themselves and run `ekos-notifier setup` (which offers the service).
+  - **Implemented** (`install.sh`, checked end to end in CI by `tools/check_install.sh` under dash): `--from` (a version from PyPI, `main` for GitHub's latest, a checkout, any pip spec; the latest PyPI release by default), `--service`/`--no-service` (asked otherwise, on the terminal even under `curl | sh`; yes without one), `--uninstall`; writes the commented config (`ekos-notifier config init`, mode 600, never overwriting); an upgrade rewrites the unit and restarts the service. `doctor` reports a venv or a service whose Python is gone; with a terminal and no notifier set, it offers `ekos-notifier setup`. Upgrading is running it again.
 - **Footprint target:** < 100 MB RAM, < 2 % CPU on a Pi 4 during a session.
 - **Quality:** simulation-replay test suite in CI (GitHub Actions), semver releases, CHANGELOG, MIT LICENSE, CONTRIBUTING and issue templates from day one.
 
 ## Roadmap
 
-Four milestones to a public 1.0; the wizard and docs land before the GUI polish because first-run experience is the top priority.
+Get alerts right on real rigs before adding more: the GUI, export and sync come after 1.0, once a season of real nights has shaped what they should show.
 
-| Milestone | Scope |
-| --- | --- |
-| 0.1 Core | Event sources (Ekos D-Bus, PHD2, INDI), canonical metrics with capability gating, `indi-dump`, SQLite store, session lifecycle, alert rules, Apprise notifier, hourly digest, simulation mode |
-| 0.2 First run | Terminal setup wizard, `doctor`, config validation, Quick start + Alerts reference docs, KStars in any language (the GUI wizard comes with the GUI; Terse is deferred, Olde English dropped) |
-| 0.3 GUI + sync | Translatable messages (first, so the GUI's strings are translatable from the start), web GUI views, export folders, rclone sync and Flush, heartbeat |
-| 1.0 Public | Full docs site, power box presets, `install.sh` (venv, no root) and PyPI release, reference importer, multi-setup test matrix passing in CI, field-tested on StellarMate and Astroberry |
+| Milestone | Scope | |
+| --- | --- | --- |
+| 0.1 Core | Event sources (Ekos D-Bus, PHD2, INDI), canonical metrics with capability gating, `indi-dump`, SQLite store, session lifecycle, alert rules, Apprise notifier, hourly digest, simulation mode, `install.sh` and PyPI | Released (0.1.0, 0.1.1) |
+| 0.2 First run | Terminal setup wizard, `doctor`, config validation, Quick start and Alerts reference docs, KStars in any language (Terse deferred, Olde English dropped) | Released (0.2.0) |
+| 0.3 Field test | Translatable messages, the heartbeat (dead-man's switch); the build taken to real rigs | In progress |
+| 0.3.x | Fixes from real nights, power box presets from real `indi-dump`s, the open questions a real rig answers | |
+| 1.0 Public | Field-tested on StellarMate (and Astroberry, given a tester); docs complete for what's built; the test matrix in CI | |
+| After 1.0 | Web GUI (views, GUI first-run wizard, notes, Start/End), export folders and their JSON Schema, rclone sync and Flush, reference importer, the mount-limit Emergency, a Terse style, the `units`/`privacy` settings | |
 
 Open questions are tracked in [open-questions.md](open-questions.md).

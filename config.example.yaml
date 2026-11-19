@@ -88,13 +88,13 @@ alerts:
   target_low_warning_minutes: 30   # before the target sinks below Ekos's altitude limit
 
 # Carry data home with rclone. dest is any rclone remote:path or a local path (USB drive).
-# NOT USED YET (version 0.3).
+# NOT USED YET (after 1.0).
 sync:
   dest: ""                 # e.g. "nas:astro/sessions" or "/run/media/me/USB/astro"
   include_fits: false
   auto_when_reachable: true
 
-# Local web dashboard (LAN only). NOT USED YET (version 0.2).
+# Local web dashboard (LAN only). NOT USED YET (after 1.0).
 gui:
   port: 8765
   night_mode: auto
