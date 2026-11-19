@@ -5,6 +5,10 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Fixed:** "Mount parked", the all-clear after the "Mount left unparked" Emergency, is sent
+  at once. It waited for the hourly digest, which runs only during a session, and that
+  Emergency comes after Ekos stops, so it was likely never sent.
+
 - **Docs site** at https://anandvn.github.io/ekos-notifier/, published from main: a **Quick
   start** page (the README's install and setup guide, included rather than copied) and an
   **Alerts reference**: every alert with its config name, default, what sets it off and how to
