@@ -5,6 +5,11 @@ Semantic Versioning.
 
 ## Unreleased
 
+## 0.3.1 — 2026-11-20
+
+The first fixes from field testing: asking for a device preset works end to end, and the first
+preset from a real rig, the SVBONY SV241's temperature and humidity sensor.
+
 - **SVBONY SV241 / SV241 Pro: temperature and humidity recognised.** The box's own sensor now
   feeds Dew risk, the dew pre-flight check and the digest's conditions, with no config (its
   power, outputs and dew heaters were already recognised). The first preset from a real
