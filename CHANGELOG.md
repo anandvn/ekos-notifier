@@ -5,6 +5,14 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Asking for a device preset works now.** `ekos-notifier indi-dump --device "Your box"` writes
+  just that device, small enough to paste into a Device support issue; the whole rig's dump was
+  too long to paste, and the issue form couldn't take it as an attachment. The command now says
+  what to do with the file, and the form shows the steps.
+
+- **Fixed: `indi-dump` missed humidity sensors that abbreviate it**, like the SVBONY SV241 Pro's
+  `SHT40_HUMI`: they're listed as candidates now.
+
 ## 0.3.0 — 2026-11-20
 
 The field-test build: the version to take to real rigs before 1.0. Everything Ekos Notifier

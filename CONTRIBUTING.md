@@ -3,8 +3,8 @@
 Thanks for helping. The easiest ways in don't need much Python:
 
 - **Device presets** — YAML files in `src/ekos_notifier/indi/presets/` that map an INDI device's
-  properties to Ekos Notifier's metrics. Run `ekos-notifier indi-dump` and open a "Device
-  support" issue.
+  properties to Ekos Notifier's metrics. Run `ekos-notifier indi-dump --device "Your box"` and
+  paste the file it writes into a "Device support" issue.
 - **Translations** — Ekos Notifier's messages in your language. No Python needed; see below.
 - **Docs** — if something confused you during setup, that's a docs bug. Please report it.
 

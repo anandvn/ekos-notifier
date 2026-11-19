@@ -372,3 +372,61 @@ def test_recognised_names_each_device_in_plain_words():
         recognised(caps)
         == "Box (humidity, battery voltage, something.new); QHY CCD (camera temperature)"
     )
+
+
+def dump_elements(stream):
+    return list(ET.fromstring(f"<x>{stream}</x>"))
+
+
+RIG = (
+    connection("Power Box", True)
+    + driver("Power Box", "indi_mybox", 0)
+    + numbers("Power Box", "SENSORS", "def", TEMPERATURE=8.5, SHT40_HUMI=71)
+    + connection("CCD Simulator", True)
+    + numbers("CCD Simulator", "CCD_TEMPERATURE", "def", CCD_TEMPERATURE_VALUE=-10)
+)
+
+
+def test_a_dump_of_one_device():
+    elements = dump_elements(RIG)
+    assert dump.devices(elements) == ["Power Box", "CCD Simulator"]
+    box = dump.only(elements, ["power box"])  # names match whole, ignoring case
+    assert {e.get("device") for e in box} == {"Power Box"} and len(box) == 3
+    assert dump.only(elements, ["Power"]) == []
+
+
+def run_dump(monkeypatch, tmp_path, *args, stream=RIG):
+    from ekos_notifier.cli import main
+
+    async def collect(host, port, seconds):
+        return dump_elements(stream)
+
+    monkeypatch.setattr(dump, "collect", collect)
+    out = tmp_path / "indi-dump.xml"
+    return main(["indi-dump", "--host", "localhost", "--port", "7624", "-o", str(out), *args]), out
+
+
+def test_indi_dump_device_writes_just_that_device(monkeypatch, tmp_path, capsys):
+    rc, out = run_dump(monkeypatch, tmp_path, "--device", "Power Box")
+    text = capsys.readouterr().out
+    assert rc == 0 and "CCD Simulator" not in out.read_text()
+    assert '  candidate: "Power Box / SENSORS.TEMPERATURE" = 8.5' in text
+    # SVBONY SV241 Pro (issue #47) calls its humidity SHT40_HUMI
+    assert '  candidate: "Power Box / SENSORS.SHT40_HUMI" = 71' in text
+    assert "paste the file's contents" in text and "template=device_support.yml" in text
+
+
+def test_indi_dump_says_which_devices_exist(monkeypatch, tmp_path, capsys):
+    rc, out = run_dump(monkeypatch, tmp_path, "--device", "Powerbox")
+    err = capsys.readouterr().err
+    assert rc == 1 and not out.exists()
+    assert "No device called “Powerbox”" in err and "“Power Box”, “CCD Simulator”" in err
+
+
+def test_a_dump_too_long_to_paste_points_to_device(monkeypatch, tmp_path, capsys):
+    from ekos_notifier import cli
+
+    monkeypatch.setattr(cli, "PASTE_LIMIT", 100)
+    rc, _out = run_dump(monkeypatch, tmp_path)
+    text = capsys.readouterr().out
+    assert rc == 0 and "too long to paste" in text and "--device" in text
