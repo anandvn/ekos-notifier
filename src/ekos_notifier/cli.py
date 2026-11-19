@@ -14,10 +14,6 @@ from ekos_notifier import __version__
 EXIT_NOT_IMPLEMENTED = 3
 EXIT_FATAL = 78  # EX_CONFIG: an error retrying won't fix; the unit doesn't restart on it
 
-PLANNED = {
-    "doctor": "check D-Bus, PHD2, INDI, clock, disk, notifier and sync, and suggest fixes",
-}
-
 CONFIG_HELP = "config file (default: ~/.config/ekos-notifier/config.yaml)"
 
 
@@ -69,6 +65,22 @@ def build_parser() -> argparse.ArgumentParser:
     dump.add_argument("--seconds", type=float, default=5.0, help="how long to listen (default 5)")
     dump.add_argument("--config", metavar="PATH", help=CONFIG_HELP)
 
+    doc = sub.add_parser(
+        "doctor",
+        help="check the install, config, service, Ekos, INDI, PHD2, clock and disk; suggest fixes",
+        description="Check everything Ekos Notifier needs and say how to fix what isn't right: "
+        "the install, the config, the service, the database, KStars and Ekos on D-Bus (and the "
+        "KStars Flatpak's permissions), the INDI server and what's recognised on it, PHD2, the "
+        "clock and the free disk space. Read-only: nothing is sent or changed. Start KStars "
+        "and Ekos with your equipment first to check everything.",
+    )
+    doc.add_argument("--config", metavar="PATH", help=CONFIG_HELP)
+    doc.add_argument(
+        "--db",
+        metavar="PATH",
+        help="database file (default: ~/.local/share/ekos-notifier/ekos-notifier.db)",
+    )
+
     svc = sub.add_parser(
         "install-service",
         help="run Ekos Notifier as a systemd user service (starts with your session)",
@@ -106,9 +118,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="also send the alerts that would go out at once, marked [Simulated] "
         "(an Emergency is sent as High)",
     )
-
-    for name, help_text in PLANNED.items():
-        sub.add_parser(name, help=f"{help_text} (not yet implemented)")
 
     config = sub.add_parser("config", help="work with the config file")
     config_sub = config.add_subparsers(dest="config_command", required=True)
@@ -151,6 +160,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_install_service(args)
     if args.command == "simulate":
         return cmd_simulate(args)
+    if args.command == "doctor":
+        return cmd_doctor(args)
     print(f"ekos-notifier {args.command}: not implemented yet (pre-alpha).", file=sys.stderr)
     return EXIT_NOT_IMPLEMENTED
 
@@ -435,6 +446,15 @@ def cmd_simulate(args: argparse.Namespace) -> int:
             print(f"FAILED: {error}", file=sys.stderr)
         return 1 if errors else 0
     return 0
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from ekos_notifier import doctor
+    from ekos_notifier.store import default_path
+
+    return asyncio.run(doctor.run(args.config, Path(args.db) if args.db else default_path()))
 
 
 def cmd_test_notify(args: argparse.Namespace) -> int:

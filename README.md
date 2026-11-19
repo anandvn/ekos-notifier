@@ -123,6 +123,18 @@ ekos-notifier test-notify               # a test message to your phone
 ekos-notifier test-notify --emergency   # Pushover: a repeating Emergency (acknowledge it in the app)
 ```
 
+Then, with KStars and Ekos running and your equipment connected, check the rest:
+
+```bash
+ekos-notifier doctor
+```
+
+It checks the install, the config, the service, KStars and Ekos (and, for the KStars Flatpak,
+that it shares the network and D-Bus), the INDI server and the devices it recognised, PHD2
+(when Ekos guides with it), the clock and the free disk space. Each line is `ok`, `note`,
+`warn` or `FAIL`, and anything that isn't right comes with a `→` line saying what to do. It
+only looks: it sends nothing and changes nothing.
+
 ### 4. That's it
 
 The running service picks up your saved changes by itself within a few seconds: no restart
@@ -309,9 +321,13 @@ folders yourself if you don't want them.
 
 ## Troubleshooting
 
+Start with `ekos-notifier doctor` (with KStars and Ekos running): it finds most of these by
+itself and says what to do.
+
 | Problem | What to do |
 | --- | --- |
 | `ekos-notifier: command not found` | `~/.local/bin` isn't on your `PATH`: run `echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc` (`~/.zshrc` if you use zsh), then open a new terminal. Not `~/.profile`: terminals like Konsole don't read it, and on StellarMate a `~/.bash_profile` hides it even at login. Or use the full path, `~/.local/bin/ekos-notifier`. |
+| `doctor` says the venv or the service's Python "is gone" | An OS update moved Python to a new version. Run the install command again: it rebuilds the venv and restarts the service. |
 | `Python … has no venv module` | `sudo apt install python3-venv`, then run the installer again. |
 | `Config error: … not valid YAML` | Usually indentation: a tab, or a line not lined up with its neighbours. The message gives the line number. Compare with the examples above. |
 | `Config error: … unknown alert '…'` | A misspelt name under `messages:`. The message suggests the right one, and `ekos-notifier config alerts` lists them all. |
@@ -323,7 +339,8 @@ folders yourself if you don't want them.
 | No battery, dew or power alerts | Check what it recognised: `journalctl --user -u ekos-notifier \| grep "INDI recognised"` lists each device and what it reads ("Power Box (battery voltage, current, outputs)"). Not listed? See [Power boxes and weather stations](#power-boxes-and-weather-stations). |
 
 Still stuck? [Open an issue](https://github.com/anandvn/ekos-notifier/issues) with what you ran,
-what it said, and the last lines of `journalctl --user -u ekos-notifier`.
+what it said, the output of `ekos-notifier doctor` (it hides your notifier keys), and the last
+lines of `journalctl --user -u ekos-notifier`.
 <!-- --8<-- [end:guide] -->
 
 ## Contributing

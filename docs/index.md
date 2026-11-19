@@ -173,6 +173,16 @@ follow their problem when you've set it to `off` or `digest`. `ekos-notifier con
 out a misspelt name and any Emergency you've lowered, and `ekos-notifier simulate` shows the
 effect on a whole night.
 
+### Check the setup
+
+`ekos-notifier doctor` checks everything Ekos Notifier needs and prints a fix for anything
+that's wrong: the install (including a venv broken by an OS update), the config (notifier URLs,
+a file other users can read), the service (installed, running, out of date, or its Python
+gone), the database, KStars and Ekos on D-Bus, a KStars Flatpak's network and D-Bus
+permissions, the INDI server with the devices it recognised, PHD2 (when Ekos guides with it),
+the clock's sync and the free space where Ekos saves frames. It's read-only and takes a few
+seconds; start KStars and Ekos first to check everything.
+
 ### Preview the alerts
 
 `ekos-notifier simulate` replays a night through the alert rules with your config and prints every

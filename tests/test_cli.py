@@ -3,7 +3,7 @@ from importlib.metadata import version
 import pytest
 
 from ekos_notifier import __version__
-from ekos_notifier.cli import EXIT_NOT_IMPLEMENTED, main
+from ekos_notifier.cli import main
 
 
 def test_version_matches_package_metadata():
@@ -15,9 +15,19 @@ def test_no_command_prints_help(capsys):
     assert "ekos-notifier" in capsys.readouterr().out
 
 
-def test_stub_command_reports_not_implemented(capsys):  # doctor is still a stub
-    assert main(["doctor"]) == EXIT_NOT_IMPLEMENTED
-    assert "not implemented" in capsys.readouterr().err
+def test_doctor_runs_the_checks(monkeypatch, tmp_path):
+    from ekos_notifier import doctor
+
+    seen = {}
+
+    async def fake_run(config_path, db):
+        seen.update(config=config_path, db=db)
+        return 1
+
+    monkeypatch.setattr(doctor, "run", fake_run)
+    db = tmp_path / "x.db"
+    assert main(["doctor", "--config", "c.yaml", "--db", str(db)]) == 1
+    assert seen == {"config": "c.yaml", "db": db}
 
 
 def test_config_check_without_a_file(tmp_path, monkeypatch, capsys):
