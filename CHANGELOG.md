@@ -5,6 +5,13 @@ Semantic Versioning.
 
 ## Unreleased
 
+## 0.3.0 — 2026-11-20
+
+The field-test build: the version to take to real rigs before 1.0. Everything Ekos Notifier
+says can now be translated, and the plan is settled. 1.0 is alerts, the hourly digest and
+the session record, tested on real nights. The web dashboard, carrying data home and the
+reference importer come after 1.0, and the planned heartbeat is dropped.
+
 - **Changed: no heartbeat.** The planned dead-man's switch (`heartbeat:` in the config, never
   built) is dropped: pinging only during a session alerts every morning when the night ends, and
   at a dark site every time the internet drops. A rig that runs around the clock can ping a
@@ -18,6 +25,9 @@ Semantic Versioning.
   `msginit`, no Python needed (see CONTRIBUTING.md, "Translating"). The new `language:`
   setting picks it: `auto` (your system's language, the default) or a code such as `de`. No
   translations ship yet, so everything stays in English. Log lines stay English.
+
+- **Wording fixes:** "Room for about 1 more frame" (was "frames"), and the digest's "This
+  interval: …" (was "Last this interval: …").
 
 ## 0.2.0 — 2026-11-19
 
