@@ -124,13 +124,20 @@ def test_writer_stopped_before_the_store_opens_still_writes(tmp_path):
 
 def test_writer_stopped_mid_batch_writes_the_batch(tmp_path):
     async def scenario():
-        writer = EventWriter(tmp_path / "tc.db", linger=5.0)  # long gather window
+        writer = EventWriter(tmp_path / "tc.db", linger=60.0)  # lingers until cancelled
         task = asyncio.create_task(writer.run())
-        await asyncio.sleep(0.2)  # store open, writer waiting for events
+
+        async def until(condition):  # polled, not a fixed sleep: CI runners can be slow
+            for _ in range(200):
+                if condition():
+                    return
+                await asyncio.sleep(0.05)
+            raise AssertionError("timed out")
+
+        await until(lambda: writer._store is not None)  # noqa: SLF001 - open, waiting for events
         for i in range(300):
             writer.put(Event(float(i), "e", {}))
-        await asyncio.sleep(0.1)  # writer has taken the batch and is lingering
-        assert writer.queue.qsize() < 300
+        await until(lambda: writer.queue.qsize() < 300)  # it took the batch and is lingering
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
