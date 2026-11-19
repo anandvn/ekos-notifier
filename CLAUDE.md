@@ -46,6 +46,9 @@ mostly at dark sites with intermittent internet.
 - Python **3.10+**, asyncio, nothing that must compile at install time (optional compiled
   speed-ups with a pure-Python fallback, like `dbus-fast`'s, are fine).
   Package source in `src/ekos_notifier/`.
+- **Dependencies:** only three at runtime (`dbus-fast`, `apprise`, `PyYAML`). Add one only when
+  it replaces something we can't reasonably build ourselves; prefer a little code of our own
+  (decided 2026-11-20: no Babel; translations choose their decimal separator).
 - Ekos via D-Bus (`dbus-fast`), PHD2 via its JSON event server (TCP 4400), INDI via a light XML
   client (TCP 7624).
 - Tests: `pytest`. The **simulation replay** (recorded nights) drives both tests and the user-facing
