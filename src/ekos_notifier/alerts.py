@@ -13,6 +13,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import _
 
 
 def make_alert(
@@ -42,7 +43,7 @@ def hhmm(ts: float) -> str:
 
 
 def minutes(seconds: float) -> str:
-    return f"{max(1, round(seconds / 60))} min"
+    return _("{minutes} min").format(minutes=max(1, round(seconds / 60)))
 
 
 class SessionRule:

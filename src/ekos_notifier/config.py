@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import difflib
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,7 @@ class Config:
     path: Path | None = None
     notify: list[str] = field(default_factory=list)
     notify_expire_minutes: float = 10.0
+    language: str = "auto"  # messages' language: auto (the system's), en, de, pt_BR …
     guiding_recovery_minutes: float = 5.0
     guiding_poor_minutes: float = 10.0
     twilight_warning_minutes: float = 45.0
@@ -57,6 +59,7 @@ _DIGEST = {"enabled", "interval_minutes", "align_to_clock"}
 KNOWN: dict[str, set[str] | None] = {
     "notify": None,
     "notify_expire_minutes": None,
+    "language": None,
     "digest": _DIGEST,
     "crier": _DIGEST,  # the digest's name before the rename
     "heartbeat": {"url", "grace_minutes"},
@@ -108,6 +111,20 @@ def _warnings(raw: dict[str, Any], battery: str, low: Any, critical: Any) -> lis
             if sub not in section:
                 why = WHY_UNUSED.get(name) or f"not a setting{_hint(str(sub), section)}"
                 out.append(f"'{name}' isn't used ({why}); it's ignored")
+    language = raw.get("language")
+    if (
+        isinstance(language, str)
+        and language not in ("auto", "en")
+        and not language.startswith("en_")
+    ):
+        from ekos_notifier import i18n
+
+        have = i18n.available()
+        if language not in have and language.split("_")[0] not in have:
+            out.append(
+                f"'language: {language}' has no translation yet, so messages are in English"
+                f" (translations: {', '.join(['en', *have])})"
+            )
     power = raw.get("power") if isinstance(raw.get("power"), dict) else {}
     if battery == "mains":
         for name in ("low_volts", "critical_volts"):
@@ -176,6 +193,13 @@ def load(path: str | Path | None = None) -> Config:
     if not isinstance(notify, list) or not all(isinstance(u, str) for u in notify):
         raise ConfigError(f"{path}: 'notify' must be a list of Apprise URLs (quoted strings)")
     expire = _minutes(path, "notify_expire_minutes", raw.get("notify_expire_minutes", 10))
+    language = raw.get("language", "auto")
+    if language is None:
+        language = "auto"
+    if not isinstance(language, str) or not re.fullmatch(
+        r"auto|[A-Za-z]{2,3}(_[A-Za-z]{2})?", language
+    ):
+        raise ConfigError(f"{path}: 'language' must be auto or a language code such as de or pt_BR")
     alerts = raw.get("alerts") or {}
     if not isinstance(alerts, dict):
         raise ConfigError(f"{path}: 'alerts' must be a section of settings (key: value)")
@@ -217,6 +241,7 @@ def load(path: str | Path | None = None) -> Config:
         path=path,
         notify=[u.strip() for u in notify if u.strip()],
         notify_expire_minutes=expire,
+        language=language,
         guiding_recovery_minutes=guiding,
         guiding_poor_minutes=poor,
         twilight_warning_minutes=_minutes(

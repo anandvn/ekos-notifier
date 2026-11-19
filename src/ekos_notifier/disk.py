@@ -22,6 +22,7 @@ from pathlib import Path
 
 from ekos_notifier.alerts import SessionRule, make_alert
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import _, ngettext
 
 CHECK_EVERY = 60.0
 RECOVERED_GB = 1.0
@@ -49,7 +50,11 @@ def file_size(path: str) -> int | None:
 
 def _hours(seconds: float) -> str:
     minutes = max(1, round(seconds / 60))
-    return f"{minutes // 60} h {minutes % 60:02d} min" if minutes >= 60 else f"{minutes} min"
+    if minutes >= 60:
+        return _("{hours} h {minutes} min").format(
+            hours=minutes // 60, minutes=f"{minutes % 60:02d}"
+        )
+    return _("{minutes} min").format(minutes=minutes)
 
 
 class DiskRule(SessionRule):
@@ -108,10 +113,10 @@ class DiskRule(SessionRule):
             return [self._alert(now, free)]
         if self._raised and free >= self.low + RECOVERED_GB * GB:
             self._raised = False
-            body = f"{free / GB:.1f} GB free on {self._folder}."
+            body = _("{gb} GB free on {folder}.").format(gb=f"{free / GB:.1f}", folder=self._folder)
             return [
                 make_alert(
-                    now, self.session, "disk_ok", "normal", "Disk space OK", body, immediate=True
+                    now, self.session, "disk_ok", "normal", _("Disk space OK"), body, immediate=True
                 )
             ]
         return []
@@ -120,20 +125,35 @@ class DiskRule(SessionRule):
         if self.low <= 0 or (free := self._free(self._folder)) is None:
             return []
         if free < self.low:
-            return [
-                (False, f"{free / GB:.1f} GB free on {self._folder}, under {self.low / GB:g} GB")
-            ]
-        return [(True, f"{free / GB:.0f} GB free")]
+            text = _("{gb} GB free on {folder}, under {limit} GB").format(
+                gb=f"{free / GB:.1f}", folder=self._folder, limit=f"{self.low / GB:g}"
+            )
+            return [(False, text)]
+        return [(True, _("{gb} GB free").format(gb=f"{free / GB:.0f}"))]
 
     def _alert(self, now: float, free: int) -> Event:
-        lines = [f"{free / GB:.1f} GB free on {self._folder} (limit {self.low / GB:g} GB)."]
+        lines = [
+            _("{gb} GB free on {folder} (limit {limit} GB).").format(
+                gb=f"{free / GB:.1f}", folder=self._folder, limit=f"{self.low / GB:g}"
+            )
+        ]
         if self._sizes:
             size = sum(self._sizes) / len(self._sizes)
             frames = int(free // size)
-            room = f"Room for about {frames} more frames at {size / 1e6:.0f} MB"
+            values = {"frames": frames, "mb": f"{size / 1e6:.0f}"}
             if len(self._frames) >= 2:
                 pace = (self._frames[-1] - self._frames[0]) / (len(self._frames) - 1)
-                room += f", {_hours(frames * pace)} at tonight's pace"
-            lines.append(room + ".")
-        lines.append("Move files off the disk, or Ekos will stop saving frames.")
-        return make_alert(now, self.session, "disk_low", "high", "Disk low", "\n".join(lines))
+                room = ngettext(
+                    "Room for about {frames} more frame at {mb} MB, {duration} at tonight's pace.",
+                    "Room for about {frames} more frames at {mb} MB, {duration} at tonight's pace.",
+                    frames,
+                ).format(**values, duration=_hours(frames * pace))
+            else:
+                room = ngettext(
+                    "Room for about {frames} more frame at {mb} MB.",
+                    "Room for about {frames} more frames at {mb} MB.",
+                    frames,
+                ).format(**values)
+            lines.append(room)
+        lines.append(_("Move files off the disk, or Ekos will stop saving frames."))
+        return make_alert(now, self.session, "disk_low", "high", _("Disk low"), "\n".join(lines))

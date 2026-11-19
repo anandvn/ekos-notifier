@@ -30,6 +30,7 @@ from pathlib import Path
 from ekos_notifier import replay
 from ekos_notifier.ekos import translation
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import _
 from ekos_notifier.notify import should_send
 from ekos_notifier.pipeline import Pipeline, simulate
 from ekos_notifier.rules import Rules
@@ -184,7 +185,8 @@ def send(
             continue
         priority = "high" if d["priority"] == "emergency" else d["priority"]
         for url in urls:
-            error = sender(url, priority, f"[Simulated] {d['title']}", str(d.get("body", "")))
+            title = _("[Simulated] {title}").format(title=d["title"])
+            error = sender(url, priority, title, str(d.get("body", "")))
             if error:
                 errors.append(error)
     return errors

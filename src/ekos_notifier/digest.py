@@ -28,6 +28,7 @@ from datetime import datetime, timedelta
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert
 from ekos_notifier.ekos.translation import NUMBER, localized
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import N_, _, ngettext, word
 
 INTERVAL = 3600.0
 MIN_SESSION = 600.0
@@ -66,14 +67,18 @@ JOB = re.compile(r"Job '(.+?)' ")
 CAMERA = re.compile(r"^\[([^\]]+)\] ")
 JOB_PLAN = re.compile(rf"Job requires ({NUMBER})-second (.+?) images, has (\d+)/(\d+) frames")
 MILESTONES = {
-    "Meridian flip completed OK": "meridian flip complete",
+    "Meridian flip completed OK": N_("meridian flip complete"),
     "Dithering failed": None,  # counted, not listed
 }
 
 
 def _duration(seconds: float) -> str:
     minutes = max(1, int(round(seconds / 60)))
-    return f"{minutes // 60} h {minutes % 60:02d} min" if minutes >= 60 else f"{minutes} min"
+    if minutes >= 60:
+        return _("{hours} h {minutes} min").format(
+            hours=minutes // 60, minutes=f"{minutes % 60:02d}"
+        )
+    return _("{minutes} min").format(minutes=minutes)
 
 
 def _lights(frames: Iterable[tuple[str, float]]) -> tuple[str, float]:
@@ -187,7 +192,7 @@ class DigestRule(SessionRule):
             self._close("autofocus_failed")
         if kind == "capture.frame" and d.get("type"):
             if d["type"] == "light":
-                frame = (d.get("filter") or "no filter", float(d.get("exposure") or 0))
+                frame = (d.get("filter") or word("no filter"), float(d.get("exposure") or 0))
                 self._frames.append(frame)
                 self._tonight.append(frame)
                 self._last_light = event.ts
@@ -234,7 +239,7 @@ class DigestRule(SessionRule):
                 )
             for needle, label in MILESTONES.items():
                 if needle in text and label:
-                    self._since.append((event.ts, label))
+                    self._since.append((event.ts, _(label)))
         return []
 
     def on_tick(self, now: float) -> list[Event]:
@@ -268,21 +273,22 @@ class DigestRule(SessionRule):
             self._camera if self._camera in cameras else (cameras[0] if len(cameras) == 1 else None)
         )
         if camera is not None:
-            parts.append(f"Camera {self._metric('camera.temperature', camera):.1f} \u00b0C")
+            temperature = self._metric("camera.temperature", camera)
+            parts.append(_("Camera {celsius} \u00b0C").format(celsius=f"{temperature:.1f}"))
         ambient = self._metric("env.temperature")
         humidity = self._metric("env.humidity")
         dew = self._metric("env.dewpoint")
         if ambient is not None:
-            parts.append(f"Ambient {ambient:.1f} \u00b0C")
+            parts.append(_("Ambient {celsius} \u00b0C").format(celsius=f"{ambient:.1f}"))
         if humidity is not None:
-            parts.append(f"RH {humidity:.0f}%")
+            parts.append(_("RH {percent}%").format(percent=f"{humidity:.0f}"))
         if ambient is not None and dew is not None:
-            parts.append(f"Dew margin {ambient - dew:.1f} \u00b0C")
+            parts.append(_("Dew margin {celsius} \u00b0C").format(celsius=f"{ambient - dew:.1f}"))
         volts = self._metric("power.voltage")
         if volts is not None:
-            power = f"Power {volts:.1f} V"
+            power = _("Power {volts} V").format(volts=f"{volts:.1f}")
             if self._volts_low is not None and self._volts_low <= volts - 0.1:
-                power += f" (low {self._volts_low:.1f} V)"
+                power += " " + _("(low {volts} V)").format(volts=f"{self._volts_low:.1f}")
             amps = self._metric("power.current")
             parts.append(power + (f", {amps:.1f} A" if amps is not None else ""))
         return " \u00b7 ".join(parts) + "." if parts else ""
@@ -316,46 +322,65 @@ class DigestRule(SessionRule):
     def _digest(self, due: float, now: float) -> Event:
         problems = list(dict.fromkeys([*self._raised.values(), *self._open.values()]))
         if problems:
-            verdict = "Attention: " + ", ".join(problems)
+            verdict = _("Attention: {problems}").format(problems=", ".join(problems))
         elif self._frames:
-            verdict = "All's well"
+            verdict = _("All's well")
         elif self._last_light is not None:  # seen live: "All's well" with capture long stopped
-            verdict = f"No light frames since {hhmm(self._last_light)}"
+            verdict = _("No light frames since {time}").format(time=hhmm(self._last_light))
         else:
-            verdict = "No light frames yet"
+            verdict = _("No light frames yet")
         title = f"{hhmm(due)} — {verdict}"
         lines = []
         where = [p for p in (self._target or self._capture_target, self._filter) if p]
         if self._job:
             f, exp, done, planned = self._job
-            where.append(f"job {min(done, planned)}/{planned}")
+            where.append(_("job {done}/{planned}").format(done=min(done, planned), planned=planned))
         if where:
             lines.append(" · ".join(where))
-        span = _duration(due - self._since_ts) if self._since_ts else "this interval"
         if self._frames:
             parts, total = _lights(self._frames)
             n = len(self._frames)
-            lines.append(f"Last {span}: {n} light{'s' * (n != 1)} ({parts}), {_duration(total)}.")
+            lights = ngettext(
+                "{n} light ({frames}), {duration}", "{n} lights ({frames}), {duration}", n
+            ).format(n=n, frames=parts, duration=_duration(total))
         else:
-            lines.append(f"Last {span}: no light frames.")
+            lights = _("no light frames")
+        if self._since_ts:
+            lines.append(
+                _("Last {duration}: {lights}.").format(
+                    duration=_duration(due - self._since_ts), lights=lights
+                )
+            )
+        else:
+            lines.append(_("This interval: {lights}.").format(lights=lights))
         if self._calibration:
             lines.append(
-                "Calibration: "
-                + ", ".join(f"{n} {t}" for t, n in sorted(self._calibration.items()))
-                + "."
+                _("Calibration: {frames}.").format(
+                    frames=", ".join(f"{n} {word(t)}" for t, n in sorted(self._calibration.items()))
+                )
             )
         if len(self._tonight) > len(self._frames):  # the first digest would just repeat itself
-            _, total = _lights(self._tonight)
+            _parts, total = _lights(self._tonight)
             n = len(self._tonight)
-            lines.append(f"Tonight: {n} light{'s' * (n != 1)}, {_duration(total)}.")
+            lines.append(
+                ngettext(
+                    "Tonight: {n} light, {duration}.", "Tonight: {n} lights, {duration}.", n
+                ).format(n=n, duration=_duration(total))
+            )
         guiding = []
         if self._rms:
-            guiding.append(f"Guide RMS {statistics.median(self._rms):.2f}″ (median)")
+            guiding.append(
+                _("Guide RMS {arcsec}″ (median)").format(
+                    arcsec=f"{statistics.median(self._rms):.2f}"
+                )
+            )
         if self._dither_fails:
             n = self._dither_fails
-            guiding.append(f"{n} dither{'s' if n > 1 else ''} failed")
+            guiding.append(ngettext("{n} dither failed", "{n} dithers failed", n).format(n=n))
         if self._hfr:
-            guiding.append(f"HFR {statistics.median(self._hfr):.2f} (median)")
+            guiding.append(
+                _("HFR {hfr} (median)").format(hfr=f"{statistics.median(self._hfr):.2f}")
+            )
         if guiding:
             lines.append(", ".join(guiding) + ".")
         conditions = self._conditions()
@@ -366,10 +391,10 @@ class DigestRule(SessionRule):
             lines.append(outlook)
         if self._since:
             events = "; ".join(f"{hhmm(t)} {what}" for t, what in sorted(self._since))
-            lines.append(f"Since last: {events}.")
+            lines.append(_("Since last: {events}.").format(events=events))
         still = [t for r, t in self._open.items() if r not in self._raised]
         if still:
-            lines.append("Still open: " + ", ".join(still) + ".")
+            lines.append(_("Still open: {problems}.").format(problems=", ".join(still)))
         priority = "normal" if problems else "quiet"
         return make_alert(
             now, self.session, "digest", priority, title, "\n".join(lines), immediate=True

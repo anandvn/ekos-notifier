@@ -17,6 +17,10 @@ notify:
 # than sent late. It stays in the session record. 0 = try once, never retry.
 notify_expire_minutes: 10
 
+# The language of messages: auto (your system's), or a language code such as en, de or pt_BR.
+# A language with no translation yet falls back to English.
+language: auto
+
 # Hourly status digest while a session is running.
 digest:
   enabled: true

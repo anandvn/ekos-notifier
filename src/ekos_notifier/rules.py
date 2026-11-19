@@ -57,6 +57,7 @@ from ekos_notifier.disk import DiskRule
 from ekos_notifier.events import Event
 from ekos_notifier.focus import AutofocusRule
 from ekos_notifier.guiding import RECOVERY, GuidingRule, PoorGuidingRule
+from ekos_notifier.i18n import N_, _, word
 from ekos_notifier.messages import MessageSettings
 from ekos_notifier.power import PowerRule
 from ekos_notifier.sky import SkyRule
@@ -66,22 +67,26 @@ UNPARKED_GRACE = 120.0
 MOVING = {"tracking", "slewing", "moving"}
 
 START_REASONS = {
-    "scheduler": "the Ekos Scheduler started",
-    "light_frame": "the first light frame was saved",
-    "user": "you pressed Start",
+    "scheduler": N_("the Ekos Scheduler started"),
+    "light_frame": N_("the first light frame was saved"),
+    "user": N_("you pressed Start"),
 }
 # Session ends that send no summary: you stopped Ekos yourself (seen live: a summary 10 min after
 # your own Stop was noise). A crash ("ekos_lost") still gets one.
 QUIET_ENDS = {"ekos_stopped"}
 END_REASONS = {
-    "scheduler_finished": "the Scheduler finished",
-    "scheduler_aborted": "the Scheduler stopped (aborted)",
-    "sequence_complete": "the capture sequence completed",
-    "ekos_stopped": "you stopped Ekos",
-    "ekos_lost": "Ekos stopped unexpectedly (a crash, or KStars closed)",
-    "night_ended": "the night ended",
-    "user": "you pressed End",
+    "scheduler_finished": N_("the Scheduler finished"),
+    "scheduler_aborted": N_("the Scheduler stopped (aborted)"),
+    "sequence_complete": N_("the capture sequence completed"),
+    "ekos_stopped": N_("you stopped Ekos"),
+    "ekos_lost": N_("Ekos stopped unexpectedly (a crash, or KStars closed)"),
+    "night_ended": N_("the night ended"),
+    "user": N_("you pressed End"),
 }
+
+
+def _reason(table: dict[str, str], reason: object) -> str:
+    return _(table[reason]) if reason in table else str(reason)
 
 
 def _clock(ts: float) -> str:
@@ -90,7 +95,11 @@ def _clock(ts: float) -> str:
 
 def _duration(seconds: float) -> str:
     minutes = int(round(seconds / 60))
-    return f"{minutes // 60} h {minutes % 60:02d} min" if minutes >= 60 else f"{minutes} min"
+    if minutes >= 60:
+        return _("{hours} h {minutes} min").format(
+            hours=minutes // 60, minutes=f"{minutes % 60:02d}"
+        )
+    return _("{minutes} min").format(minutes=minutes)
 
 
 class Rules:
@@ -224,8 +233,8 @@ class Rules:
                         sid,
                         "mount_unparked_cleared",
                         "normal",
-                        "Mount parked",
-                        "The mount is parked again. All clear.",
+                        _("Mount parked"),
+                        _("The mount is parked again. All clear."),
                         # At once: its Emergency comes after Ekos stops, when there's usually
                         # no session, so no hourly digest to carry it.
                         immediate=True,
@@ -241,7 +250,9 @@ class Rules:
             self._gone_at = None
         elif kind == "capture.frame" and sid:
             if d.get("type") == "light":
-                self._lights[sid][(d.get("filter") or "no filter", d.get("exposure") or 0.0)] += 1
+                self._lights[sid][
+                    (d.get("filter") or word("no filter"), d.get("exposure") or 0.0)
+                ] += 1
             elif d.get("type"):
                 self._calibration[sid][d["type"]] += 1
         elif kind == "session.started":
@@ -252,9 +263,12 @@ class Rules:
                     sid,
                     "session_started",
                     "normal",
-                    "Starting session",
-                    f"Night of {d['night']}: session started at {_clock(event.ts)} "
-                    f"because {START_REASONS.get(d.get('reason'), d.get('reason'))}."
+                    _("Starting session"),
+                    _("Night of {night}: session started at {time} because {reason}.").format(
+                        night=d["night"],
+                        time=_clock(event.ts),
+                        reason=_reason(START_REASONS, d.get("reason")),
+                    )
                     + self._preflight(event.ts),
                     immediate=True,
                 )
@@ -297,11 +311,12 @@ class Rules:
                     self._gone_session,
                     "ekos_stopped_mount_unparked",
                     "emergency",
-                    "Mount left unparked",
-                    f"Ekos stopped at {_clock(gone_at)} while the mount was "
-                    f"{self._gone_state or 'unparked'}, and it hasn't come back. Nothing is "
-                    "watching the mount now.\n"
-                    "Park the mount or check the rig.",
+                    _("Mount left unparked"),
+                    _(
+                        "Ekos stopped at {time} while the mount was {state}, and it hasn't come"
+                        " back. Nothing is watching the mount now.\n"
+                        "Park the mount or check the rig."
+                    ).format(time=_clock(gone_at), state=word(self._gone_state or "unparked")),
                 )
             ]
         return []
@@ -323,10 +338,9 @@ class Rules:
                 (readings if ok else warnings).append(text)
         out = ""
         if warnings:
-            out += "\nCheck: " + "; ".join(warnings) + "."
+            out += "\n" + _("Check: {warnings}.").format(warnings="; ".join(warnings))
         if readings:
-            text = ", ".join(readings) + "."
-            out += "\nPre-flight: " + text
+            out += "\n" + _("Pre-flight: {readings}.").format(readings=", ".join(readings))
         return out
 
     @staticmethod
@@ -342,9 +356,11 @@ class Rules:
 
     def _mount_line(self) -> str | None:
         if self._park == "parked":
-            return "Mount: parked."
+            return _("Mount: parked.")
         if self._unparked():
-            return f"Mount: not parked (last seen {self._mount or 'unparked'})."
+            return _("Mount: not parked (last seen {state}).").format(
+                state=word(self._mount or "unparked")
+            )
         return None
 
     def _summary(self, event: Event, sid: str | None) -> Event:
@@ -352,23 +368,36 @@ class Rules:
         ended = d.get("ended_at", event.ts)
         lines = []
         started = self._started.pop(sid, None)
-        when = f"Session ended at {_clock(ended)}"
+        reason = _reason(END_REASONS, d.get("reason"))
         if started is not None:
-            when += f" after {_duration(ended - started)}"
-        lines.append(f"{when} because {END_REASONS.get(d.get('reason'), d.get('reason'))}.")
+            lines.append(
+                _("Session ended at {time} after {duration} because {reason}.").format(
+                    time=_clock(ended), duration=_duration(ended - started), reason=reason
+                )
+            )
+        else:
+            lines.append(
+                _("Session ended at {time} because {reason}.").format(
+                    time=_clock(ended), reason=reason
+                )
+            )
         lights = self._lights.pop(sid, {})
         if lights:
-            total = sum(n * exp for (_, exp), n in lights.items())
+            total = sum(n * exp for (_f, exp), n in lights.items())
             parts = [f"{f} {n}×{exp:g}s" for (f, exp), n in sorted(lights.items())]
-            lines.append(f"Lights: {', '.join(parts)}. Integration {_duration(total)}.")
+            lines.append(
+                _("Lights: {frames}. Integration {duration}.").format(
+                    frames=", ".join(parts), duration=_duration(total)
+                )
+            )
         else:
-            lines.append("No light frames.")
+            lines.append(_("No light frames."))
         calibration = self._calibration.pop(sid, {})
         if calibration:
             lines.append(
-                "Calibration: "
-                + ", ".join(f"{n} {t}" for t, n in sorted(calibration.items()))
-                + "."
+                _("Calibration: {frames}.").format(
+                    frames=", ".join(f"{n} {word(t)}" for t, n in sorted(calibration.items()))
+                )
             )
         lines += self._stats.pop(sid, SessionStats()).lines() if sid else []
         mount = self._mount_line()
@@ -379,7 +408,7 @@ class Rules:
             sid,
             "session_summary",
             "normal",
-            "Session summary",
+            _("Session summary"),
             "\n".join(lines),
             immediate=True,
         )

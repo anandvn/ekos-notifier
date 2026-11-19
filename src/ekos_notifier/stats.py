@@ -15,6 +15,7 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import _
 
 PROBLEMS = ("emergency", "high")
 
@@ -32,7 +33,7 @@ class Range:
         if self.low is None or self.high is None:
             return None
         low, high = format(self.low, fmt), format(self.high, fmt)
-        text = low if low == high else f"{low} to {high}"
+        text = low if low == high else _("{low} to {high}").format(low=low, high=high)
         return text.replace("-", "−") + unit
 
 
@@ -88,30 +89,31 @@ class SessionStats:
 
     def lines(self) -> list[str]:
         out = []
-        quality = []
-        if self.hfr:
-            quality.append(f"HFR {statistics.median(self.hfr):.2f}")
-        if self.rms:
-            quality.append(f"guide RMS {statistics.median(self.rms):.2f}″")
-        if quality:
-            out.append("Median " + ", ".join(quality) + ".")
+        hfr = f"{statistics.median(self.hfr):.2f}" if self.hfr else None
+        rms = f"{statistics.median(self.rms):.2f}" if self.rms else None
+        if hfr and rms:
+            out.append(_("Median HFR {hfr}, guide RMS {rms}″.").format(hfr=hfr, rms=rms))
+        elif hfr:
+            out.append(_("Median HFR {hfr}.").format(hfr=hfr))
+        elif rms:
+            out.append(_("Median guide RMS {rms}″.").format(rms=rms))
         conditions = []
         if (ambient := self.ambient.words(".1f", " °C")) is not None:
-            conditions.append(f"ambient {ambient}")
+            conditions.append(_("ambient {celsius}").format(celsius=ambient))
         if (rh := self.humidity.words(".0f", "%")) is not None:
-            conditions.append(f"RH {rh}")
+            conditions.append(_("RH {percent}").format(percent=rh))
         camera = self.cameras.get(self._camera or "")
         if camera is None and len(self.cameras) == 1:
             [camera] = self.cameras.values()
         if camera is not None and (temps := camera.words(".1f", " °C")) is not None:
-            conditions.append(f"camera {temps}")
+            conditions.append(_("camera {celsius}").format(celsius=temps))
         if self.volts:
             low = min(self.volts.values())
-            conditions.append(f"lowest battery {low:.2f} V")
+            conditions.append(_("lowest battery {volts} V").format(volts=f"{low:.2f}"))
         if conditions:
             text = ", ".join(conditions) + "."
             out.append(text[0].upper() + text[1:])
         if self.problems:
             parts = [f"{t} ×{n}" if n > 1 else t for t, n in self.problems.items()]
-            out.append("Problems: " + ", ".join(parts) + ".")
+            out.append(_("Problems: {problems}.").format(problems=", ".join(parts)))
         return out
