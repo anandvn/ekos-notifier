@@ -3,9 +3,10 @@
 **Your imaging night, watched and reported.**
 
 Ekos Notifier watches a KStars/Ekos imaging night, alerts you when something needs you, sends an
-hourly "all's well" digest, records the whole night, and brings the data home.
+hourly "all's well" digest, and records the whole night. (Bringing the data home, and a web
+dashboard, come after 1.0.)
 
-It is in **pre-alpha**. New here? Start with the [Quick start](quickstart.md); every alert is in
+It is in **pre-alpha**, heading for field testing on real rigs. New here? Start with the [Quick start](quickstart.md); every alert is in
 the [Alerts reference](alerts.md), and how it all works in the [design](design.md).
 
 ## Install
@@ -16,7 +17,7 @@ On the computer running KStars, as yourself (not root):
 curl -fsSL https://raw.githubusercontent.com/anandvn/ekos-notifier/main/install.sh | sh
 ```
 
-That installs the latest release from PyPI; `| sh -s -- --from 0.1.0` installs a given version,
+That installs the latest release from PyPI; `| sh -s -- --from 0.2.0` installs a given version,
 and `--from main` the latest code from GitHub. It needs only
 Python 3.10+ with its `venv` module (on Debian, Ubuntu and Raspberry Pi OS: `sudo apt install
 python3-venv`), and:
@@ -43,7 +44,8 @@ to find it), and records the night in
 `~/.local/share/ekos-notifier/ekos-notifier.db`: a session per night, every frame, guiding RMS, every
 Ekos state change, and PHD2's guide steps (star SNR, mass, HFD), lost stars, settling,
 calibration and alerts. If Ekos is set to its internal guider, Ekos Notifier leaves PHD2 alone;
-if PHD2 just isn't running yet, it keeps checking quietly. Stop it with Ctrl-C; nothing queued is lost. There's no GUI yet.
+if PHD2 just isn't running yet, it keeps checking quietly. Stop it with Ctrl-C; nothing queued is
+lost.
 
 To have it start by itself with your session (and restart if it ever fails), install it as a
 systemd user service:
@@ -92,8 +94,11 @@ every 2 s, once a save has settled), or at once with `systemctl --user reload ek
 night's state (open alerts, the digest's counts, baselines); the INDI connection restarts if
 its settings changed. A config with a mistake is logged and ignored: the previous settings
 stay. Starting with a broken config, the service records the night with no alerts until the
-file is fixed, rather than not running at all. A unit installed before this needs `ekos-notifier install-service` again for `reload`
-(re-running the installer does it).
+file is fixed, rather than not running at all.
+
+If an alert can't be delivered because the rig is offline, it's retried for 10 minutes and then
+dropped, never sent late; it stays in the session record. Change the window with
+`notify_expire_minutes` in the config.
 
 Alerts so far: **Starting session** (with pre-flight checks: battery, free disk space, dew
 margin and humidity, and camera temperature against its setpoint, whatever your rig reports;
@@ -104,8 +109,9 @@ manual sequence completes (parked or not; it says whether the mount is parked), 
 after Ekos crashes (if you stop Ekos yourself, the session closes quietly), and the **Ekos
 stopped with the mount unparked** Emergency (2 minutes after Ekos stops; on Pushover it repeats
 every minute until you acknowledge it), and **Guiding lost** (High) when guiding stops and
-hasn't recovered after 5 minutes (`alerts: guiding_recovery_minutes`), followed by **Guiding
-recovered** when it's back, and **PHD2's own warnings** (High, e.g. "not able to make sufficient
+hasn't recovered after 5 minutes (`alerts: guiding_recovery_minutes`; stops Ekos makes on
+purpose, such as a meridian flip, slews, autofocus, plate solving, flats with tracking off and
+the end of the run, don't count), followed by **Guiding recovered** when it's back, and **PHD2's own warnings** (High, e.g. "not able to make sufficient
 corrections in RA"), once per message per session. Also High: **Guiding poor** (guiding over
 Ekos's own guide-deviation limit for 10 minutes, `alerts: guiding_poor_minutes`; when the
 sequence enforces the limit, the time Ekos has been holding exposures), **Capture aborted** (with
@@ -185,8 +191,9 @@ effect on a whole night.
 that's wrong: the install (including a venv broken by an OS update), the config (notifier URLs,
 a file other users can read), the service (installed, running, out of date, or its Python
 gone), the database, KStars and Ekos on D-Bus, a KStars Flatpak's network and D-Bus
-permissions, the INDI server with the devices it recognised, PHD2 (when Ekos guides with it),
-the clock's sync and the free space where Ekos saves frames. It's read-only and takes a few
+permissions, KStars's language and number format, the INDI server with the devices it
+recognised, PHD2 (when Ekos guides with it), the clock's sync and the free space where Ekos
+saves frames. It's read-only and takes a few
 seconds; start KStars and Ekos first to check everything.
 
 ### Preview the alerts
@@ -224,7 +231,14 @@ it lists your devices and the readings that could be used, and writes a file you
 indi:
   metrics:
     power.voltage: "Pegasus PPBA / POWER_SENSORS.SENSOR_VOLTAGE"
-``` Stops Ekos makes on purpose (meridian flip, slews, autofocus, plate
-solving, flats with tracking off, the end of the run) don't count. If an alert can't be delivered because the rig is
-offline, it's retried for 10 minutes and then dropped, never sent late; it stays in the session
-record. Change the window with `notify_expire_minutes` in the config.
+```
+
+### Languages
+
+KStars can run in any language it ships: Ekos Notifier reads Ekos's log through KStars's own
+translations, and its numbers in KStars's own number format, so alerts work the same as in
+English (`doctor` says which language and number format it found). Ekos Notifier's own
+messages, on your phone and in the terminal, can be translated too; `language:` in the config
+picks one (`auto`, the default, follows your system). No translations ship yet, so they're in
+English; adding one is a single file and needs no Python (see CONTRIBUTING.md,
+"Translating").

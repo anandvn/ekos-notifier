@@ -33,11 +33,15 @@ mostly at dark sites with intermittent internet.
 - **Alert priorities:** Emergency / High / Normal / Quiet. Normal is batched into the hourly
   digest except time-critical ones (target low, twilight, sequence complete).
 - **Messages:** plain English. The Olde English style was dropped (2026-11-19) and Terse is
-  deferred past 0.2; translating our own messages (gettext, a `.po` file per language) is planned for
-  0.3, before the GUI. KStars in another language is handled by reading its log back into English.
-- **GUI:** Starlette (not FastAPI: pydantic-core is compiled) + server-rendered HTML + htmx +
+  deferred. Our own messages are translatable (gettext, a `.po` file per language; done in 0.3);
+  no English line on Emergencies, which are reviewed instead. KStars in another language is
+  handled by reading its log back into English.
+- **Road to 1.0 (decided 2026-11-20):** 0.3 adds the heartbeat and is the field-test build;
+  0.3.x fixes what real rigs find; 1.0 is alerts, digest and session record, field-tested. The
+  GUI, export, sync and the reference importer come **after 1.0**.
+- **GUI (after 1.0):** Starlette (not FastAPI: pydantic-core is compiled) + server-rendered HTML + htmx +
   uPlot, all assets vendored (no CDN), red night mode, LAN only, password set in first-run wizard. Read-only toward Ekos.
-- **Export:** each closed session → immutable folder (`session.json`, `events.ndjson`,
+- **Export (after 1.0):** each closed session → immutable folder (`session.json`, `events.ndjson`,
   `frames.csv`, `samples.csv`, sequence file, logs). Versioned JSON Schema.
 - **Out of scope for v1:** N.I.N.A./Windows, equipment control, image processing, remote GUI access.
 
@@ -64,7 +68,7 @@ mostly at dark sites with intermittent internet.
 StellarMate's Arch-based release runs KStars/Ekos (and possibly PHD2/INDI) as **Flatpaks**.
 Ekos Notifier must run on the host, find KStars data under `~/.var/app/org.kde.kstars/…` as well
 as `~/.local/share/kstars/`, and reach D-Bus/ports across the sandbox. It installs into a venv in
-the user's home, set up by the `install.sh` that ships with 1.0 (decided 2026-11-18):
+the user's home, set up by `install.sh` (decided 2026-11-18, shipped since 0.1.0):
 StellarMate images have no pipx and no pacman repositories, so don't plan on pipx or the AUR.
 This is unverified — see `docs/open-questions.md`.
 

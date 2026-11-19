@@ -4,6 +4,29 @@ Work through these with the INDI simulators and PHD2's simulator camera running.
 Record each finding here (tick the box, add a line under it) and update `docs/design.md`
 and `CLAUDE.md` if a decision changes.
 
+## Field test (0.3, a real rig)
+
+What only a real night can answer, gathered from the items below. For each night note the
+date, the rig, the KStars and Ekos Notifier versions, and keep `journalctl --user -u
+ekos-notifier` and the alerts that arrived; a recording (`tools/record_night.py`) makes a
+problem replayable.
+
+- [ ] Install on a stock StellarMate image with `curl … | sh`; `doctor` all ok (the install item
+      below).
+- [ ] The service sees KStars's session bus after a reboot and login (and on Astroberry, the
+      session-bus item below).
+- [ ] `indi-dump` from the real power box: recognised, or the data for a preset (power box
+      presets below). Battery levels match the battery you use.
+- [ ] A full Scheduler night: Starting session, the digests, the summary and the flats reminder
+      say the right things; no alert you'd call noise.
+- [ ] A real failure or two, if the night offers them: clouds (thresholds below), a failed plate
+      solve (below), guiding lost, a meridian flip.
+- [ ] Offline at the site: alerts dropped after 10 minutes, nothing sent late, nothing lost from
+      the record.
+- [ ] The heartbeat: pings during the session; stopping the service (or pulling the network)
+      makes the ping service alert.
+- [ ] The KStars version on the rig, for the minimum-version item below.
+
 ## Ekos / KStars
 
 - [x] **Does Ekos's D-Bus text follow KStars's language?** **Yes, for log lines** (KStars 3.8.5
@@ -71,14 +94,14 @@ and `CLAUDE.md` if a decision changes.
 - [x] Are PHD2 and INDI Flatpaks too, or native packages? Record versions.
       **On the VM:** PHD2 2.6.14 is native. A native `libindi 2.2.5` is installed, but Ekos uses
       the copy bundled in the KStars Flatpak (also 2.2.5) — see above.
-- [ ] Confirm Ekos Notifier installs and runs on the host from a plain venv (the 1.0 `install.sh`;
+- [ ] Confirm Ekos Notifier installs and runs on the host from a plain venv (`install.sh`;
       StellarMate images ship no pipx and no pacman repositories, so pipx is out).
       Host Python is 3.14.7 with `venv` and `ensurepip` in the base `python` package; a venv
       install (the dev checkout), tests, the CLI and the systemd service work, `dbus-fast`
       included. Still to try: a fresh venv from PyPI on a stock StellarMate image, and the same
-      on Raspberry Pi OS (needs `python3-venv`) and Ubuntu. `install.sh` now exists: run
-      `curl … | sh -s -- --from main` on a real rig (StellarMate, then Astroberry) and record
-      what it says. CI covers it on Ubuntu only.
+      on Raspberry Pi OS (needs `python3-venv`) and Ubuntu. Run `curl … | sh` (the latest PyPI
+      release) on a real rig (StellarMate, then Astroberry) and record what it says. CI covers it
+      on Ubuntu only.
 
 ## Other platforms (Astroberry, Raspberry Pi OS, Ubuntu, AstroArch)
 

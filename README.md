@@ -19,9 +19,10 @@ and 100+ more via [Apprise](https://github.com/caronc/apprise/wiki)) and degrade
 power box, no weather station, no internet — no problem. It **only watches**: it never controls
 your equipment.
 
-> **Status: pre-alpha.** It runs and alerts today, but hasn't had a season on real rigs yet,
-> and settings may change before 1.0. Not yet built: the web dashboard, carrying data home
-> (sync) and the dead-man's switch. See
+> **Status: pre-alpha, heading for field testing.** It runs and alerts today, but hasn't had a
+> season on real rigs yet, and settings may change before 1.0. Coming next: a dead-man's switch
+> (a ping that tells you when the rig itself goes silent). After 1.0: a web dashboard, and
+> carrying each night's data home. See
 > [the design](https://github.com/anandvn/ekos-notifier/blob/main/docs/design.md) and [the roadmap](https://github.com/anandvn/ekos-notifier/blob/main/docs/design.md#roadmap).
 
 **Contents:** [What you need](#what-you-need) · [Install](#install) ·
@@ -35,7 +36,8 @@ your equipment.
 
 - The computer that runs KStars/Ekos: StellarMate, Astroberry, or any Linux with KStars
   (native or Flatpak), in any language KStars offers. Ekos Notifier runs on the same computer.
-  Its own messages are in English for now.
+  Its own messages are in English for now; they're ready to be translated (see
+  [Language](#language)).
 - Python 3.10 or newer, which these systems have. On Debian, Ubuntu and Raspberry Pi OS you
   may also need Python's `venv` module: `sudo apt install python3-venv`.
 - A phone app to receive alerts, such as Pushover or ntfy (see step 1 below).
@@ -52,7 +54,7 @@ curl -fsSL https://raw.githubusercontent.com/anandvn/ekos-notifier/main/install.
 ```
 
 > That installs the latest release from [PyPI](https://pypi.org/project/ekos-notifier/). For a
-> given version add `-s -- --from 0.1.0`; for the latest code from GitHub, `-s -- --from main`.
+> given version add `-s -- --from 0.2.0`; for the latest code from GitHub, `-s -- --from main`.
 
 The installer:
 
@@ -233,7 +235,7 @@ ekos-notifier config alerts
 ```text
 alert                        default    yours      what
 ekos_stopped_mount_unparked  emergency             Ekos stopped with the mount unparked
-battery_critical             emergency             Battery under the critical voltage
+battery_critical             emergency             Battery at or under the critical voltage
 guiding_lost                 high                  Guiding stopped and hasn't recovered
 ...
 ```
