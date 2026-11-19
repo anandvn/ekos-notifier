@@ -1,6 +1,6 @@
 """The local SQLite store: every event is written here first.
 
-Outputs (notifier, GUI, heartbeat, sync) only read from the store, so a dead network or a slow
+Outputs (notifier, and later the GUI and sync) only read from the store, so a dead network or a slow
 consumer never loses data or blocks the adapters. See docs/design.md, "Data model".
 
 - ``events`` is append-only and holds every event as the adapters reported it.

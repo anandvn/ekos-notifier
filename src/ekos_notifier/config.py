@@ -63,7 +63,6 @@ KNOWN: dict[str, set[str] | None] = {
     "language": None,
     "digest": _DIGEST,
     "crier": _DIGEST,  # the digest's name before the rename
-    "heartbeat": {"url", "grace_minutes"},
     "indi": {"host", "port", "metrics"},
     "power": {"battery", "low_volts", "critical_volts"},
     "messages": None,
@@ -85,6 +84,7 @@ KNOWN: dict[str, set[str] | None] = {
 WHY_UNUSED = {
     "power.preset": N_("power boxes are recognised automatically"),
     "style": N_("message styles were dropped: messages are in plain English"),
+    "heartbeat": N_("the heartbeat was dropped: the README shows a do-it-yourself one"),
 }
 
 

@@ -31,8 +31,8 @@ A session starts automatically when the Ekos Scheduler starts (or the first Ligh
 
 1. **Standby** — service started at boot by systemd. Nothing is sent except the critical-battery Emergency.
 2. **Setup** — entered when Ekos connects the equipment profile. A setup log records in the background while the user focuses, polar aligns and calibrates. The GUI shows it as a live checklist.
-3. **Active** — entered on Scheduler start (or first manual Light frame, or GUI Start). Snapshot, pre-flight checks, then alerting, the hourly digest and heartbeat begin.
-4. **Closed** — when the imaging run ends, on GUI End, or on Ekos disconnect. Summary sent, heartbeat and digest stopped, session exported for sync. If Ekos went away while the mount was unparked, the "Ekos stopped with the mount unparked" Emergency is sent too, whatever the state.
+3. **Active** — entered on Scheduler start (or first manual Light frame, or GUI Start). Snapshot, pre-flight checks, then alerting and the hourly digest begin.
+4. **Closed** — when the imaging run ends, on GUI End, or on Ekos disconnect. Summary sent, digest stopped, session exported for sync (after 1.0). If Ekos went away while the mount was unparked, the "Ekos stopped with the mount unparked" Emergency is sent too, whatever the state.
    - *The imaging run ends* when the Scheduler stops after running (finished or aborted), or, with no Scheduler, when Capture reports its sequence complete (with the Scheduler, Capture reports that once per job, so it's ignored). Parked or not: the summary says the mount's last known state, and the Emergency covers an unparked mount. The summary arrives within seconds of the last frame. A later run the same night starts a new session.
    - Snapshot readings (taken when Ekos Notifier connects) never close a session: after a restart mid-run, the Scheduler's snapshot has read `idle` while it was running.
    - *Ekos disconnect* means Ekos stays gone for a grace period (default 10 min), so a KStars crash followed by a restart doesn't split the night; the session's end time is when Ekos went away. The Emergency has its own 2-minute timer and isn't delayed by this.
@@ -63,10 +63,10 @@ The rules are implemented in `ekos_notifier.session.SessionManager`, which is dr
 
 ### Pre-flight checks
 
-Camera at setpoint · guiding settled · battery and disk above threshold · dew margin · system clock plausible (NTP/GPS synced) · notifier and heartbeat reachable (skipped silently when offline; see Offline behavior). Failed checks become warnings in the Starting session message; they never block the session.
+Camera at setpoint · guiding settled · battery and disk above threshold · dew margin · system clock plausible (NTP/GPS synced) · notifier reachable (skipped silently when offline; see Offline behavior). Failed checks become warnings in the Starting session message; they never block the session.
 
 - **Implemented so far:** battery against the low and critical levels (on `mains`, just the voltage), free disk space where frames are saved against `alerts.disk_low_gb`, dew margin and humidity against the dew-risk limits, and the imaging camera against its setpoint. Each check comes from the rule that alerts on it, from what the rig has reported so far, and is left out when the rig doesn't report it. Failed checks lead, as "Check: battery 11.84 V, under 12 V low; …", then the readings that passed: "Pre-flight: battery 13.1 V, dew margin 6.2 °C, RH 64%, 212 GB free." A camera still cooling is a reading, not a warning: Ekos waits for the setpoint, and "Cooler can't reach setpoint" covers a cooler that never gets there.
-- **Not yet:** guiding settled (at a Scheduler start guiding hasn't begun yet, so it needs a later check), the system clock, and the notifier and heartbeat.
+- **Not yet:** guiding settled (at a Scheduler start guiding hasn't begun yet, so it needs a later check), the system clock, and the notifier.
 
 ### Calibration frames
 
@@ -99,7 +99,6 @@ Priorities map onto each notifier's native levels where it has them (Pushover �
 | Meridian flip failed | Ekos logs a failed flip ("Meridian flip failed, pier side not changed", "No successful Meridian Flip done, delay too long", "Post meridian flip calibration error. Aborting..."; "…Restarting..." is a retry and doesn't count, seen in a recorded night). These come from Ekos's Mount module, which has no `newLog` signal: its `logText` property is polled every 10 s. **Meridian flip overdue:** Ekos is set to flip, and the mount is still tracking the target 15 min plus one exposure past the flip hour angle on the pier side it settled on before the flip point (taken from the mount, since which side is "before" depends on hemisphere and driver); quotes Ekos's last "Meridian flip inactive (…)" reason. Once until "Meridian flip done" (Normal, immediate): a completed flip in Ekos's log, or the pier side changing. Checked against the live simulator flip (07:07, pier side changed 07:08): no false alert. |
 | Battery critical | `power.voltage` at or under the battery preset's critical level (AGM 12 V: 11.5 V; LiFePO4 12 V: 12.0 V) for 1 min (a slew's dip doesn't count). Sent at any time, session or not. Once until the voltage is back 0.3 V over the low level, which sends "Battery OK" (Normal, immediate). |
 | Ekos stopped with the mount unparked | Ekos stops or disconnects INDI (Scheduler finish/abort, crash, or user) while the last known mount state was unparked, and Ekos hasn't reconnected within 2 min. Uses the last known `parkStatus`, since the mount's properties vanish with Ekos. Clears when the mount is seen parked again: "Mount parked" (Normal, sent at once, since there's usually no session left to carry it in a digest). |
-| Rig or uplink silent | External heartbeat missed past grace period (sent by the heartbeat service, not the rig) |
 
 ### High
 
@@ -194,9 +193,9 @@ Messages are in plain English. The Olde English style was dropped (too gimmicky 
 
 No internet never stops or degrades recording; it only silences outbound messages.
 
-- **Offline at session start:** notifier and heartbeat are skipped without warning. GUI shows "Offline — recording only".
+- **Offline at session start:** the notifier is skipped without warning. GUI shows "Offline — recording only".
 - **Link drops mid-session:** recording continues. An alert that can't be delivered is retried for a short window (default 10 min, `notify_expire_minutes`), then dropped rather than sent late: alerts arriving after the fact can't be acted on, and a backlog of them on reaching home is noise. This includes the session summary. Dropped alerts stay in the local record (GUI, export); the outbox marks them `dropped` with the reason.
-- **Heartbeat caveat:** an external heartbeat service can't tell a dead rig from a dead uplink and will alert either way. Mitigations: grace period configurable (default 30 min); heartbeat is a per-session toggle that defaults on only if connectivity looked solid at session start; message wording says "rig or uplink".
+- **No heartbeat (dropped 2026-11-20).** A dead-man's switch (the rig pings an outside service, which alerts when the pings stop) was planned, to cover what the rig can't report itself: a crash, a power cut, a dead uplink. Dropped before it was built: pinged only during sessions, every normal end of a night looks like silence, so the service alerts each morning unless the check is paused through a service-specific API (Healthchecks' needs an API key in the config); at a dark site with patchy internet it fires whenever the link drops, which is most of what it would say; and the commonest way a rig dies there, the battery, is already an alert before it does (Battery low, then Battery critical). A rig that runs 24/7 (an observatory) is better served by pinging all the time, which needs nothing from Ekos Notifier: the README has a cron recipe.
 - **Local truth:** everything is in the local database first; outbound delivery is a best-effort consumer of it.
 
 ## Data model and export format
@@ -282,7 +281,7 @@ A phone-first web page served by the service on the rig's local network, read-on
 | Notes | Add timestamped notes to the session |
 | Sessions | Past sessions with summaries and sync status |
 | Sync | Unsynced count, destination reachable?, last flush, Flush button with progress, FITS checkbox |
-| Settings | Notifier test, thresholds, digest interval, heartbeat, sync destination, units |
+| Settings | Notifier test, thresholds, digest interval, sync destination, units |
 
 - **Stack:** Starlette, server-rendered HTML, htmx for live updates, uPlot for charts; all assets vendored, no CDN.
 - **Never slows capture:** the GUI only reads SQLite (WAL), and all work runs at low priority.
@@ -299,7 +298,6 @@ Every external dependency sits behind a small adapter interface with a sensible 
 | Guiding | PHD2 or Ekos internal guider | auto-detected from Ekos profile |
 | Power and weather | INDI properties with presets: libindi's standard power interface (Pegasus, SVBONY, Terrans… whatever the brand), weather stations, camera and focuser temperatures; custom property mapping for anything else | `indi: metrics: power.voltage: "Box / PROPERTY.ELEMENT"` |
 | Notifications | Apprise URLs (Pushover, ntfy, Telegram, Discord, Slack, Gotify, email, Home Assistant, 100+) | `notify: ["pover://user@token"]` |
-| Heartbeat | Any ping URL: Healthchecks.io (hosted or self-hosted), Uptime Kuma push, Cronitor | `heartbeat: url: https://hc-ping.com/…` |
 | Sync | rclone remote or local path | `sync: dest: "nas:astro/sessions"` |
 
 - **Battery presets:** LiFePO4 12 V, AGM 12 V, AC mains (voltage alerts off), custom thresholds.
@@ -391,10 +389,9 @@ Top priority: a new user goes from install to a test alert on their phone in und
 2. **Detect:** finds KStars/Ekos, PHD2, INDI devices; shows what it found in plain words ("PHD2 found — guiding alerts on").
 3. **Notifications:** pick a service from a list, paste the key, press Send test. Skippable (record-only mode).
 4. **Power:** pick power box preset and battery type, or "mains power".
-5. **Heartbeat (optional):** explain the dead-man's switch in two sentences, paste a ping URL, test.
-6. **Sync (optional):** pick destination type, guided rclone setup, Test write.
-7. **Digest:** on or off, and its interval.
-8. **Done:** a checklist of what's on, and "Simulate a night" to see sample alerts.
+5. **Sync (optional):** pick destination type, guided rclone setup, Test write.
+6. **Digest:** on or off, and its interval.
+7. **Done:** a checklist of what's on, and "Simulate a night" to see sample alerts.
 
 ### Built-in safety nets
 
@@ -428,13 +425,11 @@ The PHD2 adapter (`ekos_notifier.phd2`) reads PHD2's event server and sends noth
  │ Ekos (D-Bus) │──────▶ │ Session manager      │    ┌──▶ │ Notifier (Apprise) │
  └──────────────┘        │          │           │    │    └────────────────────┘
  ┌──────────────┐        │          ▼           │    │    ┌────────────────────┐
- │ PHD2 events  │──────▶ │ Rules engine         │    ├──▶ │ Heartbeat ping     │
+ │ PHD2 events  │──────▶ │ Rules engine         │    ├──▶ │ Web GUI (later)    │
  └──────────────┘        │          │           │    │    └────────────────────┘
  ┌──────────────┐        │          ▼           │    │    ┌────────────────────┐
- │ INDI devices │──────▶ │ SQLite (WAL) ────────┼────┼──▶ │ Web GUI            │
- └──────────────┘        └──────────────────────┘    │    └────────────────────┘
-                                                     │    ┌────────────────────┐
-                                                     └──▶ │ Export + sync      │
+ │ INDI devices │──────▶ │ SQLite (WAL) ────────┼────┴──▶ │ Export + sync      │
+ └──────────────┘        └──────────────────────┘         │ (later)            │
                                                           └────────────────────┘
 ```
 
@@ -477,7 +472,7 @@ Get alerts right on real rigs before adding more: the GUI, export and sync come 
 | --- | --- | --- |
 | 0.1 Core | Event sources (Ekos D-Bus, PHD2, INDI), canonical metrics with capability gating, `indi-dump`, SQLite store, session lifecycle, alert rules, Apprise notifier, hourly digest, simulation mode, `install.sh` and PyPI | Released (0.1.0, 0.1.1) |
 | 0.2 First run | Terminal setup wizard, `doctor`, config validation, Quick start and Alerts reference docs, KStars in any language (Terse deferred, Olde English dropped) | Released (0.2.0) |
-| 0.3 Field test | Translatable messages, the heartbeat (dead-man's switch); the build taken to real rigs | In progress |
+| 0.3 Field test | Translatable messages; the build taken to real rigs (the heartbeat was dropped, see "Offline behavior") | In progress |
 | 0.3.x | Fixes from real nights, power box presets from real `indi-dump`s, the open questions a real rig answers | |
 | 1.0 Public | Field-tested on StellarMate (and Astroberry, given a tester); docs complete for what's built; the test matrix in CI | |
 | After 1.0 | Web GUI (views, GUI first-run wizard, notes, Start/End), export folders and their JSON Schema, rclone sync and Flush, reference importer, the mount-limit Emergency, a Terse style, the `units`/`privacy` settings | |

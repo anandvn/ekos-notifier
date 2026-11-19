@@ -5,6 +5,12 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Changed: no heartbeat.** The planned dead-man's switch (`heartbeat:` in the config, never
+  built) is dropped: pinging only during a session alerts every morning when the night ends, and
+  at a dark site every time the internet drops. A rig that runs around the clock can ping a
+  service like Healthchecks.io by itself; the README has a one-line recipe ("If the rig itself
+  goes silent"). A config that still has `heartbeat:` gets a note that it's ignored.
+
 - **Messages can be translated.** Everything Ekos Notifier says is ready for translation with
   gettext: alerts, the hourly digest and the session summary on your phone, and in the terminal
   `doctor`, `setup`, `--help`, `config check` and `config alerts`, `simulate`, `indi-dump`,

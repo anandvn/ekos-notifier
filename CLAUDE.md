@@ -19,13 +19,12 @@ mostly at dark sites with intermittent internet.
 - **License:** MIT. **Public on GitHub.** Docs and first-run experience are the top priority.
 - **Generic:** Every external dependency sits behind an adapter:
   - Notifications: **Apprise** URLs (Pushover is Anand's choice, but nothing hard-codes it).
-  - Dead-man's switch: any **ping URL** (Healthchecks.io, Uptime Kuma, Cronitor). Optional.
   - Sync home: **rclone** (SFTP/SMB/USB path/S3/Drive…). No custom HTTP receiver.
   - Power/weather: **INDI properties → canonical metrics** (`power.voltage`, `env.humidity`, …)
     via YAML presets + heuristic detection + manual mapping. No device is ever assumed.
 - **Capability gating:** each alert rule declares the metrics it needs; if none are available the
   rule is off and shown as "not available on this rig" — never an error.
-- **Local-first:** every event is written to SQLite (WAL) first. Notifier, GUI, heartbeat and sync
+- **Local-first:** every event is written to SQLite (WAL) first. Notifier, GUI and sync
   are consumers of the store. No internet = record silently; nothing is lost.
 - **Session model:** one session per night; Scheduler targets are segments inside it.
   Starts automatically on Ekos Scheduler start (or first manual Light frame); GUI Start/End override.
@@ -36,7 +35,9 @@ mostly at dark sites with intermittent internet.
   deferred. Our own messages are translatable (gettext, a `.po` file per language; done in 0.3);
   no English line on Emergencies, which are reviewed instead. KStars in another language is
   handled by reading its log back into English.
-- **Road to 1.0 (decided 2026-11-20):** 0.3 adds the heartbeat and is the field-test build;
+- **No heartbeat (dropped 2026-11-20):** a session-only ping alerts every morning and at every
+  dark-site link drop; a 24/7 rig pings by cron with no help from us (README recipe).
+- **Road to 1.0 (decided 2026-11-20):** 0.3 is the field-test build;
   0.3.x fixes what real rigs find; 1.0 is alerts, digest and session record, field-tested. The
   GUI, export, sync and the reference importer come **after 1.0**.
 - **GUI (after 1.0):** Starlette (not FastAPI: pydantic-core is compiled) + server-rendered HTML + htmx +

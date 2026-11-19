@@ -20,8 +20,7 @@ power box, no weather station, no internet — no problem. It **only watches**: 
 your equipment.
 
 > **Status: pre-alpha, heading for field testing.** It runs and alerts today, but hasn't had a
-> season on real rigs yet, and settings may change before 1.0. Coming next: a dead-man's switch
-> (a ping that tells you when the rig itself goes silent). After 1.0: a web dashboard, and
+> season on real rigs yet, and settings may change before 1.0. After 1.0: a web dashboard, and
 > carrying each night's data home. See
 > [the design](https://github.com/anandvn/ekos-notifier/blob/main/docs/design.md) and [the roadmap](https://github.com/anandvn/ekos-notifier/blob/main/docs/design.md#roadmap).
 
@@ -193,7 +192,7 @@ the value shown is the default. A few rules keep YAML happy:
   within a few seconds; a file with a mistake is ignored (the previous settings stay) until
   it's fixed.
 
-Sections marked *NOT USED YET* in the file (heartbeat, sync, gui, units, privacy) are
+Sections marked *NOT USED YET* in the file (sync, gui, units, privacy) are
 for features still to come; changing them does nothing for now. The ones you're most likely to
 change:
 
@@ -337,6 +336,29 @@ systemctl --user reload ekos-notifier     # apply config changes now (they apply
 ```
 
 Your sessions are in `~/.local/share/ekos-notifier/ekos-notifier.db` (SQLite).
+
+### If the rig itself goes silent
+
+Ekos Notifier sends every alert from the rig, so if the rig dies (a crash, a power cut, the
+internet gone) you simply hear nothing. If your imaging computer runs around the clock, as in an
+observatory, a free "dead-man's switch" covers that, with no help from Ekos Notifier: the
+computer pings an outside service every minute, and the service alerts your phone when the
+pings stop.
+
+1. Make a check on [Healthchecks.io](https://healthchecks.io) (free; or self-hosted, or an
+   [Uptime Kuma](https://github.com/louislam/uptime-kuma) push monitor): period 1 minute, grace
+   10–30 minutes. Connect it to the same Pushover (or other) account you get alerts on. It gives
+   you a ping URL.
+2. On the imaging computer, run `crontab -e` and add this line with your URL:
+
+   ```text
+   * * * * * curl -fsS -m 10 --retry 3 https://hc-ping.com/YOUR-UUID > /dev/null
+   ```
+
+It can't tell a dead rig from a dropped internet connection, so expect an alert whenever the
+link goes down for longer than the grace. And it pings whenever the computer is on: on a rig you
+switch off after each night, every shutdown looks like a failure, so pause the check (or don't
+use one) there. Battery alerts already warn you before a battery runs the rig down.
 
 ## Upgrade and uninstall
 
