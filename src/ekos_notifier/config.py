@@ -15,6 +15,7 @@ from typing import Any
 
 import yaml
 
+from ekos_notifier.i18n import N_, _
 from ekos_notifier.indi.decode import Mapping
 from ekos_notifier.messages import MessageSettings, SettingsError
 from ekos_notifier.power import BATTERIES
@@ -82,14 +83,16 @@ KNOWN: dict[str, set[str] | None] = {
     "privacy": {"round_site_coordinates"},
 }
 WHY_UNUSED = {
-    "power.preset": "power boxes are recognised automatically",
-    "style": "message styles were dropped: messages are in plain English",
+    "power.preset": N_("power boxes are recognised automatically"),
+    "style": N_("message styles were dropped: messages are in plain English"),
 }
 
 
-def _hint(name: str, choices: Any) -> str:
+def _not_a_setting(name: str, choices: Any) -> str:
     close = difflib.get_close_matches(name, list(choices), n=1)
-    return f" (did you mean '{close[0]}'?)" if close else ""
+    if close:
+        return _("not a setting (did you mean '{name}'?)").format(name=close[0])
+    return _("not a setting")
 
 
 def _warnings(raw: dict[str, Any], battery: str, low: Any, critical: Any) -> list[str]:
@@ -98,10 +101,19 @@ def _warnings(raw: dict[str, Any], battery: str, low: Any, critical: Any) -> lis
     for key, value in raw.items():
         key = str(key)
         if key in WHY_UNUSED:
-            out.append(f"'{key}' isn't used ({WHY_UNUSED[key]}); it's ignored")
+            out.append(
+                _("'{name}' isn't used ({why}); it's ignored").format(
+                    name=key, why=_(WHY_UNUSED[key])
+                )
+            )
             continue
         if key not in KNOWN:
-            out.append(f"'{key}' isn't a setting{_hint(key, KNOWN)}; it's ignored")
+            close = difflib.get_close_matches(key, list(KNOWN), n=1)
+            if close:
+                text = _("'{name}' isn't a setting (did you mean '{close}'?); it's ignored")
+            else:
+                text = _("'{name}' isn't a setting; it's ignored")
+            out.append(text.format(name=key, close=close[0] if close else ""))
             continue
         section = KNOWN[key]
         if section is None or not isinstance(value, dict):
@@ -109,8 +121,12 @@ def _warnings(raw: dict[str, Any], battery: str, low: Any, critical: Any) -> lis
         for sub in value:
             name = f"{key}.{sub}"
             if sub not in section:
-                why = WHY_UNUSED.get(name) or f"not a setting{_hint(str(sub), section)}"
-                out.append(f"'{name}' isn't used ({why}); it's ignored")
+                why = (
+                    _(WHY_UNUSED[name]) if name in WHY_UNUSED else _not_a_setting(str(sub), section)
+                )
+                out.append(
+                    _("'{name}' isn't used ({why}); it's ignored").format(name=name, why=why)
+                )
     language = raw.get("language")
     if (
         isinstance(language, str)
@@ -122,14 +138,20 @@ def _warnings(raw: dict[str, Any], battery: str, low: Any, critical: Any) -> lis
         have = i18n.available()
         if language not in have and language.split("_")[0] not in have:
             out.append(
-                f"'language: {language}' has no translation yet, so messages are in English"
-                f" (translations: {', '.join(['en', *have])})"
+                _(
+                    "'language: {language}' has no translation yet, so messages are in English"
+                    " (translations: {languages})"
+                ).format(language=language, languages=", ".join(["en", *have]))
             )
     power = raw.get("power") if isinstance(raw.get("power"), dict) else {}
     if battery == "mains":
         for name in ("low_volts", "critical_volts"):
             if power.get(name) is not None:
-                out.append(f"'power.{name}' is ignored with battery: mains (no voltage alerts)")
+                out.append(
+                    _("'power.{name}' is ignored with battery: mains (no voltage alerts)").format(
+                        name=name
+                    )
+                )
     elif battery in BATTERIES:
         preset_low, preset_critical = BATTERIES[battery]
         for name, value, preset in (
@@ -138,8 +160,10 @@ def _warnings(raw: dict[str, Any], battery: str, low: Any, critical: Any) -> lis
         ):
             if power.get(name) is not None and value != preset:
                 out.append(
-                    f"'power.{name}: {value:g}' replaces {battery}'s {preset:g} V; "
-                    "delete it to use the preset's level"
+                    _(
+                        "'power.{name}: {value}' replaces {battery}'s {preset} V; delete it to use"
+                        " the preset's level"
+                    ).format(name=name, value=f"{value:g}", battery=battery, preset=f"{preset:g}")
                 )
     return out
 
@@ -178,20 +202,26 @@ def load(path: str | Path | None = None) -> Config:
     path = Path(path) if explicit else default_path()
     if not path.exists():
         if explicit:
-            raise ConfigError(f"{path}: no such file")
+            raise ConfigError(_("{path}: no such file").format(path=path))
         return Config()
     try:
         raw = yaml.safe_load(path.read_text()) or {}
     except yaml.YAMLError as exc:
-        raise ConfigError(f"{path}: not valid YAML: {exc}") from None
+        raise ConfigError(_("{path}: not valid YAML: {exc}").format(path=path, exc=exc)) from None
     if not isinstance(raw, dict):
-        raise ConfigError(f"{path}: expected keys like 'notify:', found {type(raw).__name__}")
+        raise ConfigError(
+            _("{path}: expected keys like 'notify:', found {name}").format(
+                path=path, name=type(raw).__name__
+            )
+        )
 
     notify = raw.get("notify") or []
     if isinstance(notify, str):
         notify = [notify]
     if not isinstance(notify, list) or not all(isinstance(u, str) for u in notify):
-        raise ConfigError(f"{path}: 'notify' must be a list of Apprise URLs (quoted strings)")
+        raise ConfigError(
+            _("{path}: 'notify' must be a list of Apprise URLs (quoted strings)").format(path=path)
+        )
     expire = _minutes(path, "notify_expire_minutes", raw.get("notify_expire_minutes", 10))
     language = raw.get("language", "auto")
     if language is None:
@@ -199,10 +229,16 @@ def load(path: str | Path | None = None) -> Config:
     if not isinstance(language, str) or not re.fullmatch(
         r"auto|[A-Za-z]{2,3}(_[A-Za-z]{2})?", language
     ):
-        raise ConfigError(f"{path}: 'language' must be auto or a language code such as de or pt_BR")
+        raise ConfigError(
+            _("{path}: 'language' must be auto or a language code such as de or pt_BR").format(
+                path=path
+            )
+        )
     alerts = raw.get("alerts") or {}
     if not isinstance(alerts, dict):
-        raise ConfigError(f"{path}: 'alerts' must be a section of settings (key: value)")
+        raise ConfigError(
+            _("{path}: 'alerts' must be a section of settings (key: value)").format(path=path)
+        )
     guiding = _minutes(
         path, "alerts.guiding_recovery_minutes", alerts.get("guiding_recovery_minutes", 5)
     )
@@ -210,33 +246,41 @@ def load(path: str | Path | None = None) -> Config:
     # Before the rename (Town Crier) the section was called "crier:"; configs copied then keep it.
     digest = raw.get("digest", raw.get("crier")) or {}
     if not isinstance(digest, dict):
-        raise ConfigError(f"{path}: 'digest' must be a section of settings (key: value)")
+        raise ConfigError(
+            _("{path}: 'digest' must be a section of settings (key: value)").format(path=path)
+        )
     interval = _minutes(path, "digest.interval_minutes", digest.get("interval_minutes", 60))
     if interval == 0:
-        raise ConfigError(f"{path}: 'digest.interval_minutes' must be more than 0")
+        raise ConfigError(
+            _("{path}: 'digest.interval_minutes' must be more than 0").format(path=path)
+        )
     indi = raw.get("indi") or {}
     if not isinstance(indi, dict):
-        raise ConfigError(f"{path}: 'indi' must be a section of settings (key: value)")
+        raise ConfigError(
+            _("{path}: 'indi' must be a section of settings (key: value)").format(path=path)
+        )
     host = indi.get("host") or None
     if host is not None and not isinstance(host, str):
-        raise ConfigError(f"{path}: 'indi.host' must be a host name")
+        raise ConfigError(_("{path}: 'indi.host' must be a host name").format(path=path))
     port = indi.get("port") or None
     if port is not None and (isinstance(port, bool) or not isinstance(port, int) or port < 1):
-        raise ConfigError(f"{path}: 'indi.port' must be a port number")
+        raise ConfigError(_("{path}: 'indi.port' must be a port number").format(path=path))
     mappings = []
     for metric, target in (indi.get("metrics") or {}).items():
         try:
             mappings.append(Mapping.parse(str(metric), str(target)))
         except ValueError as exc:
-            raise ConfigError(f"{path}: indi.metrics: {exc}") from None
+            raise ConfigError(_("{path}: indi.metrics: {exc}").format(path=path, exc=exc)) from None
     battery, low_volts, critical_volts = _power(path, raw.get("power"))
     messages = raw.get("messages") or {}
     if not isinstance(messages, dict):
-        raise ConfigError(f"{path}: 'messages' must be a section of alert: level lines")
+        raise ConfigError(
+            _("{path}: 'messages' must be a section of alert: level lines").format(path=path)
+        )
     try:
         message_settings = MessageSettings.parse(messages)
     except SettingsError as exc:
-        raise ConfigError(f"{path}: messages: {exc}") from None
+        raise ConfigError(_("{path}: messages: {exc}").format(path=path, exc=exc)) from None
     return Config(
         path=path,
         notify=[u.strip() for u in notify if u.strip()],
@@ -279,11 +323,15 @@ def _power(path: Path, power: object) -> tuple[str, float | None, float | None]:
     """The battery preset, and its low and critical volts unless set explicitly."""
     power = power or {}
     if not isinstance(power, dict):
-        raise ConfigError(f"{path}: 'power' must be a section of settings (key: value)")
+        raise ConfigError(
+            _("{path}: 'power' must be a section of settings (key: value)").format(path=path)
+        )
     battery = power.get("battery") or "agm_12v"
     if battery not in BATTERIES and battery != "custom":
         names = " | ".join([*BATTERIES, "custom"])
-        raise ConfigError(f"{path}: 'power.battery' must be one of {names}")
+        raise ConfigError(
+            _("{path}: 'power.battery' must be one of {names}").format(path=path, names=names)
+        )
     low, critical = BATTERIES.get(battery, (None, None))
     if battery == "mains":
         return battery, None, None
@@ -292,15 +340,19 @@ def _power(path: Path, power: object) -> tuple[str, float | None, float | None]:
     if power.get("critical_volts") is not None:
         critical = _number(path, "power.critical_volts", power["critical_volts"], "volts")
     if battery == "custom" and low is None and critical is None:
-        raise ConfigError(f"{path}: 'power.battery: custom' needs low_volts or critical_volts")
+        raise ConfigError(
+            _("{path}: 'power.battery: custom' needs low_volts or critical_volts").format(path=path)
+        )
     if low is not None and critical is not None and critical >= low:
-        raise ConfigError(f"{path}: 'power.critical_volts' must be below 'power.low_volts'")
+        raise ConfigError(
+            _("{path}: 'power.critical_volts' must be below 'power.low_volts'").format(path=path)
+        )
     return battery, low, critical
 
 
 def _bool(path: Path, key: str, value: object) -> bool:
     if not isinstance(value, bool):
-        raise ConfigError(f"{path}: '{key}' must be true or false")
+        raise ConfigError(_("{path}: '{key}' must be true or false").format(path=path, key=key))
     return value
 
 
@@ -310,5 +362,9 @@ def _minutes(path: Path, key: str, value: object) -> float:
 
 def _number(path: Path, key: str, value: object, unit: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
-        raise ConfigError(f"{path}: '{key}' must be a number of {unit}, 0 or more")
+        raise ConfigError(
+            _("{path}: '{key}' must be a number of {unit}, 0 or more").format(
+                path=path, key=key, unit=unit
+            )
+        )
     return float(value)

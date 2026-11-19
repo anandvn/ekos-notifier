@@ -30,7 +30,7 @@ from pathlib import Path
 from ekos_notifier import replay
 from ekos_notifier.ekos import translation
 from ekos_notifier.events import Event
-from ekos_notifier.i18n import _
+from ekos_notifier.i18n import N_, _, ngettext
 from ekos_notifier.notify import should_send
 from ekos_notifier.pipeline import Pipeline, simulate
 from ekos_notifier.rules import Rules
@@ -53,6 +53,14 @@ CARRIED = (
 )
 
 
+PRIORITIES = {
+    "emergency": N_("Emergency"),
+    "high": N_("High"),
+    "normal": N_("Normal"),
+    "quiet": N_("Quiet"),
+}
+
+
 @dataclass
 class Night:
     label: str  # what was replayed, for the heading
@@ -64,7 +72,7 @@ class SimulateError(Exception):
 
 
 def sample() -> Night:
-    return recording(SAMPLE_NIGHT, label="the sample night (M 31 on the KStars simulators)")
+    return recording(SAMPLE_NIGHT, label=_("the sample night (M 31 on the KStars simulators)"))
 
 
 def recording(path: str | Path, label: str | None = None) -> Night:
@@ -76,12 +84,14 @@ def recording(path: str | Path, label: str | None = None) -> Night:
     language = meta.get("language")
     translator = translation.for_language(language)
     if translator:
-        label += f" (KStars in '{translator.language}', read through its translations)"
-    elif language and not language.startswith(("en", "C")):
-        label += (
-            f" (KStars in '{language}', whose translations aren't installed here: alerts that"
-            " read Ekos's log may be missing)"
+        label += " " + _("(KStars in '{language}', read through its translations)").format(
+            language=translator.language
         )
+    elif language and not language.startswith(("en", "C")):
+        label += " " + _(
+            "(KStars in '{language}', whose translations aren't installed here: alerts that"
+            " read Ekos's log may be missing)"
+        ).format(language=language)
     numbers = replay.meta_numbers(meta)
     return Night(label, list(replay.events(records, translator=translator, numbers=numbers)))
 
@@ -108,13 +118,17 @@ def session(db_path: str | Path, which: str) -> Night:
         else:
             rows = list(db.execute("SELECT * FROM sessions WHERE id LIKE ?", (which + "%",)))
             if len(rows) > 1:
-                raise SimulateError(f"'{which}' matches {len(rows)} sessions: give more of the id")
+                raise SimulateError(
+                    _("'{which}' matches {len} sessions: give more of the id").format(
+                        which=which, len=len(rows)
+                    )
+                )
             row = rows[0] if rows else None
         if row is None:
             raise SimulateError(
-                "no imaging session in the database yet"
+                _("no imaging session in the database yet")
                 if which == "last"
-                else f"no session '{which}' (see --list)"
+                else _("no session '{id}' (see --list)").format(id=which)
             )
         start = (row["setup_at"] or row["started_at"]) - BEFORE
         last = db.execute("SELECT MAX(ts) FROM events").fetchone()[0] or start
@@ -139,7 +153,9 @@ def session(db_path: str | Path, which: str) -> Night:
             Event(r["ts"], r["kind"], json.loads(r["data"]), r["source"]) for r in rows
         ]
     when = time.strftime("%H:%M", time.localtime(row["started_at"]))
-    label = f"your session of the night of {row['night']} (started {when}, {row['id'][:8]})"
+    label = _("your session of the night of {night} (started {time}, {id})").format(
+        night=row["night"], time=when, id=row["id"][:8]
+    )
     return Night(label, events)
 
 
@@ -152,24 +168,30 @@ def run(night: Night, rules: Rules) -> list[Event]:
 
 def report(night: Night, alerts: Iterable[Event], *, brief: bool = False) -> list[str]:
     alerts = list(alerts)
-    lines = [f"Simulating {night.label}.", ""]
+    lines = [_("Simulating {night}.").format(night=night.label), ""]
     sent = held = 0
     for a in alerts:
         d = a.data
         now = should_send(d)
         sent += now
         held += not now
-        how = d["priority"].capitalize() + ("" if now else " (digest)")
+        how = _(PRIORITIES.get(d["priority"], d["priority"]))
+        if not now:
+            how = _("{priority} (digest)").format(priority=how)
         lines.append(f"{time.strftime('%H:%M', time.localtime(a.ts))}  {how:<16} {d['title']}")
         if not brief:
             lines += [f"{'':23}{line}" for line in str(d.get("body", "")).splitlines()]
             lines.append("")
     if not alerts:
-        lines.append("No alerts.")
+        lines.append(_("No alerts."))
     if brief or not alerts:
         lines.append("")
     lines.append(
-        f"{sent} alert{'s' * (sent != 1)} would be sent at once, {held} held for the digest."
+        ngettext(
+            "{sent} alert would be sent at once, {held} held for the digest.",
+            "{sent} alerts would be sent at once, {held} held for the digest.",
+            sent,
+        ).format(sent=sent, held=held)
     )
     return lines
 
@@ -195,7 +217,7 @@ def send(
 def _connect(db_path: str | Path) -> sqlite3.Connection:
     path = Path(db_path)
     if not path.exists():
-        raise SimulateError(f"{path}: no database yet (has the service run?)")
+        raise SimulateError(_("{path}: no database yet (has the service run?)").format(path=path))
     db = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     db.row_factory = sqlite3.Row
     return db

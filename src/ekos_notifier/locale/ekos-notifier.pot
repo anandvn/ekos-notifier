@@ -172,6 +172,409 @@ msgstr ""
 msgid "Capture running again"
 msgstr ""
 
+#: ekos_notifier/cli.py
+msgid "config file (default: ~/.config/ekos-notifier/config.yaml)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Alerts, hourly digests and session records for KStars/Ekos rigs."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "run the monitoring service in the foreground"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Run the monitoring service in the foreground until Ctrl-C or SIGTERM. The systemd service runs this; run it by hand to watch what Ekos Notifier sees."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "database file (default: ~/.local/share/ekos-notifier/ekos-notifier.db)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "debug logging"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "send a test message to every notifier in the config"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Send a test message to every notifier in the config and report which worked. Keys in URLs are hidden in the output."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "send at Emergency priority (Pushover repeats it until you acknowledge it)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "write your INDI devices' properties to a file, for a device-support request"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Connect to the INDI server (read-only), write every device's properties to a file with the site location removed, and list what Ekos Notifier recognises and the readings that could be mapped in the config. Connect your equipment in Ekos first."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "INDI server (default: the active Ekos profile's)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "INDI port (default: the profile's, or 7624)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "how long to listen (default 5)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "set up notifications, the battery and the digest, with a few questions"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Set up Ekos Notifier with a few questions in the terminal: it shows what it can see on the rig, sets up a notifier and sends it a test, and asks about the battery and the hourly digest. It saves to the config file only when you say so, keeping its comments and other settings. Run it again any time to change the answers."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "check the install, config, service, Ekos, INDI, PHD2, clock and disk; suggest fixes"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Check everything Ekos Notifier needs and say how to fix what isn't right: the install, the config, the service, the database, KStars and Ekos on D-Bus (and the KStars Flatpak's permissions), the INDI server and what's recognised on it, PHD2, the clock and the free disk space. Read-only: nothing is sent or changed. Start KStars and Ekos with your equipment first to check everything."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "run Ekos Notifier as a systemd user service (starts with your session)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Install, enable and start a systemd user service running 'ekos-notifier run' with this installation, so it starts with your session and restarts if it fails. Logs: journalctl --user -u ekos-notifier."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "enable it, but don't start it now"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "stop, disable and remove it"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "config file for the service to use"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "replay a night to preview the alerts it would send"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Replay a night through the alert rules with your config and show every alert it would send, to tune alerts in daylight. With no arguments, the sample night shipped with Ekos Notifier; or a recording file; or one of your own sessions from the database (read-only). Nothing is written, and nothing is sent unless you ask."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "a recording (.ndjson.gz) to replay"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "replay one of your sessions: 'last' or an id from --list"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "list your recent sessions"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "titles only"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "also send the alerts that would go out at once, marked [Simulated] (an Emergency is sent as High)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "work with the config file"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "validate the config file and explain any errors"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "list every alert, its default and your setting (messages: in the config)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "write the commented example config, if there's no config yet"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "Config error: {exc}"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "alert"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "default"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "yours"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "what"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "Set any of them under 'messages:' in the config: {levels}."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "off: never sent or listed; digest: listed in the hourly digest only;"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "quiet: sent silently; normal, high, emergency: sent at once at that priority."
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "{path} already exists: left as it is."
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "Wrote {path} (readable only by you)."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Add your notifier under notify:, then run `ekos-notifier config check`."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "No config file: Ekos Notifier records only and sends nothing."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Run `ekos-notifier config init` to write a commented one to fill in."
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "{path}: OK"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "note: {warning}"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "notify: none (recording only)"
+msgstr ""
+
+#: ekos_notifier/cli.py ekos_notifier/wizard.py
+#, python-brace-format
+msgid "notify: {url}"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "notify: NOT a valid Apprise URL: {scheme}://…"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "undelivered alerts dropped after {notify_expire_minutes} min"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "guiding lost: alert after {guiding_recovery_minutes} min without recovery"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "guiding poor: alert after {guiding_poor_minutes} min over Ekos's guide deviation limit"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "guiding poor: off (guiding_poor_minutes is 0)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "note: rename 'crier:' to 'digest:' (the old name still works for now)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "on the clock"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "from session start"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "digest: every {digest_interval_minutes} min, {when}"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "digest: off"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "dew risk: margin under {dew_margin_c} °C or RH over 90% for 5 min"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "dew risk: off (dew_margin_c is 0)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "cooler: alert {cooler_tolerance_c} °C over the setpoint"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "cooler: off (cooler_tolerance_c is 0)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "disk: alert under {disk_low_gb} GB free where Ekos saves frames"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "disk: off (disk_low_gb is 0)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "battery: {battery}, voltage alerts off"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "battery: {battery}, {levels}"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "message {name}: {level}"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "note: {name} is an Emergency by default; you've set it to {level}"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "indi: {host}:{port} (set in config)"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "indi: the active Ekos profile's server"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "indi metric: {metric} <- {device} / {prop}.{element}"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "Can't reach the INDI server on {host}:{port} ({exc})."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Start Ekos with your equipment profile first."
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "The INDI server on {host}:{port} sent no properties."
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "Wrote {count} properties to {path} (site location removed)."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Attach it to a 'Device support' issue, or map a candidate in the config's indi.metrics."
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "Ekos Notifier is already running (PID {pid}), probably in a terminal: the service will be enabled but not started. Stop that one, then run: systemctl --user start ekos-notifier"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "install-service: {exc}"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "No imaging sessions in the database yet."
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "{id}  night of {night}  {start}–{end}  {why}"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Give a recording or --session, not both."
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "simulate: {exc}"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "Nothing sent: no notifiers in the config."
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "FAILED: {error}"
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "No notifiers in the config ('notify:' is empty or there's no config file)."
+msgstr ""
+
+#: ekos_notifier/cli.py ekos_notifier/wizard.py
+msgid "If you can read this, Ekos Notifier can reach you."
+msgstr ""
+
+#: ekos_notifier/cli.py
+msgid "This is a test Emergency: acknowledge it to stop the repeats."
+msgstr ""
+
+#: ekos_notifier/cli.py ekos_notifier/wizard.py
+msgid "Ekos Notifier test"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "sent     {url}"
+msgstr ""
+
+#: ekos_notifier/cli.py
+#, python-brace-format
+msgid "FAILED   {url}: {error}"
+msgstr ""
+
 #: ekos_notifier/clouds.py
 #, python-brace-format
 msgid "The guide star has faded since {time}: SNR now {snr}, {before} before."
@@ -349,6 +752,153 @@ msgstr ""
 msgid "New frames won't match darks taken at the setpoint."
 msgstr ""
 
+#: ekos_notifier/config.py
+msgid "power boxes are recognised automatically"
+msgstr ""
+
+#: ekos_notifier/config.py
+msgid "message styles were dropped: messages are in plain English"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "not a setting (did you mean '{name}'?)"
+msgstr ""
+
+#: ekos_notifier/config.py
+msgid "not a setting"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "'{name}' isn't used ({why}); it's ignored"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "'{name}' isn't a setting (did you mean '{close}'?); it's ignored"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "'{name}' isn't a setting; it's ignored"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "'language: {language}' has no translation yet, so messages are in English (translations: {languages})"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "'power.{name}' is ignored with battery: mains (no voltage alerts)"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "'power.{name}: {value}' replaces {battery}'s {preset} V; delete it to use the preset's level"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: no such file"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: not valid YAML: {exc}"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: expected keys like 'notify:', found {name}"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: 'notify' must be a list of Apprise URLs (quoted strings)"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: 'language' must be auto or a language code such as de or pt_BR"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: 'alerts' must be a section of settings (key: value)"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: 'digest' must be a section of settings (key: value)"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: 'digest.interval_minutes' must be more than 0"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: 'indi' must be a section of settings (key: value)"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: 'indi.host' must be a host name"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: 'indi.port' must be a port number"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: indi.metrics: {exc}"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: 'messages' must be a section of alert: level lines"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: messages: {exc}"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: 'power' must be a section of settings (key: value)"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: 'power.battery' must be one of {names}"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: 'power.battery: custom' needs low_volts or critical_volts"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: 'power.critical_volts' must be below 'power.low_volts'"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: '{key}' must be true or false"
+msgstr ""
+
+#: ekos_notifier/config.py
+#, python-brace-format
+msgid "{path}: '{key}' must be a number of {unit}, 0 or more"
+msgstr ""
+
 #: ekos_notifier/digest.py
 msgid "meridian flip complete"
 msgstr ""
@@ -512,6 +1062,481 @@ msgstr ""
 msgid "Disk low"
 msgstr ""
 
+#: ekos_notifier/doctor.py
+msgid "ok"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "note"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "warn"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "FAIL"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "Ekos Notifier {version} on Python {python} ({path})"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "the installer's venv ({path}) is broken: the Python it was built on is gone (an OS update?)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "run the installer again; it rebuilds the venv: {installer}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "'ekos-notifier' isn't on your PATH (the service doesn't need it)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{command}, then open a new terminal"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "fix it (`ekos-notifier config check` explains); until then the service records the night but sends nothing"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "no config file: Ekos Notifier records the night but sends nothing"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{command}, then put your notifier under notify:"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "no notifier: the night is recorded, but nothing is sent"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "put an Apprise URL (e.g. pover://USER_KEY@APP_TOKEN) under notify:"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "notify: not a valid Apprise URL: {scheme}://…"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "see https://github.com/caronc/apprise/wiki for the format"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "notify: {names}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "doctor sends nothing: `ekos-notifier test-notify` sends a test"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "the config holds your notifier keys and other users can read it"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "not installed: Ekos Notifier runs only while you run it yourself"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "(starts it with your session)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "running in a terminal (PID {pid})"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "can't read {path}: {exc}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "the service's Python ({python}) is gone: it can't start (an OS update moved Python on?)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "run the installer again: {installer}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "the service file is from an older version (e.g. no `reload`)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "couldn't ask systemd whether it's running"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "running (PID {pid})"
+msgstr ""
+
+#: ekos_notifier/doctor.py ekos_notifier/i18n.py
+msgid "running"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "it failed and isn't running"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "see why: journalctl --user -u ekos-notifier -n 50; then: systemctl --user restart ekos-notifier"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "installed but not running ({state})"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "another copy is running (PID {pid}), probably in a terminal"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{path}: not there yet (made when the service first runs)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{path} is from a newer Ekos Notifier (schema {version}; this one knows up to {count})"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "upgrade Ekos Notifier: {installer}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{path} can't be read: {exc}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{n} session, the last on the night of {night}"
+msgid_plural "{n} sessions, the last on the night of {night}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{n} session"
+msgid_plural "{n} sessions"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ekos_notifier/doctor.py
+msgid "no session bus found (no DBUS_SESSION_BUS_ADDRESS, /run/user/<uid>/bus or KStars process)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "run Ekos Notifier as the user who runs KStars, on the same computer"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "KStars found on D-Bus ({source})"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "Ekos is started and connected to its devices"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "Ekos is started but couldn't connect its devices (see Ekos's log)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "Ekos is {ekos}: start it to check INDI and PHD2 fully"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "Ekos isn't started: start it to check INDI and PHD2 fully"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "KStars isn't running (looked on the {places})"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "start KStars, then run doctor again; Ekos Notifier waits for it by itself"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "no session bus could be reached: {errors}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{count} copies of KStars are running (PIDs {pids}): Ekos Notifier can't tell whose settings to read"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "close all but one"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "KStars (PID {pid}) runs natively"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "network (to reach INDI and PHD2)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "the session bus (to follow Ekos)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "KStars (PID {pid}) is a Flatpak without {missing}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid " or "
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{command}, then restart KStars"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "KStars (PID {pid}) is a Flatpak sharing network and D-Bus"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "the KStars Flatpak can't see your home folder: Disk low may check the wrong disk"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "KStars writes numbers in '{name}', which this computer doesn't have: exposure times and other localized numbers in Ekos's log are left unread"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "add the locale: uncomment {locale} in /etc/locale.gen and run `sudo locale-gen`, then restart the service"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "KStars writes numbers in '{name}' (decimal '{decimal}'): Ekos's log is read in that format"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "KStars runs in '{language}', and its translations can't be read: alerts that read Ekos's log (Autofocus failed, Plate solve failed…) may not fire"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "switch KStars to English (Help > Switch Application Language)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "KStars runs in '{language}': Ekos's log is read through its translations ({count} phrases), so alerts work as in English"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "Ekos is running but nothing answers on {where}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "if your profile's INDI server is on another computer, set indi: host and port in the config"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "no INDI server on {where} (Ekos starts it with your profile)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "INDI server on {where}: {devices}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "recognised: {recognised}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "no power box, weather sensor or camera temperature recognised"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{command} lists the readings that could be mapped in the config"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "its internal guider"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "Ekos uses {guider}: PHD2 isn't needed"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "Ekos is set to guide with PHD2, but nothing answers on {where}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "start PHD2, with Tools > Enable Server on; Ekos Notifier connects by itself once it's up"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "PHD2 isn't running on {where} (Ekos's guider is unknown)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "PHD2 {found} on {where}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "couldn't check the clock (no timedatectl)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "the clock is synchronised"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "the clock isn't synchronised: alert times, twilight and the meridian checks depend on it"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "connect to the internet for a minute, or use a GPS (gpsd with chrony) at a dark site"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "couldn't check the clock"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "where Ekos saved its last frame"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "the home folder (no frames recorded yet)"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "couldn't check the free space in {path}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{n} GB free in {path}, {what}: under the {low} GB alert"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "move finished frames off before the night"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{n} GB free in {path}, {what}"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "Ekos Notifier doctor ({version})"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "Install"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "Config"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "Service"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "Database"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "KStars and Ekos"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "INDI"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "PHD2"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "Clock"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "Disk"
+msgstr ""
+
+#: ekos_notifier/doctor.py
+msgid "All good."
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{n} problem"
+msgid_plural "{n} problems"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{n} warning"
+msgid_plural "{n} warnings"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{problems} and {warnings}: the → lines say what to do."
+msgstr ""
+
+#: ekos_notifier/doctor.py
+#, python-brace-format
+msgid "{problems}: the → lines say what to do."
+msgstr ""
+
 #: ekos_notifier/focus.py
 #, python-brace-format
 msgid "Autofocus has failed {n} time in a row (last at {time})."
@@ -647,7 +1672,7 @@ msgstr ""
 msgid "Guiding is back under {limit}″."
 msgstr ""
 
-#: ekos_notifier/guiding.py
+#: ekos_notifier/guiding.py ekos_notifier/messages.py
 msgid "Guiding back within limits"
 msgstr ""
 
@@ -735,7 +1760,7 @@ msgstr ""
 msgid "complete"
 msgstr ""
 
-#: ekos_notifier/i18n.py
+#: ekos_notifier/i18n.py ekos_notifier/indi/dump.py
 msgid "connected"
 msgstr ""
 
@@ -856,10 +1881,6 @@ msgid "startup"
 msgstr ""
 
 #: ekos_notifier/i18n.py
-msgid "running"
-msgstr ""
-
-#: ekos_notifier/i18n.py
 msgid "shutdown"
 msgstr ""
 
@@ -901,6 +1922,231 @@ msgstr ""
 
 #: ekos_notifier/i18n.py
 msgid "no filter"
+msgstr ""
+
+#: ekos_notifier/indi/dump.py
+msgid "no interfaces reported"
+msgstr ""
+
+#: ekos_notifier/indi/dump.py
+msgid "not connected (connect it in Ekos first)"
+msgstr ""
+
+#: ekos_notifier/indi/dump.py
+#, python-brace-format
+msgid "{device}: {driver} ({interfaces}), {state}"
+msgstr ""
+
+#: ekos_notifier/indi/dump.py
+msgid "unknown driver"
+msgstr ""
+
+#: ekos_notifier/indi/dump.py
+#, python-brace-format
+msgid "recognised: {metrics}"
+msgstr ""
+
+#: ekos_notifier/indi/dump.py
+#, python-brace-format
+msgid "candidate: \"{device} / {property}.{element}\" = {value}"
+msgstr ""
+
+#: ekos_notifier/legacy.py
+#, python-brace-format
+msgid "Moved {config} to {config2} (Town Crier is now Ekos Notifier)."
+msgstr ""
+
+#: ekos_notifier/legacy.py
+#, python-brace-format
+msgid "Not moving {old} yet: an old Town Crier process still has its database open. Stop it, then run Ekos Notifier again."
+msgstr ""
+
+#: ekos_notifier/legacy.py
+#, python-brace-format
+msgid "Moved {old} to {new} (Town Crier is now Ekos Notifier)."
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Ekos stopped with the mount unparked"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Battery at or under the critical voltage"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Ekos reports a failed meridian flip"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Still unflipped well past the flip time"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Guiding stopped and hasn't recovered"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "PHD2 raised a warning or error"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Guiding over Ekos's deviation limit"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Capture aborted, with Ekos's reason"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "The Scheduler aborted"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Capture busy but making no progress"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Autofocus failed twice in a row"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Ekos couldn't solve a frame"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Guide star or frames dimming: clouds or dew"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Dew margin small or humidity high"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Camera drifted above its setpoint"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Camera never reached its setpoint"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Battery at or under the low voltage"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "A power box output switched off"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "A power box output stopped drawing current"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Little disk space left for frames"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "A session started"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "A session ended: frames, integration, mount"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Astronomical dawn is near"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "The target sinks below the altitude limit soon"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Filters with lights but no flats tonight"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Darks starting: cover the telescope"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "The mount is parked again"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Battery voltage back up"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "The meridian flip completed"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Guiding is back"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Capture is making progress again"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "A frame solved again"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Stars bright again"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Conditions drier again"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Camera back at its setpoint"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "A power box output is back"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Disk space back over the limit"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Ekos will flip soon (in the digest)"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "The hourly digest (its Attention form is Normal)"
+msgstr ""
+
+#: ekos_notifier/messages.py
+#, python-brace-format
+msgid "unknown alert '{name}' (did you mean '{close}'?); `ekos-notifier config alerts` lists them"
+msgstr ""
+
+#: ekos_notifier/messages.py
+#, python-brace-format
+msgid "unknown alert '{name}'; `ekos-notifier config alerts` lists them"
+msgstr ""
+
+#: ekos_notifier/messages.py
+#, python-brace-format
+msgid "'{name}' must be one of {levels}, not {value}"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "'digest' can be off, quiet, normal, high or emergency"
+msgstr ""
+
+#: ekos_notifier/notify.py
+msgid "not a valid Apprise URL"
+msgstr ""
+
+#: ekos_notifier/notify.py
+msgid "send failed"
 msgstr ""
 
 #: ekos_notifier/power.py
@@ -1137,8 +2383,83 @@ msgid "Session summary"
 msgstr ""
 
 #: ekos_notifier/simulate.py
+msgid "Emergency"
+msgstr ""
+
+#: ekos_notifier/simulate.py
+msgid "High"
+msgstr ""
+
+#: ekos_notifier/simulate.py
+msgid "Normal"
+msgstr ""
+
+#: ekos_notifier/simulate.py
+msgid "Quiet"
+msgstr ""
+
+#: ekos_notifier/simulate.py
+msgid "the sample night (M 31 on the KStars simulators)"
+msgstr ""
+
+#: ekos_notifier/simulate.py
+#, python-brace-format
+msgid "(KStars in '{language}', read through its translations)"
+msgstr ""
+
+#: ekos_notifier/simulate.py
+#, python-brace-format
+msgid "(KStars in '{language}', whose translations aren't installed here: alerts that read Ekos's log may be missing)"
+msgstr ""
+
+#: ekos_notifier/simulate.py
+#, python-brace-format
+msgid "'{which}' matches {len} sessions: give more of the id"
+msgstr ""
+
+#: ekos_notifier/simulate.py
+msgid "no imaging session in the database yet"
+msgstr ""
+
+#: ekos_notifier/simulate.py
+#, python-brace-format
+msgid "no session '{id}' (see --list)"
+msgstr ""
+
+#: ekos_notifier/simulate.py
+#, python-brace-format
+msgid "your session of the night of {night} (started {time}, {id})"
+msgstr ""
+
+#: ekos_notifier/simulate.py
+#, python-brace-format
+msgid "Simulating {night}."
+msgstr ""
+
+#: ekos_notifier/simulate.py
+#, python-brace-format
+msgid "{priority} (digest)"
+msgstr ""
+
+#: ekos_notifier/simulate.py
+msgid "No alerts."
+msgstr ""
+
+#: ekos_notifier/simulate.py
+#, python-brace-format
+msgid "{sent} alert would be sent at once, {held} held for the digest."
+msgid_plural "{sent} alerts would be sent at once, {held} held for the digest."
+msgstr[0] ""
+msgstr[1] ""
+
+#: ekos_notifier/simulate.py
 #, python-brace-format
 msgid "[Simulated] {title}"
+msgstr ""
+
+#: ekos_notifier/simulate.py
+#, python-brace-format
+msgid "{path}: no database yet (has the service run?)"
 msgstr ""
 
 #: ekos_notifier/sky.py
@@ -1285,4 +2606,424 @@ msgstr ""
 #: ekos_notifier/stats.py
 #, python-brace-format
 msgid "Problems: {problems}."
+msgstr ""
+
+#: ekos_notifier/store.py
+#, python-brace-format
+msgid "{path} has schema {version}; this Ekos Notifier knows up to {known}. Upgrade Ekos Notifier, or use a different database."
+msgstr ""
+
+#: ekos_notifier/systemd.py
+#, python-brace-format
+msgid "Wrote {path}"
+msgstr ""
+
+#: ekos_notifier/systemd.py
+msgid "Enabled: it starts with your user session. Restarted it, so it runs this version."
+msgstr ""
+
+#: ekos_notifier/systemd.py
+msgid "Enabled: it starts with your user session and is running now."
+msgstr ""
+
+#: ekos_notifier/systemd.py
+msgid "Enabled: it starts with your user session."
+msgstr ""
+
+#: ekos_notifier/systemd.py
+msgid "It starts when you log in (as KStars does on StellarMate). To start it at boot without a login, run: loginctl enable-linger"
+msgstr ""
+
+#: ekos_notifier/systemd.py
+msgid "Logs: journalctl --user -u ekos-notifier -f"
+msgstr ""
+
+#: ekos_notifier/systemd.py
+#, python-brace-format
+msgid "No {unit} installed."
+msgstr ""
+
+#: ekos_notifier/systemd.py
+#, python-brace-format
+msgid "Stopped, disabled and removed {path}."
+msgstr ""
+
+#: ekos_notifier/systemd.py
+#, python-brace-format
+msgid "systemctl --user {command} failed: {detail}"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "an answer is needed (Ctrl-C to leave)"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "Choose 1-{count} [{default}]: "
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "a number from 1 to {count}"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "a number from {low} to {high}"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Pushover (phone app; can repeat an Emergency until you acknowledge it)"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "ntfy (free phone app, no account needed)"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Telegram (a bot of your own)"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Discord (a channel webhook)"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "another service: paste an Apprise URL"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "not a URL Apprise understands"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Your user key is at the top of https://pushover.net once you're logged in."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "For the token, create an application there (call it Ekos Notifier)."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "that's 30 letters and digits"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "User key"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Application token"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Install the ntfy app and subscribe to a topic. On ntfy.sh anyone who knows the"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "topic can read it, so make it hard to guess."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Topic"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Server"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Create a bot with @BotFather (it gives you the token), send your bot a message,"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "then find your chat id (e.g. with @userinfobot)."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Bot token"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Chat id"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "In Discord: channel settings > Integrations > Webhooks > New Webhook > Copy URL."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Webhook URL"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Any Apprise URL works: https://github.com/caronc/apprise/wiki"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "URL"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "== Notifications =="
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "You have: {notifiers}"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "What would you like to do?"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "keep them"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "add another"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "replace them"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Set up a notifier now? (Without one, nights are recorded but nothing is sent.)"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Which service?"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "You have that one already."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Send it a test message now?"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Sending…"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Sent. Check your phone."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Did it arrive?"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Check the details you entered, and the app's notification settings."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Try again?"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "It didn't send: {error}"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Keep it anyway?"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Add another notifier?"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "== Battery =="
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "Your power box reads {voltage} V now."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "No power box voltage recognised on INDI: battery alerts need one."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "What powers the rig?"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "12 V lead-acid/AGM (low 12.0 V, critical 11.5 V)"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "12 V LiFePO4 (low 12.8 V, critical 12.0 V)"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "mains power (no battery alerts)"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "another battery: I'll give the levels"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "Your config sets its own levels ({mine}). Keep them?"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Battery low at or under (V)"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Battery critical at or under (V)"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "== Hourly digest =="
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "During a session: a silent \"All's well\" with progress and conditions, or"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "\"Attention\" when something's wrong."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Send it?"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Every how many minutes"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "notify: {url} (tested)"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "notify: none (the night is recorded, nothing is sent)"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "mains, no battery alerts"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "low at {volts} V"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "critical at {volts} V"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "every {minutes} min"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "off"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "battery: {battery}"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "digest: {digest}"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "Your config has a mistake: {exc}"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Fix it first (ekos-notifier config check explains), then run setup again."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Ekos Notifier setup"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "Your answers go into {path}; the rest of the file is kept as it is."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Enter keeps the answer in [brackets]. Ctrl-C leaves without saving."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "== Your rig =="
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "== Ready =="
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "Save to {path}?"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Nothing saved."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Your config is laid out in a way setup can't edit safely, so it's unchanged."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "Put these settings in {path} by hand (replacing the ones there):"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "Saved {path} (the old one is {backup})."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+#, python-brace-format
+msgid "Saved {path}."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "The service applies it by itself within a few seconds."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Ekos Notifier isn't set to run by itself yet."
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Start it now, and with your session from now on (systemd user service)?"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "Next:"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "with KStars and Ekos running: checks everything"
+msgstr ""
+
+#: ekos_notifier/wizard.py
+msgid "a sample night: the alerts you'd get"
 msgstr ""

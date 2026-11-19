@@ -201,8 +201,8 @@ change:
 language: auto             # your system's language, or a code: en, de, pt_BR …
 ```
 
-Messages are in English until a translation for your language exists; translating is one file
-and needs no Python (see [CONTRIBUTING.md](https://github.com/anandvn/ekos-notifier/blob/main/CONTRIBUTING.md#translating)).
+Alerts and the terminal (`doctor`, `setup`…) are in English until a translation for your
+language exists; translating is one file and needs no Python (see [CONTRIBUTING.md](https://github.com/anandvn/ekos-notifier/blob/main/CONTRIBUTING.md#translating)).
 
 ### Battery
 

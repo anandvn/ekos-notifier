@@ -27,6 +27,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import N_, _
 
 LEVELS = ("off", "digest", "quiet", "normal", "high", "emergency")
 PRIORITIES = ("quiet", "normal", "high", "emergency")
@@ -53,52 +54,54 @@ class Alert:
 A = Alert
 ALERTS: dict[str, Alert] = {
     # Emergency
-    "ekos_stopped_mount_unparked": A("emergency", False, "Ekos stopped with the mount unparked"),
-    "battery_critical": A("emergency", False, "Battery at or under the critical voltage"),
-    "meridian_flip_failed": A("emergency", False, "Ekos reports a failed meridian flip"),
-    "meridian_flip_overdue": A("emergency", False, "Still unflipped well past the flip time"),
+    "ekos_stopped_mount_unparked": A(
+        "emergency", False, N_("Ekos stopped with the mount unparked")
+    ),
+    "battery_critical": A("emergency", False, N_("Battery at or under the critical voltage")),
+    "meridian_flip_failed": A("emergency", False, N_("Ekos reports a failed meridian flip")),
+    "meridian_flip_overdue": A("emergency", False, N_("Still unflipped well past the flip time")),
     # High
-    "guiding_lost": A("high", False, "Guiding stopped and hasn't recovered"),
-    "phd2_warning": A("high", False, "PHD2 raised a warning or error"),
-    "guiding_poor": A("high", False, "Guiding over Ekos's deviation limit"),
-    "capture_aborted": A("high", False, "Capture aborted, with Ekos's reason"),
-    "scheduler_aborted": A("high", False, "The Scheduler aborted"),
-    "capture_stalled": A("high", False, "Capture busy but making no progress"),
-    "autofocus_failed": A("high", False, "Autofocus failed twice in a row"),
-    "plate_solve_failed": A("high", False, "Ekos couldn't solve a frame"),
-    "clouds": A("high", False, "Guide star or frames dimming: clouds or dew"),
-    "dew_risk": A("high", False, "Dew margin small or humidity high"),
-    "cooler_cant_hold": A("high", False, "Camera drifted above its setpoint"),
-    "cooler_cant_reach": A("high", False, "Camera never reached its setpoint"),
-    "battery_low": A("high", False, "Battery at or under the low voltage"),
-    "power_output_off": A("high", False, "A power box output switched off"),
-    "power_output_dead": A("high", False, "A power box output stopped drawing current"),
-    "disk_low": A("high", False, "Little disk space left for frames"),
+    "guiding_lost": A("high", False, N_("Guiding stopped and hasn't recovered")),
+    "phd2_warning": A("high", False, N_("PHD2 raised a warning or error")),
+    "guiding_poor": A("high", False, N_("Guiding over Ekos's deviation limit")),
+    "capture_aborted": A("high", False, N_("Capture aborted, with Ekos's reason")),
+    "scheduler_aborted": A("high", False, N_("The Scheduler aborted")),
+    "capture_stalled": A("high", False, N_("Capture busy but making no progress")),
+    "autofocus_failed": A("high", False, N_("Autofocus failed twice in a row")),
+    "plate_solve_failed": A("high", False, N_("Ekos couldn't solve a frame")),
+    "clouds": A("high", False, N_("Guide star or frames dimming: clouds or dew")),
+    "dew_risk": A("high", False, N_("Dew margin small or humidity high")),
+    "cooler_cant_hold": A("high", False, N_("Camera drifted above its setpoint")),
+    "cooler_cant_reach": A("high", False, N_("Camera never reached its setpoint")),
+    "battery_low": A("high", False, N_("Battery at or under the low voltage")),
+    "power_output_off": A("high", False, N_("A power box output switched off")),
+    "power_output_dead": A("high", False, N_("A power box output stopped drawing current")),
+    "disk_low": A("high", False, N_("Little disk space left for frames")),
     # Normal, sent at once
-    "session_started": A("normal", True, "A session started"),
-    "session_summary": A("normal", True, "A session ended: frames, integration, mount"),
-    "twilight_coming": A("normal", True, "Astronomical dawn is near"),
-    "target_low": A("normal", True, "The target sinks below the altitude limit soon"),
-    "flats_reminder": A("normal", True, "Filters with lights but no flats tonight"),
-    "darks_reminder": A("normal", True, "Darks starting: cover the telescope", off=True),
+    "session_started": A("normal", True, N_("A session started")),
+    "session_summary": A("normal", True, N_("A session ended: frames, integration, mount")),
+    "twilight_coming": A("normal", True, N_("Astronomical dawn is near")),
+    "target_low": A("normal", True, N_("The target sinks below the altitude limit soon")),
+    "flats_reminder": A("normal", True, N_("Filters with lights but no flats tonight")),
+    "darks_reminder": A("normal", True, N_("Darks starting: cover the telescope"), off=True),
     # All-clears
-    "mount_unparked_cleared": A("normal", True, "The mount is parked again",
+    "mount_unparked_cleared": A("normal", True, N_("The mount is parked again"),
                                 "ekos_stopped_mount_unparked"),
-    "battery_ok": A("normal", True, "Battery voltage back up", "battery_low"),
-    "meridian_flip_done": A("normal", True, "The meridian flip completed",
+    "battery_ok": A("normal", True, N_("Battery voltage back up"), "battery_low"),
+    "meridian_flip_done": A("normal", True, N_("The meridian flip completed"),
                             "meridian_flip_failed"),
-    "guiding_recovered": A("normal", True, "Guiding is back", "guiding_lost"),
-    "guiding_poor_cleared": A("normal", True, "Guiding back within limits", "guiding_poor"),
-    "capture_running": A("normal", True, "Capture is making progress again", "capture_stalled"),
-    "plate_solve_ok": A("normal", True, "A frame solved again", "plate_solve_failed"),
-    "clouds_cleared": A("normal", True, "Stars bright again", "clouds"),
-    "dew_risk_cleared": A("normal", False, "Conditions drier again", "dew_risk"),
-    "cooler_ok": A("normal", True, "Camera back at its setpoint", "cooler_cant_hold"),
-    "power_output_back": A("normal", True, "A power box output is back", "power_output_off"),
-    "disk_ok": A("normal", True, "Disk space back over the limit", "disk_low"),
+    "guiding_recovered": A("normal", True, N_("Guiding is back"), "guiding_lost"),
+    "guiding_poor_cleared": A("normal", True, N_("Guiding back within limits"), "guiding_poor"),
+    "capture_running": A("normal", True, N_("Capture is making progress again"), "capture_stalled"),
+    "plate_solve_ok": A("normal", True, N_("A frame solved again"), "plate_solve_failed"),
+    "clouds_cleared": A("normal", True, N_("Stars bright again"), "clouds"),
+    "dew_risk_cleared": A("normal", False, N_("Conditions drier again"), "dew_risk"),
+    "cooler_ok": A("normal", True, N_("Camera back at its setpoint"), "cooler_cant_hold"),
+    "power_output_back": A("normal", True, N_("A power box output is back"), "power_output_off"),
+    "disk_ok": A("normal", True, N_("Disk space back over the limit"), "disk_low"),
     # Quiet
-    "meridian_flip_soon": A("quiet", False, "Ekos will flip soon (in the digest)"),
-    "digest": A("quiet", True, "The hourly digest (its Attention form is Normal)"),
+    "meridian_flip_soon": A("quiet", False, N_("Ekos will flip soon (in the digest)")),
+    "digest": A("quiet", True, N_("The hourly digest (its Attention form is Normal)")),
 }  # fmt: skip
 # All-clears that also clear a second problem.
 ALSO_CLEARS = {
@@ -124,15 +127,23 @@ class MessageSettings:
             name = str(name)
             if name not in ALERTS:
                 close = difflib.get_close_matches(name, ALERTS, n=1)
-                hint = f" (did you mean '{close[0]}'?)" if close else ""
-                raise SettingsError(
-                    f"unknown alert '{name}'{hint}; `ekos-notifier config alerts` lists them"
-                )
+                if close:
+                    text = _(
+                        "unknown alert '{name}' (did you mean '{close}'?); `ekos-notifier config"
+                        " alerts` lists them"
+                    )
+                else:
+                    text = _("unknown alert '{name}'; `ekos-notifier config alerts` lists them")
+                raise SettingsError(text.format(name=name, close=close[0] if close else ""))
             level = "off" if value is False else str(value).lower()
             if level not in LEVELS:
-                raise SettingsError(f"'{name}' must be one of {' | '.join(LEVELS)}, not {value!r}")
+                raise SettingsError(
+                    _("'{name}' must be one of {levels}, not {value}").format(
+                        name=name, levels=" | ".join(LEVELS), value=repr(value)
+                    )
+                )
             if name == "digest" and level == "digest":
-                raise SettingsError("'digest' can be off, quiet, normal, high or emergency")
+                raise SettingsError(_("'digest' can be off, quiet, normal, high or emergency"))
             levels[name] = level
         return cls(levels)
 

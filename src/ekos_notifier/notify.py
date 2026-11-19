@@ -27,6 +27,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from ekos_notifier.i18n import _
 from ekos_notifier.store import Store
 
 log = logging.getLogger(__name__)
@@ -76,13 +77,13 @@ def send_apprise(url: str, priority: str, title: str, body: str) -> str | None:
         title = TITLE_PREFIX.get(priority, "") + title
     ap = apprise.Apprise()
     if not ap.add(target):
-        return "not a valid Apprise URL"
+        return _("not a valid Apprise URL")
     with apprise.LogCapture(level=logging.WARNING) as captured:
         ok = ap.notify(title=title, body=body)
         details = captured.getvalue().strip()
     if ok:
         return None
-    return (details.splitlines()[-1] if details else "send failed")[:500]
+    return (details.splitlines()[-1] if details else _("send failed"))[:500]
 
 
 def init_cursor(store: Store) -> None:

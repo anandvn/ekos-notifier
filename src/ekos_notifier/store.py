@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from ekos_notifier.events import Event
+from ekos_notifier.i18n import _
 
 log = logging.getLogger(__name__)
 
@@ -161,8 +162,10 @@ class Store:
             # Written by a newer Ekos Notifier (this is a downgrade): refuse rather than write
             # to a schema this version doesn't know.
             raise IncompatibleDatabase(
-                f"{self.path} has schema {version}; this Ekos Notifier knows up to "
-                f"{len(MIGRATIONS)}. Upgrade Ekos Notifier, or use a different database."
+                _(
+                    "{path} has schema {version}; this Ekos Notifier knows up to {known}."
+                    " Upgrade Ekos Notifier, or use a different database."
+                ).format(path=self.path, version=version, known=len(MIGRATIONS))
             )
         for number, script in enumerate(MIGRATIONS[version:], start=version + 1):
             with self.db:

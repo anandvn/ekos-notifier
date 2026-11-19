@@ -5,12 +5,13 @@ Semantic Versioning.
 
 ## Unreleased
 
-- **Messages can be translated.** Every message that reaches your phone (alerts, the hourly
-  digest, the session summary) is ready for translation with gettext: a translation is one
-  `.po` file, made with Poedit or `msginit`, no Python needed (see CONTRIBUTING.md,
-  "Translating"). The new `language:` setting picks it: `auto` (your system's language, the
-  default) or a code such as `de`. No translations ship yet, so messages stay in English.
-  `doctor`, `setup` and the other terminal messages come next.
+- **Messages can be translated.** Everything Ekos Notifier says is ready for translation with
+  gettext: alerts, the hourly digest and the session summary on your phone, and in the terminal
+  `doctor`, `setup`, `--help`, `config check` and `config alerts`, `simulate`, `indi-dump`,
+  `install-service` and config errors. A translation is one `.po` file, made with Poedit or
+  `msginit`, no Python needed (see CONTRIBUTING.md, "Translating"). The new `language:`
+  setting picks it: `auto` (your system's language, the default) or a code such as `de`. No
+  translations ship yet, so everything stays in English. Log lines stay English.
 
 ## 0.2.0 — 2026-11-19
 

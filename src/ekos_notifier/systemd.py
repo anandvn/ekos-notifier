@@ -16,6 +16,8 @@ import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+from ekos_notifier.i18n import _
+
 UNIT = "ekos-notifier.service"
 
 Runner = Callable[[Sequence[str]], "subprocess.CompletedProcess[str]"]
@@ -78,41 +80,49 @@ def install(
     path = unit_dir() / UNIT
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(unit_text(config=config))
-    lines = [f"Wrote {path}"]
+    lines = [_("Wrote {path}").format(path=path)]
     _systemctl(runner, "daemon-reload")
     if restart:
         _systemctl(runner, "enable", UNIT)
         _systemctl(runner, "restart", UNIT)
         lines.append(
-            "Enabled: it starts with your user session. Restarted it, so it runs this version."
+            _("Enabled: it starts with your user session. Restarted it, so it runs this version.")
         )
     else:
         _systemctl(runner, "enable", *(["--now"] if start else []), UNIT)
         lines.append(
-            "Enabled: it starts with your user session" + (" and is running now." if start else ".")
+            _("Enabled: it starts with your user session and is running now.")
+            if start
+            else _("Enabled: it starts with your user session.")
         )
     linger = runner(["loginctl", "show-user", os.environ.get("USER", ""), "-p", "Linger"])
     if linger.returncode == 0 and linger.stdout.strip() == "Linger=no":
         lines.append(
-            "It starts when you log in (as KStars does on StellarMate). To start it at boot "
-            "without a login, run: loginctl enable-linger"
+            _(
+                "It starts when you log in (as KStars does on StellarMate). To start it at boot"
+                " without a login, run: loginctl enable-linger"
+            )
         )
-    lines.append("Logs: journalctl --user -u ekos-notifier -f")
+    lines.append(_("Logs: journalctl --user -u ekos-notifier -f"))
     return lines
 
 
 def uninstall(runner: Runner = run) -> list[str]:
     path = unit_dir() / UNIT
     if not path.exists():
-        return [f"No {UNIT} installed."]
+        return [_("No {unit} installed.").format(unit=UNIT)]
     _systemctl(runner, "disable", "--now", UNIT)
     path.unlink()
     _systemctl(runner, "daemon-reload")
-    return [f"Stopped, disabled and removed {path}."]
+    return [_("Stopped, disabled and removed {path}.").format(path=path)]
 
 
 def _systemctl(runner: Runner, *args: str) -> None:
     result = runner(["systemctl", "--user", *args])
     if result.returncode != 0:
         detail = (result.stderr or result.stdout).strip()
-        raise RuntimeError(f"systemctl --user {' '.join(args)} failed: {detail}")
+        raise RuntimeError(
+            _("systemctl --user {command} failed: {detail}").format(
+                command=" ".join(args), detail=detail
+            )
+        )

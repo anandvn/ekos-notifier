@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ekos_notifier import config as config_module
+from ekos_notifier.i18n import N_, _
 from ekos_notifier.power import BATTERIES
 
 
@@ -58,7 +59,7 @@ class Prompter:
         """An answer that can't be empty; ``check`` returns why one is wrong, or None."""
         while True:
             answer = self._ask(f"{question}: ")
-            problem = "an answer is needed (Ctrl-C to leave)" if not answer else None
+            problem = _("an answer is needed (Ctrl-C to leave)") if not answer else None
             if answer and check:
                 problem = check(answer)
             if problem is None:
@@ -85,12 +86,14 @@ class Prompter:
             self.say(f"  {i}. {label}{mark_it}")
         number = next(i for i, (key, _) in enumerate(options, start=1) if key == default)
         while True:
-            answer = self._ask(f"Choose 1-{len(options)} [{number}]: ")
+            answer = self._ask(
+                _("Choose 1-{count} [{default}]: ").format(count=len(options), default=number)
+            )
             if not answer:
                 return default
             if answer.isdigit() and 1 <= int(answer) <= len(options):
                 return options[int(answer) - 1][0]
-            self.say(f"  a number from 1 to {len(options)}")
+            self.say("  " + _("a number from 1 to {count}").format(count=len(options)))
 
     def number(self, question: str, default: float, low: float, high: float) -> float:
         while True:
@@ -103,7 +106,9 @@ class Prompter:
                 value = None
             if value is not None and low <= value <= high:
                 return value
-            self.say(f"  a number from {low:g} to {high:g}")
+            self.say(
+                "  " + _("a number from {low} to {high}").format(low=f"{low:g}", high=f"{high:g}")
+            )
 
 
 # -- editing the config text ----------------------------------------------------------------
@@ -298,11 +303,11 @@ def save(path: Path, text: str) -> Path | None:
 
 PUSHOVER_KEY = re.compile(r"^[A-Za-z0-9]{30}$")
 SERVICES = [
-    ("pushover", "Pushover (phone app; can repeat an Emergency until you acknowledge it)"),
-    ("ntfy", "ntfy (free phone app, no account needed)"),
-    ("telegram", "Telegram (a bot of your own)"),
-    ("discord", "Discord (a channel webhook)"),
-    ("other", "another service: paste an Apprise URL"),
+    ("pushover", N_("Pushover (phone app; can repeat an Emergency until you acknowledge it)")),
+    ("ntfy", N_("ntfy (free phone app, no account needed)")),
+    ("telegram", N_("Telegram (a bot of your own)")),
+    ("discord", N_("Discord (a channel webhook)")),
+    ("other", N_("another service: paste an Apprise URL")),
 ]
 
 
@@ -315,48 +320,48 @@ def _private(url: str) -> str:
 def _valid(url: str) -> str | None:
     import apprise
 
-    return None if apprise.Apprise().add(url) else "not a URL Apprise understands"
+    return None if apprise.Apprise().add(url) else _("not a URL Apprise understands")
 
 
 def ask_url(p: Prompter, service: str) -> str:
     if service == "pushover":
-        p.say("Your user key is at the top of https://pushover.net once you're logged in.")
-        p.say("For the token, create an application there (call it Ekos Notifier).")
+        p.say(_("Your user key is at the top of https://pushover.net once you're logged in."))
+        p.say(_("For the token, create an application there (call it Ekos Notifier)."))
 
         def key(answer: str) -> str | None:
-            return None if PUSHOVER_KEY.match(answer) else "that's 30 letters and digits"
+            return None if PUSHOVER_KEY.match(answer) else _("that's 30 letters and digits")
 
-        user = p.required("User key", key)
-        token = p.required("Application token", key)
+        user = p.required(_("User key"), key)
+        token = p.required(_("Application token"), key)
         return f"pover://{user}@{token}"
     if service == "ntfy":
-        p.say("Install the ntfy app and subscribe to a topic. On ntfy.sh anyone who knows the")
-        p.say("topic can read it, so make it hard to guess.")
-        topic = p.text("Topic", f"ekos-{secrets.token_hex(5)}")
-        server = p.text("Server", "ntfy.sh")
+        p.say(_("Install the ntfy app and subscribe to a topic. On ntfy.sh anyone who knows the"))
+        p.say(_("topic can read it, so make it hard to guess."))
+        topic = p.text(_("Topic"), f"ekos-{secrets.token_hex(5)}")
+        server = p.text(_("Server"), "ntfy.sh")
         return f"ntfys://{server}/{topic}"
     if service == "telegram":
-        p.say("Create a bot with @BotFather (it gives you the token), send your bot a message,")
-        p.say("then find your chat id (e.g. with @userinfobot).")
-        token = p.required("Bot token")
-        chat = p.required("Chat id")
+        p.say(_("Create a bot with @BotFather (it gives you the token), send your bot a message,"))
+        p.say(_("then find your chat id (e.g. with @userinfobot)."))
+        token = p.required(_("Bot token"))
+        chat = p.required(_("Chat id"))
         return f"tgram://{token}/{chat}"
     if service == "discord":
-        p.say("In Discord: channel settings > Integrations > Webhooks > New Webhook > Copy URL.")
-        return p.required("Webhook URL", _valid)
-    p.say("Any Apprise URL works: https://github.com/caronc/apprise/wiki")
-    return p.required("URL", _valid)
+        p.say(_("In Discord: channel settings > Integrations > Webhooks > New Webhook > Copy URL."))
+        return p.required(_("Webhook URL"), _valid)
+    p.say(_("Any Apprise URL works: https://github.com/caronc/apprise/wiki"))
+    return p.required(_("URL"), _valid)
 
 
 def ask_notify(p: Prompter, current: list[str], send: Callable[[str], str | None]) -> Answers:
     a = Answers(notify=list(current))
     p.say("")
-    p.say("== Notifications ==")
+    p.say(_("== Notifications =="))
     if current:
-        p.say("You have: " + ", ".join(_private(u) for u in current))
+        p.say(_("You have: {notifiers}").format(notifiers=", ".join(_private(u) for u in current)))
         what = p.choice(
-            "What would you like to do?",
-            [("keep", "keep them"), ("add", "add another"), ("replace", "replace them")],
+            _("What would you like to do?"),
+            [("keep", _("keep them")), ("add", _("add another")), ("replace", _("replace them"))],
             "keep",
         )
         if what == "keep":
@@ -364,51 +369,53 @@ def ask_notify(p: Prompter, current: list[str], send: Callable[[str], str | None
         if what == "replace":
             a.notify = []
     elif not p.yes(
-        "Set up a notifier now? (Without one, nights are recorded but nothing is sent.)"
+        _("Set up a notifier now? (Without one, nights are recorded but nothing is sent.)")
     ):
         return a
     while True:
-        url = ask_url(p, p.choice("Which service?", SERVICES, "pushover", mark=""))
+        url = ask_url(
+            p, p.choice(_("Which service?"), [(k, _(v)) for k, v in SERVICES], "pushover", mark="")
+        )
         if url in a.notify:
-            p.say("You have that one already.")
-        elif p.yes("Send it a test message now?"):
-            p.say("Sending…")
+            p.say(_("You have that one already."))
+        elif p.yes(_("Send it a test message now?")):
+            p.say(_("Sending…"))
             error = send(url)
             if error is None:
-                p.say("Sent. Check your phone.")
+                p.say(_("Sent. Check your phone."))
                 a.tested.add(url)
-                if not p.yes("Did it arrive?"):
-                    p.say("Check the details you entered, and the app's notification settings.")
-                    if p.yes("Try again?"):
+                if not p.yes(_("Did it arrive?")):
+                    p.say(_("Check the details you entered, and the app's notification settings."))
+                    if p.yes(_("Try again?")):
                         continue
             else:
-                p.say(f"It didn't send: {error}")
-                if p.yes("Try again?"):
+                p.say(_("It didn't send: {error}").format(error=error))
+                if p.yes(_("Try again?")):
                     continue
-                if not p.yes("Keep it anyway?", default=False):
+                if not p.yes(_("Keep it anyway?"), default=False):
                     url = ""
             if url:
                 a.notify.append(url)
         else:
             a.notify.append(url)
-        if not p.yes("Add another notifier?", default=False):
+        if not p.yes(_("Add another notifier?"), default=False):
             return a
 
 
 def ask_power(p: Prompter, cfg: config_module.Config, a: Answers, seen: Seen) -> None:
     p.say("")
-    p.say("== Battery ==")
+    p.say(_("== Battery =="))
     if seen.voltage is not None:
-        p.say(f"Your power box reads {seen.voltage:.1f} V now.")
+        p.say(_("Your power box reads {voltage} V now.").format(voltage=f"{seen.voltage:.1f}"))
     elif seen.indi:
-        p.say("No power box voltage recognised on INDI: battery alerts need one.")
+        p.say(_("No power box voltage recognised on INDI: battery alerts need one."))
     a.battery = p.choice(
-        "What powers the rig?",
+        _("What powers the rig?"),
         [
-            ("agm_12v", "12 V lead-acid/AGM (low 12.0 V, critical 11.5 V)"),
-            ("lifepo4_12v", "12 V LiFePO4 (low 12.8 V, critical 12.0 V)"),
-            ("mains", "mains power (no battery alerts)"),
-            ("custom", "another battery: I'll give the levels"),
+            ("agm_12v", _("12 V lead-acid/AGM (low 12.0 V, critical 11.5 V)")),
+            ("lifepo4_12v", _("12 V LiFePO4 (low 12.8 V, critical 12.0 V)")),
+            ("mains", _("mains power (no battery alerts)")),
+            ("custom", _("another battery: I'll give the levels")),
         ],
         cfg.battery if cfg.battery in ("agm_12v", "lifepo4_12v", "mains", "custom") else "agm_12v",
     )
@@ -416,13 +423,16 @@ def ask_power(p: Prompter, cfg: config_module.Config, a: Answers, seen: Seen) ->
     own = {k: power[k] for k in ("low_volts", "critical_volts") if power.get(k) is not None}
     if a.battery in ("agm_12v", "lifepo4_12v") and own:
         mine = ", ".join(f"{k.split('_')[0]} {v:g} V" for k, v in own.items())
-        if p.yes(f"Your config sets its own levels ({mine}). Keep them?", default=False):
+        if p.yes(
+            _("Your config sets its own levels ({mine}). Keep them?").format(mine=mine),
+            default=False,
+        ):
             a.low_volts = cfg.low_volts if "low_volts" in own else None
             a.critical_volts = cfg.critical_volts if "critical_volts" in own else None
     if a.battery == "custom":
-        a.low_volts = p.number("Battery low at or under (V)", cfg.low_volts or 12.0, 5, 60)
+        a.low_volts = p.number(_("Battery low at or under (V)"), cfg.low_volts or 12.0, 5, 60)
         a.critical_volts = p.number(
-            "Battery critical at or under (V)",
+            _("Battery critical at or under (V)"),
             min(cfg.critical_volts or 11.5, a.low_volts),
             5,
             a.low_volts,
@@ -431,13 +441,15 @@ def ask_power(p: Prompter, cfg: config_module.Config, a: Answers, seen: Seen) ->
 
 def ask_digest(p: Prompter, cfg: config_module.Config, a: Answers) -> None:
     p.say("")
-    p.say("== Hourly digest ==")
-    p.say('During a session: a silent "All\'s well" with progress and conditions, or')
-    p.say('"Attention" when something\'s wrong.')
-    a.digest_enabled = p.yes("Send it?", cfg.digest_enabled)
+    p.say(_("== Hourly digest =="))
+    p.say(_('During a session: a silent "All\'s well" with progress and conditions, or'))
+    p.say(_('"Attention" when something\'s wrong.'))
+    a.digest_enabled = p.yes(_("Send it?"), cfg.digest_enabled)
     a.digest_interval = cfg.digest_interval_minutes
     if a.digest_enabled:
-        a.digest_interval = p.number("Every how many minutes", cfg.digest_interval_minutes, 10, 720)
+        a.digest_interval = p.number(
+            _("Every how many minutes"), cfg.digest_interval_minutes, 10, 720
+        )
 
 
 # -- what's on the rig ----------------------------------------------------------------------
@@ -491,20 +503,32 @@ async def detect(config: config_module.Config | None) -> Seen:
 def summary(a: Answers) -> list[str]:
     if a.notify:
         notify = [
-            f"  notify: {_private(u)}{' (tested)' if u in a.tested else ''}" for u in a.notify
+            "  "
+            + (_("notify: {url} (tested)") if u in a.tested else _("notify: {url}")).format(
+                url=_private(u)
+            )
+            for u in a.notify
         ]
     else:
-        notify = ["  notify: none (the night is recorded, nothing is sent)"]
+        notify = ["  " + _("notify: none (the night is recorded, nothing is sent)")]
     if a.battery == "mains":
-        battery = "mains, no battery alerts"
+        battery = _("mains, no battery alerts")
     else:
-        battery = a.battery + "".join(
-            f", {name} at {v:g} V"
-            for name, v in zip(("low", "critical"), levels(a), strict=True)
-            if v is not None
-        )
-    digest = f"every {a.digest_interval:g} min" if a.digest_enabled else "off"
-    return [*notify, f"  battery: {battery}", f"  digest: {digest}"]
+        low, critical = levels(a)
+        battery = a.battery
+        if low is not None:
+            battery += ", " + _("low at {volts} V").format(volts=f"{low:g}")
+        if critical is not None:
+            battery += ", " + _("critical at {volts} V").format(volts=f"{critical:g}")
+    if a.digest_enabled:
+        digest = _("every {minutes} min").format(minutes=f"{a.digest_interval:g}")
+    else:
+        digest = _("off")
+    return [
+        *notify,
+        "  " + _("battery: {battery}").format(battery=battery),
+        "  " + _("digest: {digest}").format(digest=digest),
+    ]
 
 
 async def _detect_default(cfg):
@@ -530,16 +554,16 @@ def run(
         lambda url: send_apprise(
             url,
             "normal",
-            "Ekos Notifier test",
-            "If you can read this, Ekos Notifier can reach you.",
+            _("Ekos Notifier test"),
+            _("If you can read this, Ekos Notifier can reach you."),
         )
     )
     if path.exists():
         try:
             cfg = config_module.load(path)
         except config_module.ConfigError as exc:
-            p.say(f"Your config has a mistake: {exc}")
-            p.say("Fix it first (ekos-notifier config check explains), then run setup again.")
+            p.say(_("Your config has a mistake: {exc}").format(exc=exc))
+            p.say(_("Fix it first (ekos-notifier config check explains), then run setup again."))
             return 1
         text = path.read_text(encoding="utf-8")
     else:
@@ -547,12 +571,14 @@ def run(
         text = config_module.example_text().replace(
             "# Copy to ~/.config/ekos-notifier/config.yaml. ", "# "
         )
-    p.say("Ekos Notifier setup")
-    p.say(f"Your answers go into {path}; the rest of the file is kept as it is.")
-    p.say("Enter keeps the answer in [brackets]. Ctrl-C leaves without saving.")
+    p.say(_("Ekos Notifier setup"))
+    p.say(
+        _("Your answers go into {path}; the rest of the file is kept as it is.").format(path=path)
+    )
+    p.say(_("Enter keeps the answer in [brackets]. Ctrl-C leaves without saving."))
     p.say("")
     try:
-        p.say("== Your rig ==")
+        p.say(_("== Your rig =="))
         try:
             seen = asyncio.run(find(cfg))
         except KeyboardInterrupt:
@@ -563,15 +589,15 @@ def run(
         ask_power(p, cfg, a, seen)
         ask_digest(p, cfg, a)
         p.say("")
-        p.say("== Ready ==")
+        p.say(_("== Ready =="))
         for line in summary(a):
             p.say(line)
-        if not p.yes(f"Save to {path}?"):
-            p.say("Nothing saved.")
+        if not p.yes(_("Save to {path}?").format(path=path)):
+            p.say(_("Nothing saved."))
             return 1
     except Abort:
         p.say("")
-        p.say("Nothing saved.")
+        p.say(_("Nothing saved."))
         return 1
     try:
         new = apply(text, a, cfg)
@@ -579,32 +605,39 @@ def run(
     except (CantEdit, config_module.ConfigError):
         ok = False
     if not ok:
-        p.say("Your config is laid out in a way setup can't edit safely, so it's unchanged.")
-        p.say(f"Put these settings in {path} by hand (replacing the ones there):")
+        p.say(_("Your config is laid out in a way setup can't edit safely, so it's unchanged."))
+        p.say(
+            _("Put these settings in {path} by hand (replacing the ones there):").format(path=path)
+        )
         p.say("")
         p.say(by_hand(a))
         return 1
     path.parent.mkdir(parents=True, exist_ok=True)
     backup = save(path, new)
-    p.say(f"Saved {path}" + (f" (the old one is {backup.name})." if backup else "."))
+    if backup:
+        p.say(_("Saved {path} (the old one is {backup}).").format(path=path, backup=backup.name))
+    else:
+        p.say(_("Saved {path}.").format(path=path))
     installed = (service or (lambda: (systemd.unit_dir() / systemd.UNIT).exists()))()
     if installed and path.resolve() == config_module.default_path().resolve():
-        p.say("The service applies it by itself within a few seconds.")
+        p.say(_("The service applies it by itself within a few seconds."))
     elif installed:
         pass  # another file: the service reads the one it was installed with
     else:
         p.say("")
-        p.say("Ekos Notifier isn't set to run by itself yet.")
+        p.say(_("Ekos Notifier isn't set to run by itself yet."))
         try:
-            want = p.yes("Start it now, and with your session from now on (systemd user service)?")
+            want = p.yes(
+                _("Start it now, and with your session from now on (systemd user service)?")
+            )
         except Abort:
             want = False
         if want:
             (install_service or _install_service(config_path))()
     p.say("")
-    p.say("Next:")
-    p.say("  ekos-notifier doctor     with KStars and Ekos running: checks everything")
-    p.say("  ekos-notifier simulate   a sample night: the alerts you'd get")
+    p.say(_("Next:"))
+    p.say("  ekos-notifier doctor     " + _("with KStars and Ekos running: checks everything"))
+    p.say("  ekos-notifier simulate   " + _("a sample night: the alerts you'd get"))
     return 0
 
 
