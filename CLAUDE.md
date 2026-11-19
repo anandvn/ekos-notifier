@@ -33,8 +33,8 @@ mostly at dark sites with intermittent internet.
 - **Alert priorities:** Emergency / High / Normal / Quiet. Normal is batched into the hourly
   digest except time-critical ones (target low, twilight, sequence complete).
 - **Messages:** plain English. The Olde English style was dropped (2026-11-19) and Terse is
-  deferred past 0.2; translating our own messages (a catalog per language) is the planned way to
-  vary wording. KStars in another language is handled by reading its log back into English.
+  deferred past 0.2; translating our own messages (gettext, a `.po` file per language) is planned for
+  0.3, before the GUI. KStars in another language is handled by reading its log back into English.
 - **GUI:** Starlette (not FastAPI: pydantic-core is compiled) + server-rendered HTML + htmx +
   uPlot, all assets vendored (no CDN), red night mode, LAN only, password set in first-run wizard. Read-only toward Ekos.
 - **Export:** each closed session → immutable folder (`session.json`, `events.ndjson`,
