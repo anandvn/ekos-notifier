@@ -174,6 +174,8 @@ Since last: flip complete 22:31
 
 ### Message styles
 
+**Changed:** the Olde English style is dropped. Translating Ekos Notifier's own messages (a catalog per language) is planned instead; Terse may come with it.
+
 Every message is rendered from a template set; the style is a single config setting. Numbers and units are identical across styles, only the wording changes.
 
 | Event | Plain (default) | Terse | Olde English |
@@ -345,6 +347,20 @@ When several devices report the same metric, a configurable priority order picks
 
 - Each adapter runs as its own supervised task; a crash or disconnect restarts it with backoff and never stops the service.
 - A metric not updated within N minutes is stale; rules never fire on stale inputs. One "sensor lost" Normal notice is sent instead. Exception: "Ekos stopped with the mount unparked" deliberately fires on the last known park state, because losing that state is the event.
+
+### KStars in another language
+
+Most rules run on Ekos's status codes, which are the same in every language. Some also read Ekos's log lines: Autofocus failed (its retries), Plate solve failed, Meridian flip failed and done, Guiding poor when the job enforces the limit, the reason a capture aborted, and recognising your own Stop (which keeps outputs switching off and PHD2's complaints at shutdown from raising alerts). KStars translates those lines (KDE i18n; the Flatpak ships 151 languages). In German, for instance, "Autofocus failed." arrives as "Die automatische Fokussierung ist fehlgeschlagen.", and before 0.2 those alerts silently never fired.
+
+**Implemented** (`ekos_notifier.ekos.translation`): the Ekos adapter finds the running KStars's language (its app-specific override, `klanguageoverridesrc`, else `LANGUAGE`/`LC_ALL`/`LC_MESSAGES`/`LANG` from its environment) and loads its own catalog (`kstars.mo`, looked up inside the process's root, so a Flatpak's `/app/share/locale` is found). The catalog's keys are KStars's English source strings, so each translation becomes a pattern (`%1`, `%2` … match anything, in any order) and a line matching one in full is passed on as its English source with the same values, keeping the original as `original`. The most specific match wins; translations with under four fixed characters are ignored as too vague; lines that match nothing (untranslated, or not from a translatable string) pass unchanged. No per-language work: any language KStars ships works. Loading the German catalog takes 0.16 s (8,433 phrases); a line takes about 0.4 ms. `doctor` reports the language, and warns when the catalog can't be read. Tested with a made-up language over the existing English scenarios (each alert is missed without the translation, and identical with it) and, where the KStars Flatpak is installed, against its real German catalog.
+
+**Numbers** follow the system's locale, not the language: German KStars writes "Capturing 10,000-second" (ten seconds; the line itself isn't translated) and "Fokus-Position 50.000". KStars writes numbers in its locale (Qt: `LC_ALL`, else `LC_NUMERIC`, else `LANG`; the language override changes words, not numbers), and nothing is guessed from how a number looks: `10,000` is ten in German and ten thousand in English. The adapter looks up that locale's decimal point and grouping mark in this computer's C library (`locale -k LC_NUMERIC`) and puts them on each Ekos log line it passes on (`numbers`, absent for English; stored with the event, so sessions from the database replay right too). Rules read each number the way KStars's source writes it: exposures (Capture's lines and the job plan: `%L`, three decimals), deviation limits and cooler setpoints with `localized` (in the line's format, strictly: in German `1.5` isn't a number); guiding deviations and download times with `plain` (KStars writes them the same in every locale: `0.820`). When this computer doesn't have KStars's locale (Qt carries its own locale data, so KStars can use one the system never generated), the localized numbers are left unread: rules fall back as when the line never came, the service logs a warning, and `doctor` says which locale to add (`/etc/locale.gen`, `sudo locale-gen`).
+
+**PHD2** translates its own messages (wxWidgets, `phd2.mo`; its language is its own setting, and it keeps '.' in numbers whatever the locale). Its warnings are recognised by type, not wording, so they arrive in its language as they are. Only its advice ("For best results…", sent as a warning and not something to act on mid-night) is matched by wording: the translations of that advice in every PHD2 catalog installed here are recognised too, so its language needn't be found.
+
+**Replays:** `tools/record_night.py` notes KStars's language and number format in the recording's meta record (`language`, `numbers`), and replay (`simulate`) reads Ekos's log through that language's catalog from the KStars installed on the replaying computer, saying so in its heading, or that the alerts reading Ekos's log may be missing when it has none. Sessions from the database are already stored in English.
+
+**Verified live** (2026-11-19, KStars 3.8.5 Flatpak and PHD2 2.6.14 in German, simulators; fixture `sim-german-failures-kstars-3.8.5-flatpak.ndjson.gz`): the service of the time read the user's Disconnect as Ekos lost (a session summary and flats reminder followed), quoted no reason for the failed solve, and sent PHD2's dark-library tip as a High warning; through the translations the night raises what an English one would (Starting session, Plate solve failed with "Solver Failed.", Capture aborted with "Autoguiding stopped."). The autofocus failures came during setup, before the session, so they raise nothing in either language.
 
 ### Software versions
 

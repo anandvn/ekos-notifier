@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ekos_notifier import replay
+from ekos_notifier.ekos import translation
 from ekos_notifier.events import Event
 from ekos_notifier.notify import should_send
 from ekos_notifier.pipeline import Pipeline, simulate
@@ -70,7 +71,18 @@ def recording(path: str | Path, label: str | None = None) -> Night:
         meta, records = replay.read(path)
     except (OSError, ValueError) as exc:
         raise SimulateError(str(exc)) from None
-    return Night(label or f"{path}", list(replay.events(records)))
+    label = label or f"{path}"
+    language = meta.get("language")
+    translator = translation.for_language(language)
+    if translator:
+        label += f" (KStars in '{translator.language}', read through its translations)"
+    elif language and not language.startswith(("en", "C")):
+        label += (
+            f" (KStars in '{language}', whose translations aren't installed here: alerts that"
+            " read Ekos's log may be missing)"
+        )
+    numbers = replay.meta_numbers(meta)
+    return Night(label, list(replay.events(records, translator=translator, numbers=numbers)))
 
 
 def sessions(db_path: str | Path, limit: int = 10) -> list[sqlite3.Row]:

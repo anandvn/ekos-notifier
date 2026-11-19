@@ -30,6 +30,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert, minutes
+from ekos_notifier.ekos.translation import NUMBER, localized
 from ekos_notifier.events import Event
 
 HUMIDITY = 90.0
@@ -37,7 +38,7 @@ DEW_SUSTAIN = 300.0
 DEW_CLEAR = 600.0
 HOLD_AFTER = 600.0
 REACH_WITHIN = 1200.0
-SETPOINT = re.compile(r"Setting temperature to (-?\d+(?:\.\d+)?)")
+SETPOINT = re.compile(rf"Setting temperature to ({NUMBER})")
 ENV = {"env.temperature": "temp", "env.dewpoint": "dew", "env.humidity": "rh"}
 
 
@@ -249,8 +250,9 @@ class CoolerRule(SessionRule):
             self._camera = d["camera"]
             self._assign()
         elif kind == "ekos.log" and d.get("module") == "Capture":
-            if m := SETPOINT.search(str(d.get("text", ""))):
-                self._ekos = (float(m.group(1)), ts)
+            m = SETPOINT.search(str(d.get("text", "")))
+            if m and (value := localized(m.group(1), d)) is not None:
+                self._ekos = (value, ts)
                 self._assign()
         elif kind == "camera.cooler":
             self._driver(ts, d.get("device") or "", d.get("state"), d.get("temperature"))

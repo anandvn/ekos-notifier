@@ -34,7 +34,8 @@ your equipment.
 ## What you need
 
 - The computer that runs KStars/Ekos: StellarMate, Astroberry, or any Linux with KStars
-  (native or Flatpak). Ekos Notifier runs on the same computer.
+  (native or Flatpak), in any language KStars offers. Ekos Notifier runs on the same computer.
+  Its own messages are in English for now.
 - Python 3.10 or newer, which these systems have. On Debian, Ubuntu and Raspberry Pi OS you
   may also need Python's `venv` module: `sudo apt install python3-venv`.
 - A phone app to receive alerts, such as Pushover or ntfy (see step 1 below).

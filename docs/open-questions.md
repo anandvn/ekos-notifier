@@ -6,6 +6,15 @@ and `CLAUDE.md` if a decision changes.
 
 ## Ekos / KStars
 
+- [x] **Does Ekos's D-Bus text follow KStars's language?** **Yes, for log lines** (KStars 3.8.5
+      Flatpak, checked against its German catalog, 2026-11-19): Ekos's log is translated with
+      KDE i18n, so "Autofocus failed.", "Solver Failed.", "Disconnecting INDI devices..." and
+      "Meridian flip inactive (…)" arrive in German. Status codes are numbers in every language.
+      Of the sample night's 851 log lines, 335 have a German translation; others ("Capturing
+      N-second … image", "Download Time", "exceeded limit") are untranslated in German but may be
+      in other languages. Handled by reading the log through KStars's own catalog
+      (`ekos_notifier.ekos.translation`). Still to do: a recording with KStars really running in
+      German (`LANG=de_DE.UTF-8`) to confirm on the live D-Bus stream.
 - [x] Does Ekos expose the polar alignment result over D-Bus, or must it be read from the KStars log?
       **Not exposed (KStars 3.8.5).** No Ekos or INDI interface mentions polar alignment; Align
       offers only plate-solve results (`newSolution`, `getSolutionResult`). Read it from the KStars

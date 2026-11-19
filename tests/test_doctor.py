@@ -343,3 +343,35 @@ def test_run_prints_each_area_and_counts_problems(monkeypatch, tmp_path):
 def test_doctor_creates_no_lock_file(tmp_path):
     doctor.check_service(tmp_path / "e.db", runner(), tmp_path / "units")
     assert list(tmp_path.iterdir()) == []
+
+
+def test_kstars_in_another_language(tmp_path, monkeypatch):
+    from test_translation import write_mo
+
+    from ekos_notifier.ekos import translation
+
+    german = translation.NumberFormat(",", ".")
+    monkeypatch.setattr(translation, "number_format", lambda name: german)
+
+    root = tmp_path / "root"
+    write_mo(
+        root / "usr/share/locale/de/LC_MESSAGES/kstars.mo",
+        {"Solver Failed.": "Lösung fehlgeschlagen."},
+    )
+    k = KStarsProcess(10, {"LANG": "de_DE.UTF-8"}, root)
+    checks = doctor.check_kstars(lambda: [k])
+    assert statuses(checks) == [OK, OK, OK] and "'de'" in checks[0].text
+    assert "numbers in 'de_DE.UTF-8' (decimal ',')" in checks[1].text
+    broken = tmp_path / "broken"
+    (broken / "usr/share/locale/de/LC_MESSAGES").mkdir(parents=True)
+    (broken / "usr/share/locale/de/LC_MESSAGES/kstars.mo").write_bytes(b"not a catalog")
+    checks = doctor.check_kstars(lambda: [KStarsProcess(10, {"LANG": "de_DE.UTF-8"}, broken)])
+    assert statuses(checks) == [WARN, OK, OK]
+
+
+def test_kstars_number_locale_unknown_here(monkeypatch):
+    from ekos_notifier.ekos import translation
+
+    monkeypatch.setattr(translation, "number_format", lambda name: None)
+    checks = doctor.check_numbers(KStarsProcess(10, {"LANG": "fr_FR.UTF-8"}, Path("/")))
+    assert statuses(checks) == [WARN] and "fr_FR" in checks[0].fix

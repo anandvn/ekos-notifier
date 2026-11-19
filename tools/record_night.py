@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Record an imaging night as a replay fixture (developer tool, stdlib only).
+"""Record an imaging night as a replay fixture (developer tool, stdlib only; run with
+Ekos Notifier's venv to note KStars's language).
 
 Captures three timestamped streams into one gzipped NDJSON file:
 
@@ -143,12 +144,30 @@ def kstars_version() -> str | None:
     return None
 
 
+def kstars_language() -> tuple[str | None, dict | None]:
+    """The running KStars's language and number format, when Ekos Notifier is importable (run
+    with its venv)."""
+    try:
+        from ekos_notifier.ekos import translation
+        from ekos_notifier.ekos.bus import kstars_processes
+    except ImportError:
+        return None, None
+    for k in kstars_processes():
+        codes = translation.languages(k)
+        name = translation.numeric_locale(k.environ)
+        fmt = translation.number_format(name)
+        numbers = {"locale": name, "decimal": fmt.decimal, "group": fmt.group} if fmt else None
+        return (codes[0] if codes else "en"), numbers
+    return None, None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("out")
     ap.add_argument("--duration", type=float, help="stop after this many seconds")
     ap.add_argument("--indi", default="127.0.0.1:7624")
     ap.add_argument("--phd2", default="127.0.0.1:4400")
+    ap.add_argument("--language", help="KStars's language (default: found from the running KStars)")
     args = ap.parse_args()
 
     for sig in (signal.SIGINT, signal.SIGTERM):
@@ -168,6 +187,10 @@ def main() -> int:
         "kstars": kstars_version(),
         "python": platform.python_version(),
     }
+    language, numbers = kstars_language()
+    meta["language"] = args.language or language
+    if numbers:
+        meta["numbers"] = numbers
     count = 0
     deadline = time.time() + args.duration if args.duration else None
     with gzip.open(args.out, "wt", encoding="utf-8") as f:

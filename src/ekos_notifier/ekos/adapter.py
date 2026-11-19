@@ -33,7 +33,7 @@ from dbus_fast import Message, MessageType
 from dbus_fast.aio import MessageBus
 from dbus_fast.errors import AuthError, DBusError, InvalidAddressError
 
-from ekos_notifier.ekos import states
+from ekos_notifier.ekos import states, translation
 from ekos_notifier.ekos.bus import Candidate, candidates
 from ekos_notifier.ekos.decode import (
     EKOS_PATH,
@@ -100,8 +100,14 @@ class EkosAdapter:
         clock: Callable[[], float] = time.time,
         backoff: tuple[float, ...] = BACKOFF,
         log_poll: float = LOG_POLL,
+        language: Callable[[], translation.BackTranslator | None] | None = None,
+        numbers: Callable[[], tuple[str, translation.NumberFormat | None]] | None = None,
     ) -> None:
-        self._emit = emit
+        self._out = emit
+        self._language = language  # None: the running KStars's (translation.for_running_kstars)
+        self._translator: translation.BackTranslator | None = None
+        self._numbers_of = numbers  # None: the running KStars's
+        self._numbers: tuple[str, translation.NumberFormat | None] = ("", translation.ENGLISH)
         self._find = find
         self._clock = clock
         self.call_timeout = CALL_TIMEOUT
@@ -233,6 +239,59 @@ class EkosAdapter:
         await self.read_strings(bus, modules)
         if modules is None:
             await self.read_location(bus)
+            await self.pick_language()
+
+    async def pick_language(self) -> None:
+        """Read Ekos's log through KStars's own translations when it isn't in English, so rules
+        matching its English lines still work (see ekos.translation)."""
+        find = self._language or translation.for_running_kstars
+        try:
+            found = await asyncio.to_thread(find)
+        except Exception as exc:  # noqa: BLE001 - never stop the adapter over this
+            log.warning("Ekos adapter: can't read KStars's translations: %s", exc)
+            found = None
+        was = self._translator.language if self._translator else None
+        now = found.language if found else None
+        self._translator = found
+        if now != was:
+            if found:
+                log.info(
+                    "KStars runs in '%s': reading Ekos's log through its translations "
+                    "(%d phrases), so alerts work as in English",
+                    now,
+                    len(found),
+                )
+            else:
+                log.info("KStars runs in English")
+        find_numbers = self._numbers_of or translation.numbers_for_running_kstars
+        try:
+            numbers = await asyncio.to_thread(find_numbers)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Ekos adapter: can't find KStars's number format: %s", exc)
+            numbers = ("", translation.ENGLISH)
+        if numbers != self._numbers:
+            name, fmt = numbers
+            if fmt is None:
+                log.warning(
+                    "KStars writes numbers in '%s', which this computer doesn't know: "
+                    "exposure times and other localized numbers in Ekos's log are left unread "
+                    "(see `ekos-notifier doctor`)",
+                    name,
+                )
+            elif fmt != translation.ENGLISH:
+                log.info(
+                    "KStars writes numbers in '%s' (decimal '%s', grouping '%s')",
+                    name,
+                    fmt.decimal,
+                    fmt.group,
+                )
+        self._numbers = numbers
+
+    def _emit(self, event: Event) -> None:
+        """Deliver an event; a translated log line goes on in English, with the original, and
+        the number format KStars wrote it in."""
+        event = translation.with_numbers(event, self._numbers[1])
+        self._out(translation.to_english(event, self._translator))
 
     async def read_job(self, bus: Any) -> None:
         """The active Capture job's frame type, sent when the job or its type changes."""

@@ -21,6 +21,7 @@ import re
 from collections import deque
 
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert, minutes
+from ekos_notifier.ekos.translation import NUMBER, localized, plain
 from ekos_notifier.events import Event
 
 ABORT_GRACE = 60.0
@@ -29,9 +30,9 @@ CAUSE_WINDOW = 5.0  # seconds before an abort in which its cause shows up
 WORKING = {"capturing", "image_received", "in_progress", "changing_filter", "dithering"}
 RESUMED = WORKING | {"meridian_flip", "aligning", "focusing", "filter_focus", "calibrating"}
 BUSY = RESUMED | {"suspended", "guider_drift", "pause_planned", "waiting", "setting_temperature"}
-EXPOSURE = re.compile(r"Capturing ([\d.]+)-second")
-DOWNLOAD = re.compile(r"Download Time: ([\d.]+) s")
-ROUTINE = re.compile(r"Download Time|Received image|Captured |Capturing [\d.]+-second")
+EXPOSURE = re.compile(rf"Capturing ({NUMBER})-second")
+DOWNLOAD = re.compile(rf"Download Time: ({NUMBER}) s")
+ROUTINE = re.compile(rf"Download Time|Received image|Captured |Capturing {NUMBER}-second")
 
 
 class CaptureRule(SessionRule):
@@ -62,10 +63,10 @@ class CaptureRule(SessionRule):
         if kind == "ekos.log" and d.get("text"):
             text = str(d["text"])
             self._log.append((event.ts, str(d.get("module", "")), text))
-            if m := EXPOSURE.search(text):
-                self._exposure = float(m.group(1))
-            if m := DOWNLOAD.search(text):
-                self._download = float(m.group(1))
+            if (m := EXPOSURE.search(text)) and (value := localized(m.group(1), d)) is not None:
+                self._exposure = value
+            if (m := DOWNLOAD.search(text)) and (value := plain(m.group(1))) is not None:
+                self._download = value
         elif kind == "guide.state" and state in ("aborted", "calibration_error", "disconnected"):
             self._causes.append((event.ts, "guiding stopped"))
         elif kind == "focus.state" and state == "failed":
