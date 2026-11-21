@@ -463,3 +463,21 @@ def test_the_svbony_sv241_pro_is_recognised_from_its_real_dump():
     assert [line for line in lines if "candidate" in line] == [
         '  candidate: "SVBONY SV241 Pro / WEATHER_SV_SENSORS.DS18B20_TEMP" = 25.52'
     ]
+
+
+def test_indi_dump_removes_credentials():
+    """Issue #54: OpenWeatherMap's API key went into a public dump. Wi-Fi hubs report keys too."""
+    elements = dump_elements(
+        '<defTextVector device="OpenWeatherMap" name="OWM_API_KEY">'
+        '<defText name="API_KEY">0123456789abcdef0123456789abcdef</defText></defTextVector>'
+        '<setTextVector device="FocusLynx F1" name="WIFI-INFO">'
+        '<oneText name="Wep key">hunter2hunter2</oneText>'
+        '<oneText name="Firmware">2.0.4</oneText></setTextVector>'
+        '<defTextVector device="Box" name="POWER_LABELS">'
+        '<defText name="POWER_CHANNEL_1">Camera</defText></defTextVector>'
+    )
+    dump.scrub(elements)
+    text = "".join(ET.tostring(e, encoding="unicode") for e in elements)
+    assert "0123456789abcdef" not in text and "hunter2" not in text
+    assert "Camera" in text and "2.0.4" in text  # what a preset needs stays
+    assert text.count("(removed)") == 2

@@ -5,6 +5,11 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Fixed: `indi-dump` could include passwords and keys.** Some drivers keep credentials in INDI
+  properties, like OpenWeatherMap's API key or a Wi-Fi hub's network key, and they went into
+  the file people paste into a public issue (#54). Anything named like a key, token, password,
+  login, user or email is now removed, alongside the site location and user name.
+
 - **Fixed: regional weather could outvote your rig's own sensor.** With OpenWeatherMap
   alongside a power box's temperature and humidity sensor, OpenWeatherMap's regional humidity
   raised Dew risk while the rig was dry, and the digest showed its numbers instead of the

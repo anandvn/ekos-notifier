@@ -12,7 +12,8 @@ body:
         ```
 
         using the device's name as Ekos shows it (`ekos-notifier indi-dump` on its own lists
-        every device). It writes `indi-dump.xml` with your site location and user name removed.
+        every device). It writes `indi-dump.xml` with your site location, user name and anything
+        that looks like a password or key (an API key, a Wi-Fi key) removed.
   - type: input
     id: device
     attributes:
