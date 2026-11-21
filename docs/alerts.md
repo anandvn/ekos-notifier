@@ -66,7 +66,7 @@ frame, until the run ends). The exceptions are marked *any time*.
 | Battery low | `battery_low` | high | The power box's voltage at or under the low level for a minute (AGM: 12.0 V, LiFePO4: 12.8 V). Not sent as well when Battery critical has been. *Any time.* | `power: battery`, `low_volts` |
 | Power output off | `power_output_off` | high | A power box output that was powering something switches off. Not when Ekos is shutting down (boxes can switch off on disconnect). | — |
 | No current on an output | `power_output_dead` | high | An output stays on but stops drawing current for 30 seconds: a fuse, a cable, or the device. Boxes that report per-output current only. | — |
-| Disk low | `disk_low` | high | Under 10 GB free where Ekos saves frames. Says how many more frames fit and for how long. | `alerts: disk_low_gb` (0: off) |
+| Disk low | `disk_low` | high | Under 10 GB free where Ekos saves frames (previews saved to `/tmp`, like the StellarMate app's focusing shots, don't count). Says how many more frames fit and for how long. | `alerts: disk_low_gb` (0: off) |
 
 ## Normal, sent at once
 

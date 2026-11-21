@@ -315,7 +315,8 @@ It's small enough to paste for one device; your site location and user name are 
 ## Day to day
 
 There's nothing to do: once the service is running it follows KStars by itself, starts a
-session when the Scheduler starts (or the first light frame is saved), and closes it when the
+session when the Scheduler starts (or the first light frame is saved; quick shots from the
+StellarMate app while you focus or align don't count), and closes it when the
 run ends. A typical night sends you:
 
 - **Starting session**, with pre-flight checks (battery, disk space, dew margin, camera

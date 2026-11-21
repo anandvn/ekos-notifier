@@ -25,7 +25,7 @@ Ekos Notifier is an open-source (MIT) companion service for KStars/Ekos rigs: it
 
 ## Workflow and session lifecycle
 
-A session starts automatically when the Ekos Scheduler starts (or the first Light frame of a manual sequence), with Start/End buttons in the GUI as override. One session = one night; each Scheduler target is a target segment inside it.
+A session starts automatically when the Ekos Scheduler starts (or the first Light frame of a manual sequence; a frame saved to a temporary folder is a preview and doesn't count, see below), with Start/End buttons in the GUI as override. One session = one night; each Scheduler target is a target segment inside it.
 
 ### States
 
@@ -42,6 +42,8 @@ A session starts automatically when the Ekos Scheduler starts (or the first Ligh
    - A session can start straight from Standby (Ekos Notifier started mid-night, or no Ekos connect seen). After a service restart, the open session is picked up from the store.
 
 The rules are implemented in `ekos_notifier.session.SessionManager`, which is driven only by events and the clock, so replayed nights test the same decisions as live ones.
+
+**Previews:** a frame Capture reports with its file in a temporary folder (`/tmp/`, `/var/tmp/`) is a preview, recorded as `capture.preview` instead of `capture.frame`, so no rule counts it: it starts no session, isn't a light in the summary, digest or flats reminder, and doesn't move where Disk low checks. Seen live (StellarMate OS 2.4.0, 2026-11-20, issues #52 and #53): focusing and polar aligning from the StellarMate app run a one-frame Capture "sequence" whose light frame goes to `/tmp/mcp_cache_<camera>.fits`; it started a session, the sequence completing closed it a second later (summary, Flats reminder), and Disk low checked `/tmp`, an 8 GB scratch area. The switch is made in the pipeline (`pipeline.classify`), not the D-Bus decoder, so nights stored before it also replay right with `simulate --session`.
 
 ### Setup log (recorded during Setup)
 
