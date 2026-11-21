@@ -29,6 +29,7 @@ import re
 from collections.abc import Iterable
 from typing import Any
 
+from ekos_notifier import sources
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert, minutes
 from ekos_notifier.ekos.translation import NUMBER, localized
 from ekos_notifier.events import Event
@@ -64,6 +65,7 @@ class DewRule(SessionRule):
         self.sustain = sustain
         self.clear_after = clear_after
         self._env: dict[str, dict[str, float]] = {"temp": {}, "dew": {}, "rh": {}}
+        self._secondary: set[str] = set()  # devices whose readings are secondary (sources.py)
         self._heaters: dict[tuple[str, str], tuple[str, bool | None, float | None]] = {}
         self._risk_since: float | None = None
         self._clear_since: float | None = None
@@ -84,6 +86,7 @@ class DewRule(SessionRule):
     def on_event(self, event: Event) -> list[Event]:
         kind, d = event.kind, event.data
         if kind == "metric" and d.get("metric") in ENV and isinstance(d.get("value"), (int, float)):
+            sources.note(self._secondary, d)
             self._env[ENV[d["metric"]]][d.get("device") or ""] = float(d["value"])
             self._update(event.ts)
         elif kind == "indi.capabilities":
@@ -145,8 +148,11 @@ class DewRule(SessionRule):
     # -- helpers -------------------------------------------------------------------------------
 
     def _worst(self) -> tuple[str | None, float | None, float | None]:
-        """(device, margin) with the smallest dew margin, and the highest humidity."""
-        temp, dew, rh = self._env["temp"], self._env["dew"], self._env["rh"]
+        """(device, margin) with the smallest dew margin, and the highest humidity, from the
+        sensors at the rig (secondary sources only when there are none)."""
+        temp, dew, rh = (
+            sources.prefer_direct(self._env[key], self._secondary) for key in ("temp", "dew", "rh")
+        )
         margins = {dev: t - dew[dev] for dev, t in temp.items() if dev in dew}
         device = min(margins, key=margins.__getitem__) if margins else None
         return device, margins.get(device) if device else None, max(rh.values(), default=None)
@@ -236,7 +242,13 @@ class CoolerRule(SessionRule):
         self._camera: str | None = None  # Ekos Capture's camera
         self._over_since: dict[str, float] = {}
         self._raised: dict[str, str] = {}
-        self._ambient: float | None = None
+        self._ambients: dict[str, float] = {}  # device -> °C
+        self._secondary: set[str] = set()
+
+    @property
+    def _ambient(self) -> float | None:
+        values = sources.prefer_direct(self._ambients, self._secondary)
+        return next(iter(values.values()), None)
 
     def resume(self, session_id: str | None, alerts: Iterable[Event] = ()) -> None:
         super().resume(session_id, alerts)
@@ -257,7 +269,8 @@ class CoolerRule(SessionRule):
             if d.get("metric") == "camera.temperature":
                 return self._temperature(ts, d.get("device") or "", float(d["value"]))
             if d.get("metric") == "env.temperature":
-                self._ambient = float(d["value"])
+                sources.note(self._secondary, d)
+                self._ambients[d.get("device") or ""] = float(d["value"])
         elif kind == "capture.camera" and d.get("camera"):
             self._camera = d["camera"]
             self._assign()

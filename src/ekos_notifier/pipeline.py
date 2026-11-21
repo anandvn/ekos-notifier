@@ -18,6 +18,7 @@ from dataclasses import replace
 from ekos_notifier.events import Event
 from ekos_notifier.rules import Rules
 from ekos_notifier.session import SessionManager
+from ekos_notifier.sources import Marker
 
 log = logging.getLogger(__name__)
 
@@ -46,12 +47,13 @@ class Pipeline:
         rules: Rules | None = None,
     ) -> None:
         self.output = output
+        self.sources = Marker()
         self.manager = manager or SessionManager()
         self.rules = rules or Rules()
 
     def emit(self, event: Event) -> None:
         # Here, not in the D-Bus decoder, so nights stored before this also replay right.
-        self._route(self.manager.handle(classify(event)))
+        self._route(self.manager.handle(self.sources.mark(classify(event))))
 
     def tick(self, now: float) -> None:
         self._route(self.manager.tick(now))

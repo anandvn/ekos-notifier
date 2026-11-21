@@ -322,7 +322,9 @@ Adapters translate device properties into canonical names; rules never see devic
 | `env.dewpoint` | Dew risk | Derived from temperature + humidity (Magnus formula) |
 | `power.dew_heater` | Dew heater check | Check skipped |
 
-When several devices report the same metric, a configurable priority order picks the source.
+When several devices report the same metric, the sensors at the rig win. **Implemented** (`ekos_notifier.sources`): a *secondary* source doesn't measure at the telescope: OpenWeatherMap's driver reports the region's weather from the internet, and the meta-weather driver re-reports other weather drivers (`SECONDARY_DRIVERS`). Its readings count only when no direct sensor reports that metric. The pipeline marks them (`secondary: true`, from each device's driver in its `indi.device` events, so nights stored before this replay right too), and every rule keeps each device's readings and picks with `prefer_direct`: Dew risk and its pre-flight check (with several direct sensors, the smallest margin and highest humidity), the cooler's ambient, the digest and the session summary's ranges. Seen live (2026-11-20): with a Pegasus PPBM at 68–88 % humidity, OpenWeatherMap's 94 % raised Dew risk and a pre-flight warning on its own, and the digest showed OpenWeatherMap's numbers because it sorted first. No setting yet: the rule is automatic until someone needs to choose.
+
+**Placeholders aren't readings.** Drivers publish 0 before their first measurement: the PPBM for an instant at connect, OpenWeatherMap for as long as its fetch fails (13 minutes that night). The INDI decoder doesn't count 0 % humidity (never real), nor a dew point beside it, nor a temperature or dew point of exactly 0.0 that comes with 0 % humidity or before the device has reported another value; a real 0 °C after that counts.
 
 ### Device detection (three tiers)
 

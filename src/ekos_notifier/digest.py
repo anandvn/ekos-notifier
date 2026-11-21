@@ -25,6 +25,7 @@ from collections import Counter
 from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta
 
+from ekos_notifier import sources
 from ekos_notifier.alerts import SessionRule, hhmm, make_alert
 from ekos_notifier.ekos.translation import NUMBER, localized
 from ekos_notifier.events import Event
@@ -116,6 +117,7 @@ class DigestRule(SessionRule):
         self._capture_target: str | None = None  # Ekos Capture's targetName (manual sessions)
         self._camera: str | None = None  # the imaging camera, from Ekos Capture
         self._metrics: dict[tuple[str, str], float] = {}  # (metric, device) -> latest value
+        self._secondary: set[str] = set()  # devices whose readings are secondary (sources.py)
         self.outlook: Callable[[float], str] = lambda now: ""  # "Flip in … · Dawn in …" (sky)
 
     def rescheduled(self, now: float) -> None:
@@ -206,6 +208,7 @@ class DigestRule(SessionRule):
             if d.get("filter"):
                 self._filter = d["filter"]
         elif kind == "metric" and isinstance(d.get("value"), (int, float)):
+            sources.note(self._secondary, d)
             self._metrics[(d["metric"], d.get("device") or "")] = float(d["value"])
             if d["metric"] == "power.voltage":
                 low = self._volts_low
@@ -262,7 +265,8 @@ class DigestRule(SessionRule):
     def _metric(self, metric: str, device: str | None = None) -> float | None:
         if device is not None:
             return self._metrics.get((metric, device))
-        values = [v for (m, _), v in sorted(self._metrics.items()) if m == metric]
+        by_device = {dev: v for (m, dev), v in sorted(self._metrics.items()) if m == metric}
+        values = list(sources.prefer_direct(by_device, self._secondary).values())
         return values[0] if values else None
 
     def _conditions(self) -> str:
