@@ -2070,6 +2070,10 @@ msgid "Little disk space left for frames"
 msgstr ""
 
 #: ekos_notifier/messages.py
+msgid "A weather station reports weather past its limits"
+msgstr ""
+
+#: ekos_notifier/messages.py
 msgid "A session started"
 msgstr ""
 
@@ -2135,6 +2139,10 @@ msgstr ""
 
 #: ekos_notifier/messages.py
 msgid "Disk space back over the limit"
+msgstr ""
+
+#: ekos_notifier/messages.py
+msgid "Weather back within its limits"
 msgstr ""
 
 #: ekos_notifier/messages.py
@@ -2686,6 +2694,52 @@ msgstr ""
 #: ekos_notifier/systemd.py
 #, python-brace-format
 msgid "systemctl --user {command} failed: {detail}"
+msgstr ""
+
+#: ekos_notifier/weather.py
+#, python-brace-format
+msgid "The weather has been within its limits for {duration}."
+msgstr ""
+
+#: ekos_notifier/weather.py
+msgid "Weather OK"
+msgstr ""
+
+#: ekos_notifier/weather.py
+#, python-brace-format
+msgid "{device}: {readings}"
+msgstr ""
+
+#: ekos_notifier/weather.py
+#, python-brace-format
+msgid "weather alert from {readings}"
+msgstr ""
+
+#: ekos_notifier/weather.py
+#, python-brace-format
+msgid "weather near its limits ({readings})"
+msgstr ""
+
+#: ekos_notifier/weather.py
+#, python-brace-format
+msgid "weather OK ({device})"
+msgstr ""
+
+#: ekos_notifier/weather.py
+#, python-brace-format
+msgid "{device} reports, past its limits: {readings}."
+msgstr ""
+
+#: ekos_notifier/weather.py
+msgid "That's regional weather from the internet, not measured at the rig."
+msgstr ""
+
+#: ekos_notifier/weather.py
+msgid "If Ekos is set to park on bad weather, it will now. Check the sky, and cover the rig if rain is coming."
+msgstr ""
+
+#: ekos_notifier/weather.py
+msgid "Weather alert"
 msgstr ""
 
 #: ekos_notifier/wizard.py

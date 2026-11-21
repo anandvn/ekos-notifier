@@ -67,6 +67,7 @@ frame, until the run ends). The exceptions are marked *any time*.
 | Power output off | `power_output_off` | high | A power box output that was powering something switches off. Not when Ekos is shutting down (boxes can switch off on disconnect). | — |
 | No current on an output | `power_output_dead` | high | An output stays on but stops drawing current for 30 seconds: a fuse, a cable, or the device. Boxes that report per-output current only. | — |
 | Disk low | `disk_low` | high | Under 10 GB free where Ekos saves frames (previews saved to `/tmp`, like the StellarMate app's focusing shots, don't count). Says how many more frames fit and for how long. | `alerts: disk_low_gb` (0: off) |
+| Weather alert | `weather_alert` | high | A weather device on INDI goes to Alert: a reading past the limits set in its driver (rain, wind, clouds, forecast…), the same signal Ekos's Scheduler can park the mount on. Names the readings and their values. A weather station at the rig counts over regional weather such as OpenWeatherMap, which the message calls regional. *Any time.* | the limits in the weather driver's settings in Ekos |
 
 ## Normal, sent at once
 
@@ -97,6 +98,7 @@ Each follows its problem's setting when that's `off` or `digest`.
 | Cooler at setpoint | `cooler_ok` | normal | The camera is back at its setpoint. |
 | Power output back | `power_output_back` | normal | The output is on and drawing current again. |
 | Disk space OK | `disk_ok` | normal | 1 GB over the limit again. |
+| Weather OK | `weather_ok` | normal | The weather has stayed out of Alert for 10 minutes, after Weather alert. |
 
 ## Quiet
 

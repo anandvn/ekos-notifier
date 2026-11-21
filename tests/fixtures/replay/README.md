@@ -84,3 +84,11 @@ recorded 2026-11-19 (times EST, UTC−5). Scrubbed with `tools/scrub_replay.py` 
 | 22:16:48 | PHD2 sends its dark-library tip as a warning, in German. |
 | 22:17:55 | The user disconnects ("Verbindung zu INDI-Geräten wird getrennt ..."); PHD2 warns its camera and mount went away; INDI stops. |
 | 22:19:00 | Recording ends. |
+
+### `sim-weather-rain-libindi-2.2.5.ndjson.gz` (4 KB)
+
+The INDI weather simulator (`indi_simulator_weather`, libindi 2.2.5) on its own INDI server, its
+`WEATHER_CONTROL.Precip` set to 5 mm for 75 seconds, recorded 2026-11-21 for the Weather alert
+(#54). Its `WEATHER_STATUS` goes Ok → Alert (`WEATHER_RAIN_HOUR`) → Ok. The driver updates the
+lights before the readings in each cycle, which this recording shows: the alert has to wait for
+the reading. Scrubbed with `tools/scrub_replay.py` (the simulator's default site → 51.48, 0.0).

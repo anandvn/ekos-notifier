@@ -62,6 +62,7 @@ from ekos_notifier.messages import MessageSettings
 from ekos_notifier.power import PowerRule
 from ekos_notifier.sky import SkyRule
 from ekos_notifier.stats import SessionStats
+from ekos_notifier.weather import WeatherRule
 
 UNPARKED_GRACE = 120.0
 MOVING = {"tracking", "slewing", "moving"}
@@ -113,6 +114,7 @@ class Rules:
         digest: DigestRule | None = None,
         sky: SkyRule | None = None,
         power: PowerRule | None = None,
+        weather: WeatherRule | None = None,
         dew: DewRule | None = None,
         cooler: CoolerRule | None = None,
         disk: DiskRule | None = None,
@@ -134,6 +136,7 @@ class Rules:
             CalibrationRule(),
             PoorGuidingRule(guiding_poor_window, deviation_limit),
             power or PowerRule(),
+            weather or WeatherRule(),
             dew or DewRule(),
             cooler or CoolerRule(),
             disk or DiskRule(free=lambda path: None),

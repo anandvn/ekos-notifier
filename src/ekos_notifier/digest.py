@@ -51,6 +51,7 @@ CLEARED_BY = {
     "clouds": "clouds_cleared",
     "meridian_flip_failed": "meridian_flip_done",
     "meridian_flip_overdue": "meridian_flip_done",
+    "weather_alert": "weather_ok",
 }
 CLEARS: dict[str, tuple[str, ...]] = {}
 for _problem, _clear in CLEARED_BY.items():
