@@ -1,7 +1,8 @@
 # Alerts reference
 
 Every message Ekos Notifier can send: what sets it off, what it's called in the config, how
-it's sent by default, and how to tune it.
+it's sent by default, and how to tune it. The first column of each table is the message's
+title, as it arrives on your phone.
 
 ## Priorities
 
@@ -78,7 +79,7 @@ frame, until the run ends). The exceptions are marked *any time*.
 | Twilight coming | `twilight_coming` | normal | 45 minutes before astronomical dawn, at the site in KStars's location. | `alerts: twilight_warning_minutes` |
 | Target low | `target_low` | normal | 30 minutes before the target sinks below Ekos's altitude limit (the Mount module's, else the Scheduler's, else 10°). | `alerts: target_low_warning_minutes` |
 | Flats reminder | `flats_reminder` | normal | With the summary: filters with lights tonight but no flats tonight. Once per filter per night. | — |
-| Darks reminder | `darks_reminder` | off | A dark job starts: "cover the telescope". Once per night. *Any time.* Off unless you turn it on. | `messages: darks_reminder: normal` |
+| Darks starting | `darks_reminder` | off | A dark job starts: "cover the telescope". Once per night. *Any time.* Off unless you turn it on. | `messages: darks_reminder: normal` |
 
 ## All-clears
 
