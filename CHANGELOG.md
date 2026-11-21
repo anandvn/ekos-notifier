@@ -5,6 +5,16 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Fixed: regional weather could outvote your rig's own sensor.** With OpenWeatherMap
+  alongside a power box's temperature and humidity sensor, OpenWeatherMap's regional humidity
+  raised Dew risk while the rig was dry, and the digest showed its numbers instead of the
+  rig's. Sensors at the rig now win: OpenWeatherMap (and the meta-weather driver) count only
+  when no sensor at the rig reports that reading, for Dew risk, the pre-flight check, the
+  digest and the session summary. One alert either way: several sources never send duplicates.
+- **Fixed: drivers' start-up zeros counted as readings.** Weather drivers report 0 before their
+  first measurement (OpenWeatherMap for as long as its fetch fails), which showed as 0 °C and
+  "RH 0%". Those placeholders are ignored now; a real 0 °C still counts.
+
 - **Fixed: the StellarMate app's quick shots were taken for an imaging run** (#52, #53).
   Focusing or polar aligning from the app captures single frames that Ekos reports as lights,
   saved to `/tmp`. Each one started a session that closed a second later, sending a summary and

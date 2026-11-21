@@ -14,6 +14,7 @@ from collections import Counter
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+from ekos_notifier import sources
 from ekos_notifier.events import Event
 from ekos_notifier.i18n import _
 
@@ -42,8 +43,9 @@ class SessionStats:
         self.hfr: list[float] = []
         self.rms: list[float] = []
         self.volts: dict[str, float] = {}  # device -> lowest
-        self.ambient = Range()
-        self.humidity = Range()
+        self.ambients: dict[str, Range] = {}  # device -> range
+        self.humidities: dict[str, Range] = {}
+        self._secondary: set[str] = set()
         self.cameras: dict[str, Range] = {}
         self._camera: str | None = None  # Ekos Capture's camera
         self.problems: Counter[str] = Counter()
@@ -73,9 +75,11 @@ class SessionStats:
             if metric == "power.voltage":
                 self.volts[device] = min(self.volts.get(device, value), value)
             elif metric == "env.temperature":
-                self.ambient.add(value)
+                sources.note(self._secondary, d)
+                self.ambients.setdefault(device, Range()).add(value)
             elif metric == "env.humidity":
-                self.humidity.add(value)
+                sources.note(self._secondary, d)
+                self.humidities.setdefault(device, Range()).add(value)
             elif metric == "camera.temperature":
                 self.cameras.setdefault(device, Range()).add(value)
 
@@ -86,6 +90,15 @@ class SessionStats:
                 continue
             if a.data.get("default_priority", a.data.get("priority")) in PROBLEMS:
                 self.problems[a.data.get("title", a.data.get("rule", "?"))] += 1
+
+    def _range(self, by_device: dict[str, Range]) -> Range:
+        """The range over the sensors at the rig (secondary sources only when there are none)."""
+        out = Range()
+        for r in sources.prefer_direct(by_device, self._secondary).values():
+            for value in (r.low, r.high):
+                if value is not None:
+                    out.add(value)
+        return out
 
     def lines(self) -> list[str]:
         out = []
@@ -98,9 +111,9 @@ class SessionStats:
         elif rms:
             out.append(_("Median guide RMS {rms}″.").format(rms=rms))
         conditions = []
-        if (ambient := self.ambient.words(".1f", " °C")) is not None:
+        if (ambient := self._range(self.ambients).words(".1f", " °C")) is not None:
             conditions.append(_("ambient {celsius}").format(celsius=ambient))
-        if (rh := self.humidity.words(".0f", "%")) is not None:
+        if (rh := self._range(self.humidities).words(".0f", "%")) is not None:
             conditions.append(_("RH {percent}").format(percent=rh))
         camera = self.cameras.get(self._camera or "")
         if camera is None and len(self.cameras) == 1:

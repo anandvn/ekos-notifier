@@ -16,6 +16,11 @@ Kinds:
   seen live), so a reading stays current until ``indi.capabilities`` says it's gone; age alone
   doesn't make it stale. ``env.dewpoint`` is derived (Magnus
   formula) for a device that has temperature and humidity but no dew point of its own.
+  Placeholders aren't readings: drivers publish 0 before
+  their first measurement (OpenWeatherMap for as long as its fetch fails, seen live), so 0 %
+  humidity isn't a reading (nor a dew point beside it), and a temperature or dew point of
+  exactly 0.0 isn't either when it comes with 0 % humidity or before that device has reported
+  another value for it.
 - ``indi.capabilities``: ``metrics`` = {metric: [devices]}, whenever that set changes (devices
   connecting and disconnecting during the night), for "not available on this rig".
 - ``power.output``: ``device``, ``output`` (the element, e.g. ``POWER_CHANNEL_1``), ``kind`` (``dc``
@@ -49,6 +54,7 @@ from ekos_notifier.indi.presets import INTERFACES, Preset
 
 SOURCE = "indi"
 HEARTBEAT = 60.0
+ENV_METRICS = {"env.temperature", "env.humidity", "env.dewpoint"}
 DEADBAND = {
     "temperature": 0.1,
     "humidity": 0.5,
@@ -139,6 +145,7 @@ class IndiDecoder:
     def reset(self) -> None:
         self.devices: dict[str, Device] = {}
         self._last: dict[tuple[str, str], tuple[float, float]] = {}  # (device, metric) -> ts, v
+        self._real: set[tuple[str, str]] = set()  # (device, metric) that has reported a non-zero
         self._capabilities: dict[str, list[str]] = {}
         self._pointing: dict[str, tuple[float, float, float]] = {}  # device -> ts, ra, dec
         self._site: dict[str, tuple[float, float, float | None]] = {}
@@ -278,15 +285,36 @@ class IndiDecoder:
             have["power.outputs"] = "power interface"
         return have
 
+    def _placeholder(self, dev: Device, metric: str, value: float, humidity: float | None) -> bool:
+        """A driver's 0 before its first measurement, not a reading (see the module doc)."""
+        if metric not in ENV_METRICS:
+            return False
+        no_humidity = humidity is not None and humidity <= 0
+        if metric == "env.humidity":
+            return no_humidity  # 0 % is never a real humidity
+        if metric == "env.dewpoint" and no_humidity:
+            return True  # nothing to work a dew point out from
+        if value != 0:
+            self._real.add((dev.name, metric))
+            return False
+        # Exactly 0.0: a placeholder alongside 0 % humidity (start-up, or a failed fetch), or
+        # before this device has reported anything else for it; a real 0 °C after that.
+        return no_humidity or (dev.name, metric) not in self._real
+
     def _metrics(self, ts: float, dev: Device, prop: str) -> list[Event]:
         out = []
         values: dict[str, tuple[float, str]] = {}
-        for metric, p, element, via in self._sources(dev):
-            value = dev.numbers.get(p, {}).get(element)
-            if value is not None:
-                values[metric] = (value, via)
-                if p == prop:
-                    out += self._emit(ts, dev.name, metric, value, via)
+        raw = {
+            metric: (dev.numbers.get(p, {}).get(element), p, via)
+            for metric, p, element, via in self._sources(dev)
+        }
+        humidity = raw.get("env.humidity", (None,))[0]
+        for metric, (value, p, via) in raw.items():
+            if value is None or self._placeholder(dev, metric, value, humidity):
+                continue
+            values[metric] = (value, via)
+            if p == prop:
+                out += self._emit(ts, dev.name, metric, value, via)
         if "env.dewpoint" not in values and {"env.temperature", "env.humidity"} <= values.keys():
             sources = {m for m, p, *_ in self._sources(dev) if p == prop}
             if sources & {"env.temperature", "env.humidity"}:
