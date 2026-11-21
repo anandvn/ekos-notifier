@@ -310,7 +310,8 @@ Please also ask for a preset, so the next person with that device doesn't have t
 `ekos-notifier indi-dump --device "Your box"` (the name as Ekos shows it), and paste the
 `indi-dump.xml` it writes into a
 [Device support issue](https://github.com/anandvn/ekos-notifier/issues/new?template=device_support.yml).
-It's small enough to paste for one device; your site location and user name are removed.
+It's small enough to paste for one device; your site location, user name and anything that
+looks like a password or key are removed.
 
 ## Day to day
 

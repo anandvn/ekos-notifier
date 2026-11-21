@@ -65,20 +65,29 @@ async def collect(
 
 
 HOME = re.compile(r"/home/[^/\s]+")
+# Text properties that hold credentials: OpenWeatherMap's OWM_API_KEY / API_KEY (seen in a
+# public device-support issue, #54), logins and passwords of network devices and services.
+SECRET = re.compile(r"KEY|TOKEN|PASS|SECRET|LOGIN|USER|EMAIL|AUTH|CREDENTIAL|ACCOUNT", re.I)
 
 
 def scrub(elements: list[ET.Element]) -> list[ET.Element]:
-    """Remove the site location (GEOGRAPHIC_COORD values, dd:mm:ss in texts) and the user name
-    in home paths (upload directories, seen live)."""
+    """Remove what a dump mustn't share: the site location (GEOGRAPHIC_COORD values, dd:mm:ss in
+    texts), credentials (any text property or element whose name says key, token, password,
+    login, user, email…) and the user name in home paths (upload directories, seen live)."""
     for el in elements:
         if el.get("name") in LOCATION:
             for child in el:
                 child.text = " 0 "
-        elif el.tag == "defTextVector":
+        elif el.tag.endswith("TextVector"):
+            secret_property = bool(SECRET.search(el.get("name") or ""))
             for child in el:
-                if child.text and re.search(r"-?\d{1,3}[:°]\d{2}[:']\d{2}", child.text):
+                if not child.text or not child.text.strip():
+                    continue
+                if secret_property or SECRET.search(child.get("name") or ""):
                     child.text = " (removed) "
-                elif child.text:
+                elif re.search(r"-?\d{1,3}[:°]\d{2}[:']\d{2}", child.text):
+                    child.text = " (removed) "
+                else:
                     child.text = HOME.sub("/home/user", child.text)
     return elements
 
