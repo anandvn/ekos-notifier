@@ -6,7 +6,7 @@ Ekos Notifier is a companion service for KStars/Ekos astrophotography rigs. It r
 computer, watches the night, and:
 
 - **Alerts you when it matters**: guiding lost, capture aborted, clouds, dew coming, battery low,
-  a failed meridian flip, the mount left unparked. Not every lost star.
+  a failed meridian flip, the mount left unparked, bad weather. Not every lost star.
 - **Sends an hourly digest** ("23:00 — All's well") with the target, progress, guiding and
   conditions.
 - **Records every night as a session**: every frame, guide step, Ekos state change and reading,

@@ -21,6 +21,14 @@ Kinds:
   humidity isn't a reading (nor a dew point beside it), and a temperature or dew point of
   exactly 0.0 isn't either when it comes with 0 % humidity or before that device has reported
   another value for it.
+- ``weather.status``: ``device``, ``state`` (``ok``, ``warning``, ``alert`` or ``idle``),
+  ``alerts`` and ``warnings`` (the driver's labels of the readings past their limits, or near
+  them), ``values`` ({label: reading}) and ``lights`` ({element: state, label}: each reading
+  the driver watches, by its INDI name, e.g. ``WEATHER_RAIN_HOUR``). From the standard weather
+  interface's ``WEATHER_STATUS`` lights: one per critical reading, Ok, Busy (a warning) or
+  Alert, against the driver's own limits, which Ekos's Scheduler can park the mount on. Sent
+  when the state or the readings past or near their limits change. A device with it adds
+  ``weather.status`` to ``indi.capabilities``.
 - ``indi.capabilities``: ``metrics`` = {metric: [devices]}, whenever that set changes (devices
   connecting and disconnecting during the night), for "not available on this rig".
 - ``power.output``: ``device``, ``output`` (the element, e.g. ``POWER_CHANNEL_1``), ``kind`` (``dc``
@@ -54,6 +62,7 @@ from ekos_notifier.indi.presets import INTERFACES, Preset
 
 SOURCE = "indi"
 HEARTBEAT = 60.0
+WEATHER_STATUS = "WEATHER_STATUS"
 ENV_METRICS = {"env.temperature", "env.humidity", "env.dewpoint"}
 DEADBAND = {
     "temperature": 0.1,
@@ -100,11 +109,14 @@ class Device:
     numbers: dict[str, dict[str, float]] = field(default_factory=dict)  # property -> element -> v
     switches: dict[str, dict[str, bool]] = field(default_factory=dict)  # outputs' on/off only
     texts: dict[str, dict[str, str]] = field(default_factory=dict)  # outputs' labels only
+    lights: dict[str, str] = field(default_factory=dict)  # WEATHER_STATUS: element -> state
+    light_labels: dict[str, str] = field(default_factory=dict)  # element -> the driver's label
 
     def clear(self) -> None:
         self.numbers.clear()
         self.switches.clear()
         self.texts.clear()
+        self.lights.clear()
 
 
 def number(text: str | None) -> float | None:
@@ -146,6 +158,8 @@ class IndiDecoder:
         self.devices: dict[str, Device] = {}
         self._last: dict[tuple[str, str], tuple[float, float]] = {}  # (device, metric) -> ts, v
         self._real: set[tuple[str, str]] = set()  # (device, metric) that has reported a non-zero
+        # device -> (state, alerts, warnings, readings out of Ok) last sent as weather.status
+        self._weather: dict[str, tuple] = {}
         self._capabilities: dict[str, list[str]] = {}
         self._pointing: dict[str, tuple[float, float, float]] = {}  # device -> ts, ra, dec
         self._site: dict[str, tuple[float, float, float | None]] = {}
@@ -180,6 +194,8 @@ class IndiDecoder:
                 dev.numbers.pop(prop, None)
                 dev.switches.pop(prop, None)
                 dev.texts.pop(prop, None)
+                if prop == WEATHER_STATUS:
+                    dev.lights.clear()
                 self._forget(name, prop)
             return out + self._capabilities_changed(ts)
         if tag.endswith("TextVector") and prop == "DRIVER_INFO" and tag[:3] in ("def", "set"):
@@ -198,6 +214,15 @@ class IndiDecoder:
                 {one.get("name"): (one.text or "").strip() for one in el if one.get("name")}
             )
             out += self._output_events(ts, dev, OUTPUT_PROPS[prop])
+        elif tag.endswith("LightVector") and prop == WEATHER_STATUS and tag[:3] in ("def", "set"):
+            for one in el:
+                if one.get("name"):
+                    dev.lights[one.get("name")] = (one.text or "").strip()
+                    if one.get("label"):
+                        dev.light_labels[one.get("name")] = one.get("label")
+            out += self._weather_status(ts, dev)
+            if tag.startswith("def"):
+                out += self._capabilities_changed(ts)
         elif tag.endswith("NumberVector") and tag[:3] in ("def", "set") and prop:
             values = {
                 one.get("name"): number(one.text)
@@ -208,6 +233,8 @@ class IndiDecoder:
                 {k: v for k, v in values.items() if v is not None}
             )
             out += self._metrics(ts, dev, prop)
+            if prop == "WEATHER_PARAMETERS" and dev.lights:
+                out += self._weather_status(ts, dev)  # the readings behind an alert caught up
             if prop in OUTPUT_PROPS:
                 out += self._output_events(ts, dev, OUTPUT_PROPS[prop])
             if prop == "CCD_TEMPERATURE" and dev.interfaces & INTERFACES["ccd"]:
@@ -272,6 +299,45 @@ class IndiDecoder:
                         out.append((metric, prop, element, preset.name))
         return out
 
+    def _weather_status(self, ts: float, dev: Device) -> list[Event]:
+        """``weather.status`` when the device's weather lights say something new."""
+        labels = {name: dev.light_labels.get(name, name) for name in dev.lights}
+        alerts = sorted(labels[n] for n, s in dev.lights.items() if s == "Alert")
+        warnings = sorted(labels[n] for n, s in dev.lights.items() if s == "Busy")
+        if alerts:
+            state = "alert"
+        elif warnings:
+            state = "warning"
+        elif any(s == "Ok" for s in dev.lights.values()):
+            state = "ok"
+        else:
+            state = "idle"
+        readings = dev.numbers.get("WEATHER_PARAMETERS", {})
+        values = {labels[n]: readings[n] for n in dev.lights if n in readings}
+        # Drivers update the lights before the readings (seen on the simulator: the alert came
+        # with last cycle's 0 mm of rain), so the readings of a light out of Ok are part of
+        # what's new: a status follows when they catch up.
+        out_of_ok = tuple(
+            (labels[n], readings.get(n)) for n, s in sorted(dev.lights.items()) if s != "Ok"
+        )
+        key = (state, tuple(alerts), tuple(warnings), out_of_ok)
+        if self._weather.get(dev.name) == key:
+            return []
+        self._weather[dev.name] = key
+        light_state = {"Alert": "alert", "Busy": "warning", "Ok": "ok"}
+        data = {
+            "device": dev.name,
+            "state": state,
+            "alerts": alerts,
+            "warnings": warnings,
+            "values": values,
+            "lights": {
+                n: {"state": light_state.get(s, "idle"), "label": labels[n]}
+                for n, s in sorted(dev.lights.items())
+            },
+        }
+        return [Event(ts, "weather.status", data, SOURCE)]
+
     def _available(self, dev: Device) -> dict[str, str]:
         """metric -> via, for the values this device has right now (including derived)."""
         have = {
@@ -279,6 +345,8 @@ class IndiDecoder:
             for metric, prop, element, via in self._sources(dev)
             if element in dev.numbers.get(prop, {})
         }
+        if dev.lights:
+            have["weather.status"] = "weather interface"
         if "env.dewpoint" not in have and (dev.name, "env.dewpoint") in self._last:
             have["env.dewpoint"] = "derived"  # only once a dew point could actually be worked out
         if any(dev.switches.get(p) or dev.numbers.get(p) for p in OUTPUT_PROPS):
@@ -402,6 +470,8 @@ class IndiDecoder:
         return [Event(ts, "metric", data, SOURCE)]
 
     def _forget(self, device: str, prop: str | None = None) -> None:
+        if prop is None or prop == WEATHER_STATUS:
+            self._weather.pop(device, None)
         if prop is None or prop == "CCD_TEMPERATURE":
             self._cooler.pop(device, None)
         if prop is None or prop in OUTPUT_PROPS:

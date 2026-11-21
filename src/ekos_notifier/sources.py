@@ -37,7 +37,7 @@ class Marker:
         if event.kind == "indi.device" and d.get("device") and d.get("driver"):
             self._drivers[d["device"]] = d["driver"]
         elif (
-            event.kind == "metric"
+            event.kind in ("metric", "weather.status")
             and not d.get("secondary")
             and self._drivers.get(d.get("device") or "") in SECONDARY_DRIVERS
         ):

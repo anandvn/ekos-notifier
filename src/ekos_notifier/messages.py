@@ -77,6 +77,7 @@ ALERTS: dict[str, Alert] = {
     "power_output_off": A("high", False, N_("A power box output switched off")),
     "power_output_dead": A("high", False, N_("A power box output stopped drawing current")),
     "disk_low": A("high", False, N_("Little disk space left for frames")),
+    "weather_alert": A("high", False, N_("A weather station reports weather past its limits")),
     # Normal, sent at once
     "session_started": A("normal", True, N_("A session started")),
     "session_summary": A("normal", True, N_("A session ended: frames, integration, mount")),
@@ -99,6 +100,7 @@ ALERTS: dict[str, Alert] = {
     "cooler_ok": A("normal", True, N_("Camera back at its setpoint"), "cooler_cant_hold"),
     "power_output_back": A("normal", True, N_("A power box output is back"), "power_output_off"),
     "disk_ok": A("normal", True, N_("Disk space back over the limit"), "disk_low"),
+    "weather_ok": A("normal", True, N_("Weather back within its limits"), "weather_alert"),
     # Quiet
     "meridian_flip_soon": A("quiet", False, N_("Ekos will flip soon (in the digest)")),
     "digest": A("quiet", True, N_("The hourly digest (its Attention form is Normal)")),

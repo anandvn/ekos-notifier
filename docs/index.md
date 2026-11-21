@@ -147,6 +147,12 @@ current on** an output that's still on but has stopped drawing current (a fuse, 
 device), followed by **Power output back**. The box's own output names are used ("Camera",
 "Mount"). Outputs switching off as Ekos shuts down aren't reported.
 
+With any INDI weather device (a cloud and rain sensor, a weather station, or OpenWeatherMap):
+**Weather alert** (High, at any time) when one of its readings goes past the limits set in its
+driver, the same signal Ekos's Scheduler can park on, naming the readings (rain, wind…); a
+station at the rig counts over regional weather for the readings it watches. "Weather OK"
+follows once it's been fine for 10 minutes.
+
 With a weather station or a temperature/humidity sensor: **Dew risk** (High) when the dew margin
 stays under 2 °C (`alerts: dew_margin_c`) or humidity over 90 % for 5 minutes, naming any dew
 heater that's off; "Dew risk passed" goes in the digest. With a cooled camera: **Cooler can't

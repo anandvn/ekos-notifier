@@ -5,6 +5,15 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **New: Weather alert** (#54). Any INDI weather device, whether a cloud and rain sensor at the
+  rig, a weather station, or OpenWeatherMap, reports when a reading goes past the limits set in
+  its driver, which is the signal Ekos's Scheduler can park on. Ekos Notifier now sends
+  **Weather alert** (High, at any time, session or not) naming what's past its limit ("Rain
+  precip (mm) 1.2"), says when it's regional weather rather than measured at the rig, and sends
+  **Weather OK** once it's been fine for 10 minutes. A station at the rig counts over
+  OpenWeatherMap for the readings it watches; OpenWeatherMap's rain still counts beside a power
+  box that only watches temperature. The pre-flight check includes the weather too.
+
 - **Fixed: `indi-dump` could include passwords and keys.** Some drivers keep credentials in INDI
   properties, like OpenWeatherMap's API key or a Wi-Fi hub's network key, and they went into
   the file people paste into a public issue (#54). Anything named like a key, token, password,

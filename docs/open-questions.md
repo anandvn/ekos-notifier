@@ -24,6 +24,9 @@ problem replayable.
 - [ ] Offline at the site: alerts dropped after 10 minutes, nothing sent late, nothing lost from
       the record.
 - [ ] The KStars version on the rig, for the minimum-version item below.
+- [ ] A Weather alert from a real weather device (OpenWeatherMap in rain, or a cloud/rain
+      sensor), and whether Ekos parked. Seen on the INDI weather simulator (a fixture) and built
+      from real property definitions (#54); a real device's Alert hasn't been recorded yet.
 
 ## Ekos / KStars
 
