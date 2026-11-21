@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Iterable
+from dataclasses import replace
 
 from ekos_notifier.events import Event
 from ekos_notifier.rules import Rules
@@ -21,6 +22,19 @@ from ekos_notifier.session import SessionManager
 log = logging.getLogger(__name__)
 
 TICK = 10.0  # seconds between clock ticks
+# A frame saved here is a preview, not a light to keep: the StellarMate app's one-shot captures
+# (focusing, polar alignment, framing) go through Ekos's Capture as "light" frames saved to
+# /tmp/mcp_cache_<camera>.fits (seen live, issues #52 and #53), as do Ekos's own unsaved
+# previews. Lights worth keeping are never written where a reboot empties them.
+TEMP_FOLDERS = ("/tmp/", "/var/tmp/")
+
+
+def classify(event: Event) -> Event:
+    """``capture.frame`` saved to a temporary folder becomes ``capture.preview``: recorded, but no
+    rule counts it (it starts no session, isn't a light, and doesn't move the disk check)."""
+    if event.kind == "capture.frame" and str(event.data.get("file") or "").startswith(TEMP_FOLDERS):
+        return replace(event, kind="capture.preview")
+    return event
 
 
 class Pipeline:
@@ -36,7 +50,8 @@ class Pipeline:
         self.rules = rules or Rules()
 
     def emit(self, event: Event) -> None:
-        self._route(self.manager.handle(event))
+        # Here, not in the D-Bus decoder, so nights stored before this also replay right.
+        self._route(self.manager.handle(classify(event)))
 
     def tick(self, now: float) -> None:
         self._route(self.manager.tick(now))

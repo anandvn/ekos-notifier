@@ -5,6 +5,14 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Fixed: the StellarMate app's quick shots were taken for an imaging run** (#52, #53).
+  Focusing or polar aligning from the app captures single frames that Ekos reports as lights,
+  saved to `/tmp`. Each one started a session that closed a second later, sending a summary and
+  a Flats reminder, and pointed the disk check at `/tmp`, an 8 GB scratch area, so Disk low
+  fired. A frame saved to a temporary folder is now a preview: still recorded, but it starts no
+  session, isn't counted as a light, and doesn't change where disk space is checked. Nights
+  already recorded replay the same way with `simulate --session`.
+
 - **Fixed: `simulate` crashed on a damaged recording.** A recording cut off by a crash or power
   cut, or one with a corrupt line, now replays as far as it goes, and the heading says so ("the
   recording ends early: replayed up to 22:13", "1 damaged line skipped"). A file that isn't a
