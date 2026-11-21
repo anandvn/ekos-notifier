@@ -5,6 +5,12 @@ Semantic Versioning.
 
 ## Unreleased
 
+## 0.3.2 — 2026-11-22
+
+More from field testing: a Weather alert from any INDI weather device, the rig's own sensors
+winning over regional weather, previews no longer counted as lights, and no credentials in
+`indi-dump` files.
+
 - **Docs: the Alerts reference is checked against the code** in full: every alert, in the
   section for its priority, with its default and the title it's sent with. The Darks reminder
   is listed by its real title, "Darks starting".
