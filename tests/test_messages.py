@@ -10,11 +10,22 @@ from ekos_notifier.messages import ALERTS, MessageSettings, SettingsError
 from ekos_notifier.notify import should_send
 
 SRC = Path(__file__).parent.parent / "src/ekos_notifier"
+DOCS = Path(__file__).parent.parent / "docs"
+
+
+def title_of(call):
+    node = call.args[4] if len(call.args) > 4 else None
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):  # _("…").format()
+        node = node.func.value
+    if isinstance(node, ast.Call) and node.args and isinstance(node.args[0], ast.Constant):
+        return node.args[0].value
+    return None
 
 
 def raised_in_source():
-    """(rule, priority, immediate) for every alert call with literal arguments, and every rule
-    name the source mentions as a string."""
+    """(rule, priority, immediate, title, file) for every alert call with literal arguments, and
+    every rule name the source mentions as a string. The title is None unless it's one literal
+    string (``_("Weather alert")``, or ``_("Power output back: {output}").format(...)``)."""
     calls, names = [], set()
     for path in SRC.rglob("*.py"):
         tree = ast.parse(path.read_text())
@@ -36,14 +47,14 @@ def raised_in_source():
                     k.arg == "immediate" and isinstance(k.value, ast.Constant) and k.value.value
                     for k in node.keywords
                 )
-                calls.append((rule.value, priority.value, immediate, path.name))
+                calls.append((rule.value, priority.value, immediate, title_of(node), path.name))
     return calls, names
 
 
 def test_registry_matches_every_alert_the_code_raises():
     calls, names = raised_in_source()
     assert calls, "found no alert calls"
-    for rule, priority, immediate, where in calls:
+    for rule, priority, immediate, _title, where in calls:
         assert rule in ALERTS, f"{where}: '{rule}' missing from messages.ALERTS"
         alert = ALERTS[rule]
         assert (alert.priority, alert.immediate) == (priority, immediate), f"{where}: {rule}"
@@ -51,6 +62,52 @@ def test_registry_matches_every_alert_the_code_raises():
     for rule in ALERTS:
         assert rule in names, f"'{rule}' is in the registry but the code never raises it"
     assert {r for r, *_ in calls} <= set(ALERTS)
+
+
+# docs/alerts.md, the Alerts reference: each section, and what an alert listed in it must be.
+SECTIONS = {
+    "Emergency": lambda a: a.priority == "emergency",
+    "High": lambda a: a.priority == "high",
+    "Normal, sent at once": lambda a: a.priority == "normal" and a.immediate and not a.clears,
+    "All-clears": lambda a: a.clears is not None,
+    "Quiet": lambda a: a.priority == "quiet",
+}
+
+
+def documented_alerts():
+    """name -> (section, title, default) for every row of the Alerts reference."""
+    rows, section = [], None
+    for line in (DOCS / "alerts.md").read_text().splitlines():
+        if line.startswith("## "):
+            section = line[3:].strip()
+        elif m := re.match(r"^\| ([^|]+?) \| `([a-z_0-9]+)` \| ([a-z]+) \|", line):
+            rows.append((m[2], (section, m[1], m[3])))
+    documented = dict(rows)
+    assert len(rows) == len(documented), "an alert is listed twice in docs/alerts.md"
+    return documented
+
+
+def test_the_alerts_reference_matches_the_registry_and_the_code():
+    """docs/alerts.md lists every alert, in the section for its priority, with its default
+    and the title the code sends it with (up to its first variable part)."""
+    documented = documented_alerts()
+    assert set(documented) == set(ALERTS), (
+        f"docs/alerts.md is missing {sorted(set(ALERTS) - set(documented))}, "
+        f"and lists unknown {sorted(set(documented) - set(ALERTS))}"
+    )
+    for name, (section, _title, default) in documented.items():
+        alert = ALERTS[name]
+        assert section in SECTIONS, f"docs/alerts.md: {name} is under an unknown '## {section}'"
+        assert SECTIONS[section](alert), f"docs/alerts.md: {name} doesn't belong under {section}"
+        assert default == alert.default, f"docs/alerts.md: {name}'s default is {alert.default}"
+    calls, _names = raised_in_source()
+    for rule, _priority, _immediate, sent, where in calls:
+        if sent is None:
+            continue
+        title = documented[rule][1]
+        assert sent == title or sent.startswith(title + ":"), (
+            f"{where} sends {rule} as '{sent}', docs/alerts.md calls it '{title}'"
+        )
 
 
 def alert(rule, priority, immediate=False):

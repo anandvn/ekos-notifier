@@ -5,6 +5,10 @@ Semantic Versioning.
 
 ## Unreleased
 
+- **Docs: the Alerts reference is checked against the code** in full: every alert, in the
+  section for its priority, with its default and the title it's sent with. The Darks reminder
+  is listed by its real title, "Darks starting".
+
 - **New: Weather alert** (#54). Any INDI weather device, whether a cloud and rain sensor at the
   rig, a weather station, or OpenWeatherMap, reports when a reading goes past the limits set in
   its driver, which is the signal Ekos's Scheduler can park on. Ekos Notifier now sends
